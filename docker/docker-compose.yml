@@ -1,0 +1,71 @@
+version: '3.8'
+services:
+  backend:
+    build: 
+      context: ../apps/backend
+      dockerfile: Dockerfile
+    container_name: backend_container
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      - AI_URL=http://ai-service:8001
+    depends_on:
+      ai-service:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    volumes:
+      - backend_data:/app/data
+    networks:
+      - app_network
+
+  ai-service:
+    build:
+      context: ../apps/ai-service
+      dockerfile: Dockerfile
+    ports:
+      - '8001:8001'
+    env_file: .env
+    environment:
+      - BACKEND_URL=http://backend:8000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    volumes:
+      - ai_service_data:/app/data
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  backend_data:
+  ai_service_data:
