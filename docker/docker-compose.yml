@@ -1,10 +1,18 @@
-version: '3.8'
 services:
   backend:
     build: 
       context: ../apps/backend
       dockerfile: Dockerfile
-    container_name: backend_container
+    container_name: beplan_server_container
+    develop:
+      watch:
+        - action: sync
+          path: ../apps/backend
+          target: /app
+          ignore:
+            - ../apps/backend/__pycache__/
+        - action: rebuild
+          path: ../apps/backend/requirements.txt
     ports:
       - "8000:8000"
     env_file: .env

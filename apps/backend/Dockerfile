@@ -1,5 +1,5 @@
 # Use slim version for smaller image size
-FROM python:3.13-slim as builder
+FROM python:3.13-slim AS builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -12,7 +12,14 @@ RUN groupadd -r dev && useradd -r -g dev dev
 
 # Install required system dependencies
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc python3-dev \
+    && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    python3-dev \
+    build-essential \
+    pkg-config \
+    cmake \
+    make \
     && rm -rf /var/lib/apt/lists/*
 
 # Create and set working directory
@@ -49,4 +56,4 @@ USER dev
 EXPOSE 8000
 
 # Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--reload"]

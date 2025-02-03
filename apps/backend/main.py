@@ -1,9 +1,10 @@
 from fastapi import FastAPI
-from routers import ai
+from routers import ai, goals
 
 app = FastAPI()
 
 app.include_router(ai.router)
+app.include_router(goals.router)
 
 @app.get("/")
 def read_root():
