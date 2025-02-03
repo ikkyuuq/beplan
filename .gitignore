@@ -323,4 +323,6 @@ psd
 thumb
 sketch
 
+.turbo/
+
 # End of https://www.toptal.com/developers/gitignore/api/node,react,python
