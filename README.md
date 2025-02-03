@@ -82,20 +82,20 @@ This will:
 Follow the **Git Flow** strategy:
 1. **Main branch (`main`)** - Production-ready code.
 2. **Development branch (`develop`)** - Ongoing development.
-3. **Feature branches (`feature/your-feature`)** - New features.
+3. **Feature branches (`[role]/your-feature`)** - New features.
 4. **Bugfix branches (`bugfix/your-bugfix`)** - Fixing bugs.
 5. **Release branches (`release/x.y.z`)** - Preparing for releases.
 
 ### Working with Git
 #### Creating a new feature branch
 ```sh
-git checkout -b feature/new-feature
+git checkout -b [role]/new-feature
 ```
 
 #### Committing changes
 ```sh
 git add .
-git commit -m "feat: add new feature"
+git commit -m "feat([role]): add new feature"
 ```
 
 #### Pulling latest changes before pushing
@@ -103,28 +103,18 @@ Always pull the latest `develop` branch before pushing changes:
 ```sh
 git checkout develop
 git pull origin develop
-git checkout feature/new-feature
+git checkout -b [role]/new-feature
 git rebase develop
 ```
 
 #### Pushing changes
 ```sh
-git push origin feature/new-feature
+git push origin [role]/new-feature
 ```
 
 #### Creating a Pull Request (PR)
-- Open a PR from `feature/new-feature` → `develop`
+- Open a PR from `[role]/new-feature` → `develop`
 - Get at least one approval before merging.
-
-#### Merging a Feature
-After approval, merge your feature into `develop`:
-```sh
-git checkout develop
-git pull origin develop
-git merge feature/new-feature
-git push origin develop
-git branch -d feature/new-feature
-```
 
 ---
 
