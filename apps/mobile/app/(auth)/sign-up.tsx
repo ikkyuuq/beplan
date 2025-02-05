@@ -8,6 +8,7 @@ import { InriaSerif_400Regular } from "@expo-google-fonts/inria-serif";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
 import VerificationScreen from "@/components/VerificationScreen";
+import { routes } from "@/routesConfig"; // ✅ ใช้ routesConfig.ts
 
 export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp();
@@ -22,8 +23,8 @@ export default function SignUpScreen() {
   const [errorMessage, setErrorMessage] = React.useState("");
 
   const [fontsLoaded, loadError] = useFonts({
-      InriaSerif_400Regular,
-    });
+    InriaSerif_400Regular,
+  });
 
   const isValidEmail = (email: string): boolean =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -64,7 +65,7 @@ export default function SignUpScreen() {
       });
       if (signUpAttempt.status === "complete") {
         await setActive({ session: signUpAttempt.createdSessionId });
-        router.replace("/"); // Now router is available here
+        router.replace(routes.loggedInRedirect);
       }
     } catch (err: any) {
       console.error(err);

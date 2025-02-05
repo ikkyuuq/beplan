@@ -71,8 +71,10 @@ export default function Page() {
       }
     } catch (err: any) {
       console.error(err);
-      setErrorMessage(err.errors?.[0]?.message || "Sign-in failed. Please try again.");
-    }    
+      setErrorMessage(
+        err.errors?.[0]?.message || "Sign-in failed. Please try again."
+      );
+    }
   };
 
   const onGoogleSignInPress = async () => {
@@ -80,7 +82,6 @@ export default function Page() {
       const { createdSessionId, setActive } = await startGoogleOAuth({
         redirectUrl: process.env.EXPO_PUBLIC_CLERK_REDIRECT_URL,
       });
-      
       if (createdSessionId && setActive) {
         setActive({ session: createdSessionId });
       } else {
@@ -113,9 +114,11 @@ export default function Page() {
 
   return (
     <View style={styles.container}>
+      {/* <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <Ionicons name="arrow-back" size={24} color="black" />
+      </TouchableOpacity> */}
       <Ionicons name="hammer" size={40} color="#222" style={styles.logo} />
       <Text style={styles.title}>Welcome back!</Text>
-
       <View style={styles.inputWrapper}>
         <InputField
           iconName="mail-outline"
@@ -245,5 +248,11 @@ const styles = StyleSheet.create({
     color: "#1E90FF",
     fontWeight: "bold",
     textAlign: "center",
+  },
+  backButton: {
+    position: "absolute",
+    top: 50,
+    left: 20,
+    padding: 10,
   },
 });

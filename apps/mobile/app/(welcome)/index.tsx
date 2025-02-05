@@ -35,10 +35,6 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <FontAwesome name="arrow-left" size={24} color="black" />
-      </TouchableOpacity>
-
       <View style={styles.titleContainer}>
         {["Planning", "Just Got", "Easier!"].map((text, index) => (
           <Text key={index} style={styles.title}>
@@ -145,12 +141,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
-  backButton: {
-    position: "absolute",
-    top: 50,
-    left: 20,
-    padding: 10,
-  },
+
   loadingContainer: {
     flex: 1,
     justifyContent: "center",

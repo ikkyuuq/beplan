@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useUser, useClerk } from "@clerk/clerk-expo";
 import {
   View,
@@ -8,31 +8,17 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { routes } from "@/routesConfig";
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
 
-  useEffect(() => {
-    if (isLoaded && !user) {
-      router.replace("/(auth)/sign-in");
-    }
-  }, [isLoaded, user]);
-
   const handleSignOut = async () => {
     await signOut();
-    router.replace("/(auth)/sign-in");
+    router.replace(routes.signIn);
   };
-
-  if (!isLoaded) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2D4A2E" />
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
