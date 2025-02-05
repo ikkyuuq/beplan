@@ -1,49 +1,55 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
 import { useSignIn } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { useAuth } from "@clerk/clerk-expo";
+import { useClerk } from "@clerk/clerk-expo";
 import PasswordInput from "@/components/PasswordInput";
+import { routes } from "@/routesConfig";
 
 export default function SetPasswordScreen() {
   const { isLoaded, signIn } = useSignIn();
+  const { signOut } = useClerk();
   const router = useRouter();
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const { signOut } = useAuth();
-
   const onSetPasswordPress = async () => {
     setErrorMessage("");
-  
+
     if (!isLoaded) return;
-  
+
     if (!password.trim() || !confirmPassword.trim()) {
       setErrorMessage("Both fields are required.");
       return;
     }
-  
+
     if (password !== confirmPassword) {
       setErrorMessage("Passwords do not match.");
       return;
     }
-  
+
     try {
-      await signOut(); 
-      await new Promise((resolve) => setTimeout(resolve, 1000)); 
+      await signOut();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       await signIn.resetPassword({ password });
       await signOut();
-      router.replace("/(auth)/sign-in");
+      router.replace(routes.signIn);
     } catch (err: any) {
       console.error(err);
       setErrorMessage(
-        err.errors?.[0]?.message || "Failed to reset password. Please try again."
+        err.errors?.[0]?.message ||
+          "Failed to reset password. Please try again."
       );
     }
   };
-  
 
   return (
     <View style={styles.container}>
@@ -70,7 +76,6 @@ export default function SetPasswordScreen() {
       {errorMessage ? (
         <Text style={styles.errorText}>{errorMessage}</Text>
       ) : null}
-
       <TouchableOpacity style={styles.button} onPress={onSetPasswordPress}>
         <Text style={styles.buttonText}>Continue</Text>
       </TouchableOpacity>

@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { Text, View, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import {
+  Text,
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
 import { useSignIn } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,6 +15,7 @@ import { InriaSerif_400Regular } from "@expo-google-fonts/inria-serif";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
 import VerificationScreen from "@/components/VerificationScreen";
+import { routes } from "@/routesConfig";
 
 export default function ResetPasswordScreen() {
   const { isLoaded, signIn } = useSignIn();
@@ -19,13 +27,28 @@ export default function ResetPasswordScreen() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const [fontsLoaded, loadError] = useFonts({
-      InriaSerif_400Regular,
-    });
+    InriaSerif_400Regular,
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2D4A2E" />
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Error loading fonts</Text>
+      </View>
+    );
+  }
 
   const onResetPress = async () => {
     setErrorMessage("");
     if (!isLoaded) return;
-
     if (!emailAddress.trim()) {
       setErrorMessage("Email address cannot be empty.");
       return;
@@ -43,7 +66,7 @@ export default function ResetPasswordScreen() {
         err.errors?.[0]?.message ||
           "Failed to send reset link. Please try again."
       );
-    }
+    } 
   };
 
   const onVerifyPress = async () => {
@@ -59,7 +82,7 @@ export default function ResetPasswordScreen() {
         console.log(
           "Verification successful! Redirecting to set new password..."
         );
-        router.replace("/(auth)/set-password");
+        router.replace(routes.setNewPassword);
       } else {
         console.error(
           "Unexpected response:",
@@ -154,5 +177,15 @@ const styles = StyleSheet.create({
     top: 50,
     left: 20,
     padding: 10,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
