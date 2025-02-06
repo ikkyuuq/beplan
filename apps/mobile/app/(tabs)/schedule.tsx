@@ -19,8 +19,18 @@ import Animated, {
 } from "react-native-reanimated";
 import CollapseItem from "@/components/CollapseItem";
 import Collapsable from "@/components/Collapsable";
+import { useClerk } from "@clerk/clerk-expo";
+import { useRouter } from "expo-router";
+import { routes } from "@/routesConfig";
 
 function schedule() {
+  const { signOut } = useClerk();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.replace(routes.signIn);
+  };
   const [currentMonth, setCurrentMonth] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [latestIndex, setLatestIndex] = useState(0);
@@ -131,13 +141,13 @@ function schedule() {
           }}
         >
           <Feather name="menu" size={24} color="#fff" />
-          <View style={{ alignItems: "center" }}>
+          <Pressable onPress={handleSignOut} style={{ alignItems: "center" }}>
             <Image
               source={{ uri: "https://picsum.photos/200/300" }}
               style={{ width: 35, height: 35, borderRadius: 100 }}
               resizeMode="cover"
             />
-          </View>
+          </Pressable>
         </View>
         <View
           style={{ gap: 10, justifyContent: "center", alignItems: "center" }}
