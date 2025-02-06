@@ -43,8 +43,10 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
 
-        useEffect(() => {
-          tabPosX.value = withSpring(buttonWidth * state.index, {
+        const isFocused = state.index === index;
+
+        const onPress = () => {
+          tabPosX.value = withSpring(buttonWidth * index, {
             mass: 1,
             damping: 20,
             stiffness: 200,
@@ -52,11 +54,6 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             restDisplacementThreshold: 0.01,
             restSpeedThreshold: 2,
           });
-        }, [state.index]);
-
-        const isFocused = state.index === index;
-
-        const onPress = () => {
           const event = navigation.emit({
             type: "tabPress",
             target: route.key,
@@ -83,7 +80,6 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             options={options}
             isFocused={isFocused}
             route={route}
-            label={route.name}
           />
         );
       })}
@@ -107,7 +103,7 @@ const styles = StyleSheet.create({
       height: 10,
     },
     shadowRadius: 10,
-    shadowOpacity: 0.1,
+    elevation: 45,
   },
 });
 

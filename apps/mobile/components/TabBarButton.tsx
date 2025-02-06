@@ -59,7 +59,7 @@ export default function TabBarButton({
     >
       {icon[route.name]({
         size: 24,
-        animatedProps: animatedProps,
+        color: isFocused ? "#fff" : "#222",
       })}
     </Pressable>
   );
