@@ -4,13 +4,12 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
 } from "react-native";
 import { useSignIn } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { useClerk } from "@clerk/clerk-expo";
-import PasswordInput from "@/components/PasswordInput";
 import { routes } from "@/routesConfig";
+import PasswordInput from "@/components/PasswordInput";
 
 export default function SetPasswordScreen() {
   const { isLoaded, signIn } = useSignIn();
