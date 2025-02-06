@@ -11,4 +11,3 @@ def read_goals(user_id: int):
     ] 
     return JSONResponse(content=goals)
 
-#test0123
