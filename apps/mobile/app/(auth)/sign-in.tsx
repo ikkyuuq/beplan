@@ -65,14 +65,14 @@ export default function Page() {
       });
       if (signInAttempt.status === "complete") {
         await setActive({ session: signInAttempt.createdSessionId });
-        router.replace("/Dashboard");
+        router.replace("/(tabs)/schedule");
       } else {
         console.error(JSON.stringify(signInAttempt, null, 2));
       }
     } catch (err: any) {
       console.error(err);
       setErrorMessage(
-        err.errors?.[0]?.message || "Sign-in failed. Please try again."
+        err.errors?.[0]?.message || "Sign-in failed. Please try again.",
       );
     }
   };
@@ -86,7 +86,7 @@ export default function Page() {
         setActive({ session: createdSessionId });
       } else {
         console.warn(
-          "OAuth login did not return a session ID or setActive function."
+          "OAuth login did not return a session ID or setActive function.",
         );
       }
     } catch (err) {
@@ -97,14 +97,14 @@ export default function Page() {
   const onGitHubSignInPress = async () => {
     try {
       const { createdSessionId, setActive } = await startGitHubOAuth({
-        redirectUrl: Linking.createURL("/Dashboard", { scheme: "myapp" }),
+        redirectUrl: Linking.createURL("/(tabs)/schedule", { scheme: "myapp" }),
       });
 
       if (createdSessionId && setActive) {
         setActive({ session: createdSessionId });
       } else {
         console.warn(
-          "OAuth login did not return a session ID or setActive function."
+          "OAuth login did not return a session ID or setActive function.",
         );
       }
     } catch (err) {

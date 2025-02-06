@@ -11,7 +11,7 @@
 
 export const routes = {
   public: ["/(welcome)", "/(auth)/sign-in", "/(auth)/sign-up"],
-  private: ["/app/Dashboard"],
+  private: ["/(tabs)/schedule"],
   defaultRedirect: "/(welcome)" as const,
   loggedInRedirect: "/(tabs)/schedule" as const,
   setNewPassword: "/(auth)/set-password" as const,
