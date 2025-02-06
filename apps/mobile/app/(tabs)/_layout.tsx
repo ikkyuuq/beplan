@@ -9,8 +9,8 @@ export default function TabsLayout() {
   return (
     <Tabs tabBar={(props) => <CustomTabBar {...props} />}>
       <Tabs.Screen name="schedule" options={{ headerShown: false }} />
-      <Tabs.Screen name="analysis" options={{ headerShown: false }} />
       <Tabs.Screen name="create" options={{ headerShown: false }} />
+      <Tabs.Screen name="analysis" options={{ headerShown: false }} />
       <Tabs.Screen name="community" options={{ headerShown: false }} />
     </Tabs>
   );
