@@ -1,0 +1,14 @@
+{
+    "plan_id": "xyz789",
+    "topic": "Work out 1 month",
+    "tasks": [
+      {
+        "title": "Run 3 km 3 times per week",
+        "repeat": "weekly",
+        "days": ["Mon", "Tue", "Fri"],
+        "start_date": "2025-02-01",
+        "finish_date": "2025-01-31"
+      }
+    ]
+}
+  

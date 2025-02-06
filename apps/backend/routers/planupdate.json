@@ -1,0 +1,10 @@
+{
+    "title": "Run 5 km 3 times per week",
+    "repeat": "weekly",
+    "days": ["Mon", "Wed", "Fri"],
+    "start_date": "2025-02-01",
+    "finish_date": "2025-02-28",
+    "status": "success",
+    "message": "Task updated successfully"
+  }
+  
