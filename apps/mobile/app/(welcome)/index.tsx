@@ -1,29 +1,16 @@
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useFonts } from "expo-font";
 import { InriaSerif_400Regular } from "@expo-google-fonts/inria-serif";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { routes } from "@/routesConfig";
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const [fontsLoaded, loadError] = useFonts({
     InriaSerif_400Regular,
   });
-
-  if (!fontsLoaded) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2D4A2E" />
-      </View>
-    );
-  }
 
   if (loadError) {
     return (
@@ -56,14 +43,13 @@ export default function WelcomeScreen() {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.buttonOutline}
-          onPress={() => router.push("/(auth)/sign-in")}
+          onPress={() => router.push(routes.signIn)}
         >
           <Text style={styles.buttonTextOutline}>LOG IN</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
           style={styles.buttonPrimary}
-          onPress={() => router.push("/(auth)/sign-up")}
+          onPress={() => router.push(routes.signUp)}
         >
           <Text style={styles.buttonTextPrimary}>OPEN AN ACCOUNT</Text>
         </TouchableOpacity>
@@ -88,7 +74,7 @@ const styles = StyleSheet.create({
     fontWeight: "normal",
     color: "#2D4A2E",
     textAlign: "left",
-    lineHeight: 54,
+    lineHeight: 60,
     fontFamily: "InriaSerif_400Regular",
   },
   subtitleContainer: {
