@@ -14,6 +14,7 @@
 
 export const routes = {
   public: ["/(welcome)", "/(auth)/sign-in", "/(auth)/sign-up"],
+<<<<<<< HEAD
   private: [
     "/(tabs)/schedule",
     "/(tabs)/create",
@@ -21,6 +22,11 @@ export const routes = {
     "/(tabs)/community",
   ],
 
+||||||| parent of ef7ecce (refactor(mobile): changes destination after login and private routes)
+  private: ["/app/Dashboard"],
+=======
+  private: ["/(tabs)/schedule"],
+>>>>>>> ef7ecce (refactor(mobile): changes destination after login and private routes)
   defaultRedirect: "/(welcome)" as const,
   loggedInRedirect: "/(tabs)/schedule" as const,
   resetPassword: "/(auth)/reset-password" as const,
