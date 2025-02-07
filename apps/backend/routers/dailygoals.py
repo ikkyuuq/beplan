@@ -50,6 +50,7 @@ def create_task(topic: TopicCreate):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 # GET /tasks → ดึงรายการ Topic และ Task ทั้งหมด
 @app.get("/tasks", response_model=List[TopicCreate])
 def get_tasks():
