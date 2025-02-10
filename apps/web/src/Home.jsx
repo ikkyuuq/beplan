@@ -1,12 +1,27 @@
-// Home.jsx
-import React from 'react';
+import React from "react";
+import "./Home.css";
 
 const Home = () => {
   return (
-    <div>
-      <h1>Welcome to the Home Page!</h1>
+    <div className="home-container">
+      <h1>Schedule with Planner</h1>
+      <p>
+      This software is designed to help users plan and achieve their goals effectively using SMART GOAL.
+      </p>
+      <h2>SMART GOAL</h2>
+      <p>
+      SMART system to make goals actionable and measurable, avoiding users having to use multiple apps.
+      </p>
+      <h2>Template & Tracker</h2>
+      <p>
+      We provide templates and ready-made tips to make goal creation easier and track user behavior, presenting progress through visual graphs to ensure goal achievement continuously.
+      </p>
+      <div className="button-download">
+        <button className="Download">Download</button>
+        <button className="sign-in">เข้าสู่ระบบ</button>
+      </div>
     </div>
   );
 };
 
-export default Home; // ต้องมี export default
+export default Home;
