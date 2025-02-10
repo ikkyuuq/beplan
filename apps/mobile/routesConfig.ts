@@ -14,10 +14,14 @@
 
 export const routes = {
   public: ["/(welcome)", "/(auth)/sign-in", "/(auth)/sign-up"],
-  private: ["/app/Dashboard"],
-
+  private: [
+    "/(tabs)/schedule",
+    "/(tabs)/create",
+    "/(tabs)/analysis",
+    "/(tabs)/community",
+  ],
   defaultRedirect: "/(welcome)" as const,
-  loggedInRedirect: "/Dashboard" as const,
+  loggedInRedirect: "/(tabs)/schedule" as const,
   resetPassword: "/(auth)/reset-password" as const,
   setNewPassword: "/(auth)/set-password" as const,
   signIn: "/(auth)/sign-in" as const,

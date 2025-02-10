@@ -64,7 +64,7 @@ export default function Page() {
       }
     } catch (err: any) {
       setErrorMessage(
-        err.errors?.[0]?.message || "Sign-in failed. Please try again."
+        err.errors?.[0]?.message || "Sign-in failed. Please try again.",
       );
     }
   };
@@ -100,7 +100,9 @@ export default function Page() {
       }
 
       const result = await startGitHubOAuth({
-        redirectUrl: Linking.createURL("/Dashboard", { scheme: "myapp" }),
+        redirectUrl: Linking.createURL(routes.loggedInRedirect, {
+          scheme: "myapp",
+        }),
       });
 
       if (result?.createdSessionId) {
