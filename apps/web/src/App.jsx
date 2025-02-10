@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Route, Routes, Link, Outlet } from "react-rout
 import Home from "./Home";
 import AboutMe from "./AboutMe";
 import Donate from "./Donate";
+import "./Home.css";
 
 const Layout = () => {
   return (

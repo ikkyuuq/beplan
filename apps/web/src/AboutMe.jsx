@@ -26,10 +26,7 @@ const AboutMe = () => {
       <h3>When</h3>
       <p><strong>When should users plan for their goals?</strong> During low-stress periods to allow clear thinking and focused decision-making.</p>
 
-      <div className="button-download">
-        <button className="Download">Download</button>
       </div>
-    </div>
   );
 };
 
