@@ -1,4 +1,3 @@
-/* ตั้งค่าสไตล์พื้นฐาน */
 body {
     font-family: "Noto Sans Thai", sans-serif;
     background-color: #0b0d21;
@@ -8,14 +7,13 @@ body {
     text-align: center;
   }
   
-  /* ส่วนของ Navbar */
   nav {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     background: rgba(0, 0, 0, 0.7);
-    padding: 15px 0;
+    padding: 20px 0;
     z-index: 1000;
   }
   
@@ -44,7 +42,6 @@ body {
     color: #5865f2;
   }
   
-  /* คอนเทนเนอร์หลักของ Home */
   .home-container {
     max-width: 1000px;
     margin: auto;
@@ -52,7 +49,6 @@ body {
     text-align: left;
   }
   
-  /* หัวข้อ */
   h1 {
     font-size: 3rem;
     color: #ffffff;
@@ -64,14 +60,12 @@ body {
     color: #b0b3ff;
   }
   
-  /* ข้อความเนื้อหา */
   p {
     font-size: 1.2rem;
     line-height: 1.8;
     color: #d1d1e9;
   }
   
-  /* ปุ่ม */
   .button-download {
     margin-top: 30px;
     display: flex;
@@ -79,6 +73,17 @@ body {
     justify-content: start;
   }
   
+.App-header button {
+    position: absolute;
+    top: 8px;
+    right: 50px;
+    font-size: 1.2rem;
+    padding: 10px 30px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
   .button-download button {
     font-size: 1.2rem;
     font-weight: bold;
@@ -88,7 +93,16 @@ body {
     cursor: pointer;
     transition: 0.3s;
   }
-  
+
+  .App-header .start {
+    background-color: #7a7eaf;
+    color: white;
+  }
+
+  .App-header .start:hover {
+    background-color: #858888;
+  }
+
   .button-download .Download {
     background-color: #5865f2;
     color: white;
@@ -107,7 +121,6 @@ body {
     background-color: #d1d1e9;
   }
   
-  /* เพิ่มพื้นหลังแบบ gradient */
   .hero-section {
     background: linear-gradient(to right, #1f1f41, #0b0d21);
     padding: 100px 20px;
