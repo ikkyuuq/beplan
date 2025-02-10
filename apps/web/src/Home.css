@@ -112,15 +112,6 @@ body {
     background-color: #4752c4;
   }
   
-  .button-download .sign-in {
-    background-color: #ffffff;
-    color: #23272a;
-  }
-  
-  .button-download .sign-in:hover {
-    background-color: #d1d1e9;
-  }
-  
   .hero-section {
     background: linear-gradient(to right, #1f1f41, #0b0d21);
     padding: 100px 20px;

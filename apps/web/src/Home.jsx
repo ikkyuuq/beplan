@@ -18,7 +18,6 @@ const Home = () => {
       </p>
       <div className="button-download">
         <button className="Download">Download</button>
-        <button className="sign-in">เข้าสู่ระบบ</button>
       </div>
     </div>
   );
