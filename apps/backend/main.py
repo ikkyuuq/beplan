@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from routers import goals, ai
+
+from routers import ai, goals
 
 app = FastAPI()
 
