@@ -25,7 +25,12 @@ const AboutMe = () => {
 
       <h3>When</h3>
       <p><strong>When should users plan for their goals?</strong> During low-stress periods to allow clear thinking and focused decision-making.</p>
-      
+      <footer class="footer">
+        <div class="footer-container">
+          <p>© 2025 Planner. All Rights Reserved.</p>
+          <p>Designed & Developed by <strong>BE PLANNER</strong></p>
+        </div>
+      </footer>
       </div>
       
   );

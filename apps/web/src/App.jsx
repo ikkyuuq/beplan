@@ -3,6 +3,7 @@ import Home from "./Home";
 import AboutMe from "./AboutMe";
 import Donate from "./Donate";
 import "./Home.css";
+import FAQ from "./FAQ";
 
 const Layout = () => {
   return (
@@ -17,7 +18,7 @@ const Layout = () => {
             <li><Link to="/">Home</Link></li>
             <li><Link to="/aboutme">About Me</Link></li>
             <li><Link to="/donate">Donate</Link></li>
-            <li><Link to="/aboutme">FAQ</Link></li>
+            <li><Link to="/faq">FAQ</Link></li>
             <button className="start">GET STARTED!</button>
             </ul>
         </nav>
@@ -38,6 +39,7 @@ function App() {
           <Route index element={<Home />} />
           <Route path="aboutme" element={<AboutMe />} />
           <Route path="donate" element={<Donate />} />
+          <Route path="faq" element={<FAQ />} />
         </Route>
       </Routes>
     </Router>

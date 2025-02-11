@@ -4,7 +4,7 @@ import "./Home.css";
 const Home = () => {
   return (
     <div className="home-container">
-      <h1>Schedule with Planner</h1>
+      <h2>Schedule with Planner</h2>
       <p>
         This software is designed to help users plan and achieve their goals effectively using SMART GOAL.
       </p>
@@ -25,7 +25,6 @@ const Home = () => {
           <p>Designed & Developed by <strong>BE PLANNER</strong></p>
         </div>
       </footer>
-
     </div>
 
   );
