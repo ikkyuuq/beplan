@@ -39,7 +39,7 @@ function schedule() {
   const startDate = startOfWeek(subDays(today, 60), { weekStartsOn: 0 });
   const endDate = addDays(
     startOfWeek(addDays(today, 60), { weekStartsOn: 0 }),
-    6,
+    6
   );
 
   const dates = eachWeekOfInterval(
@@ -47,7 +47,7 @@ function schedule() {
       start: startDate,
       end: endDate,
     },
-    { weekStartsOn: 0 },
+    { weekStartsOn: 0 }
   ).reduce((acc: Date[][], curr) => {
     const allDays = eachDayOfInterval({
       start: curr,
@@ -66,11 +66,15 @@ function schedule() {
     });
   };
 
+  const removeGoal = (goalTitle: string) => {
+    setGoals(goals.filter((goal) => goal.title !== goalTitle));
+  };
+
   const todayIndex = dayNames.findIndex((_, index) => index === today.getDay());
   const datePosX = useSharedValue((dimensions.width / 7) * todayIndex);
 
   const initialPage = dates.findIndex((week) =>
-    week.some((day) => isSameDay(day, today)),
+    week.some((day) => isSameDay(day, today))
   );
 
   useEffect(() => {
@@ -112,6 +116,21 @@ function schedule() {
       transform: [{ translateX: datePosX.value }, { scaleY: s }],
     };
   });
+
+  const [goals, setGoals] = useState([
+    {
+      title: "I want to save $5000 by the end of the year",
+      tasks: [
+        "Track expenses",
+        "Save $500 per month",
+        "Cut unnecessary spending",
+      ],
+    },
+    {
+      title: "Run 5K race within 3 months",
+      tasks: ["Jog 3 times a week", "Join a running club", "Monitor progress"],
+    },
+  ]);
 
   return (
     <View style={{ flex: 1, gap: 24 }}>
@@ -239,8 +258,8 @@ function schedule() {
                                 color: isSameDay(day, selectedDate)
                                   ? "#fff"
                                   : isSameDay(day, today)
-                                    ? "#8B98D5"
-                                    : "#B7B7B7",
+                                  ? "#8B98D5"
+                                  : "#B7B7B7",
                                 fontWeight:
                                   isSameDay(day, selectedDate) ||
                                   isSameDay(day, today)
@@ -268,11 +287,17 @@ function schedule() {
       </View>
 
       <View style={{ gap: 16 }}>
-        <Collapsable>
-          <CollapseItem title="Morning Routine" />
-          <CollapseItem title="Morning Routine 2" />
-          <CollapseItem title="Morning Routine 3" />
-        </Collapsable>
+        {goals.map((goal, index) => (
+          <Collapsable
+            key={index}
+            goalTitle={goal.title}
+            onRemove={() => removeGoal(goal.title)}
+          >
+            {goal.tasks.map((task, taskIndex) => (
+              <CollapseItem key={taskIndex} title={task} />
+            ))}
+          </Collapsable>
+        ))}
       </View>
     </View>
   );

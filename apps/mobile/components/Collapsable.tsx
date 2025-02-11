@@ -2,69 +2,86 @@ import {
   View,
   Text,
   TouchableWithoutFeedback,
-  LayoutChangeEvent,
+  ActionSheetIOS,
+  Alert,
 } from "react-native";
 import React, { useState } from "react";
-import Animated, {
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { useAnimatedStyle, withSpring } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import * as Sharing from "expo-sharing"; 
+import { routes } from "@/routesConfig";
+
 
 export default function Collapsable({
   children,
+  goalTitle,
+  onRemove,
 }: {
   children: React.ReactNode;
+  goalTitle: string;
+  onRemove: () => void; 
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [collapseHeight, setCollapseHeight] = useState(0);
-
-  const onCollapseLayout = (e: LayoutChangeEvent) => {
-    const height = e.nativeEvent.layout.height;
-
-    if (height > 0 && height !== collapseHeight) {
-      setCollapseHeight(height);
-    }
-  };
+  const router = useRouter();
 
   const toggleCollapse = () => {
     setCollapsed(!collapsed);
   };
 
-  const animateArrow = useAnimatedStyle(() => {
-    return {
-      transform: [
-        {
-          rotate: withSpring(collapsed ? "180deg" : "0deg", {
-            duration: 2500,
-          }),
-        },
-      ],
-    };
-  });
+  const openActionSheet = () => {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        title: goalTitle,
+        options: ["Remove", "Customize", "Share", "Cancel"],
+        destructiveButtonIndex: 0,
+        cancelButtonIndex: 3,
+      },
+      (buttonIndex) => {
+        if (buttonIndex === 0) {
+          Alert.alert("Confirm", "Do you want to remove this goal?", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Remove", style: "destructive", onPress: onRemove },
+          ]);
+        } else if (buttonIndex === 1) {
+          router.push({
+            pathname: routes.customizeGoal,
+            params: { 
+              title: goalTitle,
+              tasks: JSON.stringify(
+                React.Children.toArray(children)?.map((task: any) => ({
+                  text: task.props.title,
+                  type: task.props.type || "daily",
+                })) || []
+              ),
+            },
+          });
+          
+        } else if (buttonIndex === 2) {
+          shareGoal();
+        }
+      }
+    );
+  };
 
-  const animateCollapse = useAnimatedStyle(() => {
-    const animateHeight = collapsed
-      ? withSpring(collapseHeight, { duration: 1300 })
-      : withSpring(0);
-    const animateMargin = collapsed
-      ? withSpring(10, { duration: 1000 })
-      : withSpring(0);
-    return {
-      height: animateHeight,
-      marginVertical: animateMargin,
-    };
-  });
+  const shareGoal = async () => {
+    try {
+      await Sharing.shareAsync("https://beplan.app/share/" + encodeURIComponent(goalTitle), {
+        dialogTitle: "Share your goal",
+        mimeType: "text/plain",
+        UTI: "public.plain-text",
+      });
+    } catch (error) {
+      Alert.alert("Error", "Cannot share goal.");
+    }
+  };
+
   return (
     <View
       style={{
         marginHorizontal: 40,
         shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 10,
-        },
+        shadowOffset: { width: 0, height: 10 },
         shadowRadius: 20,
         shadowOpacity: 0.1,
         elevation: 1,
@@ -72,7 +89,7 @@ export default function Collapsable({
         borderRadius: 10,
       }}
     >
-      <TouchableWithoutFeedback onPress={toggleCollapse}>
+      <TouchableWithoutFeedback onPress={toggleCollapse} onLongPress={openActionSheet}>
         <View
           style={{
             flexDirection: "row",
@@ -81,41 +98,21 @@ export default function Collapsable({
             padding: 16,
           }}
         >
-          <View style={{ gap: 4 }}>
-            <Text
-              style={{ color: "#8d8d8d", fontWeight: "thin", fontSize: 10 }}
-            >
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={{ color: "#8d8d8d", fontWeight: "thin", fontSize: 10 }}>
               SMART Goal:
             </Text>
-            <Text
-              numberOfLines={1}
-              ellipsizeMode="tail"
-              style={{
-                color: "#000",
-                fontWeight: "bold",
-                fontSize: 14,
-                width: "95%",
-              }}
-            >
-              I want to save $5000 by the end of the year
+            <Text numberOfLines={1} ellipsizeMode="tail" style={{ color: "#000", fontWeight: "bold", fontSize: 14, flexShrink: 1 }}>
+              {goalTitle}
             </Text>
           </View>
-          <Animated.View style={animateArrow}>
+          <Animated.View>
             <Feather name="chevron-down" size={24} color="black" />
           </Animated.View>
         </View>
       </TouchableWithoutFeedback>
-      <Animated.View style={[animateCollapse, { overflow: "hidden" }]}>
-        <View
-          onLayout={onCollapseLayout}
-          style={{
-            paddingBottom: 10,
-            position: "absolute",
-            paddingHorizontal: 16,
-            width: "100%",
-            gap: 12,
-          }}
-        >
+      <Animated.View style={{ height: collapsed ? "auto" : 0, overflow: "hidden" }}>
+        <View style={{ paddingBottom: 10, paddingHorizontal: 16, gap: 12 }}>
           {children}
         </View>
       </Animated.View>

@@ -26,4 +26,6 @@ export const routes = {
   setNewPassword: "/(auth)/set-password" as const,
   signIn: "/(auth)/sign-in" as const,
   signUp: "/(auth)/sign-up" as const,
+  customizeGoal: "/(other)/customize_goal" as const, 
+  community: "/(tabs)/community" as const, 
 };
