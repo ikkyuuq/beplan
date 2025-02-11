@@ -98,7 +98,7 @@ body {
   }
 
   .App-header .start {
-    background-color: #7a7eaf;
+    background-color: #7e88f5;
     color: white;
   }
 
@@ -118,5 +118,46 @@ body {
   .hero-section {
     background: linear-gradient(to right, #1f1f41, #0b0d21);
     padding: 100px 20px;
+  }
+  
+  .logo-container img{
+    position: absolute;
+    margin-top: 10px;
+    left: 70px;
+    transform: translate(-50%, -50%);
+    width: 55px;
+    border-radius: 90px;
+  }
+
+  .logo-container a{
+    position: absolute;
+    font-size: 30px;
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    top: 15px;
+    left: 110px;
+    text-decoration: none;
+    color: white;
+    transition: color 0.3s ease-in-out;
+  }
+
+  .logo-container a:hover {
+    color:#5865f2;
+  }
+  
+  .footer {
+    background: linear-gradient(180deg, #2a2d45, #1b1d2a); /* ไล่สีแบบ Discord */
+    color: #ffffff;
+    text-align: center;
+    padding: 30px 0;
+    font-size: 14px;
+    margin-top: 400px;
+  }
+  
+  .footer-container p {
+    margin: 6px 0;
+  }
+  
+  .footer-container strong {
+    color: #6495ED; /* สีเน้น */
   }
   

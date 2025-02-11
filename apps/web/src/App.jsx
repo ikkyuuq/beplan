@@ -10,17 +10,22 @@ const Layout = () => {
       <header className="App-header">
         <nav>
           <ul>
+            <div className="logo-container">
+            <img src="https://img2.pic.in.th/pic/Screenshot-2025-02-11-215739.png" alt="Logo" border="0" />
+            <a href="/">SMART GOAL</a>
+            </div>
             <li><Link to="/">Home</Link></li>
             <li><Link to="/aboutme">About Me</Link></li>
             <li><Link to="/donate">Donate</Link></li>
             <li><Link to="/aboutme">FAQ</Link></li>
-            <button className="start">Open Planner</button>
+            <button className="start">GET STARTED!</button>
             </ul>
         </nav>
       </header>
       <main>
         <Outlet />
       </main>
+    
     </div>
   );
 };

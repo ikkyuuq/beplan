@@ -67,3 +67,20 @@
 .button-download button:hover {
   opacity: 0.8;
 }
+
+.footer {
+  background: linear-gradient(180deg, #2a2d45, #1b1d2a); /* ไล่สีแบบ Discord */
+  color: #ffffff;
+  text-align: center;
+  padding: 30px 0;
+  font-size: 14px;
+  margin-top: 400px;
+}
+
+.footer-container p {
+  margin: 6px 0;
+}
+
+.footer-container strong {
+  color: #6495ED; /* สีเน้น */
+}
