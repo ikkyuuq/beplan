@@ -17,7 +17,7 @@ class RepeatMode(str, Enum):
 
 # รูปแบบข้อมูล Task ที่รับจากฟอร์ม
 class TaskCreate(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), example="123e4567-e89b-12d3-a456-426614174000")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # สร้าง id อัตโนมัติ
     title: str = Field(..., example="xxxx")
     repeat: RepeatMode
     start_date: Optional[date] = Field(None, example="2025-02-01")
@@ -34,11 +34,12 @@ class TaskCreate(BaseModel):
         if self.repeat == RepeatMode.monthly and not self.day:
             raise ValueError("ต้องระบุ day เมื่อเลือก Monthly")
 
+
 # รูปแบบข้อมูล Topic ที่ประกอบด้วยหลาย Task
 class TopicCreate(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # เพิ่ม ID
     topic: str
-    tasks: List[TaskCreate]
+    tasks: List[TaskCreate] = None
 
 # เก็บข้อมูลไว้ใน memory
 tasks_db: List[TopicCreate] = []
@@ -86,4 +87,27 @@ def delete_topic(topic_id: str):
     global tasks_db
     tasks_db = [topic for topic in tasks_db if topic.id != topic_id]
     return JSONResponse(content={"status": "success", "message": "Topic deleted successfully"})
+
+
+@router.put("/tasks/{topic_id}")
+def update_topic(topic_id: str, updated_topic: TopicCreate):
+    for index, topic in enumerate(tasks_db):
+        if topic.id == topic_id:
+            # แก้ไข topic
+            tasks_db[index] = updated_topic
+            return JSONResponse(content={"status": "success", "message": f"Topic with id '{topic_id}' updated successfully"})
+    return JSONResponse(status_code=404, content={"error": "Topic not found"})
+
+
+@router.put("/topics/{topic_id}")
+def update_topic(topic_id: str, updated_topic: TopicCreate):
+    for idx, topic in enumerate(tasks_db):
+        if topic.id == topic_id:
+            # อัปเดตแค่ชื่อของ topic
+            tasks_db[idx].topic = updated_topic.topic
+            # ถ้ามีการส่ง tasks ใหม่เข้ามา จะอัปเดต tasks ด้วย
+            if updated_topic.tasks:
+                tasks_db[idx].tasks = updated_topic.tasks
+            return JSONResponse(content={"status": "success", "message": "Topic updated successfully"})
+    return JSONResponse(content={"error": "Topic not found"}, status_code=404)
 
