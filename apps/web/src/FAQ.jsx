@@ -1,39 +1,77 @@
 import React, { useState } from "react";
 import "./FAQ.css";
 
-const faqs = [
-    { question: "What is Planner?", answer: "Planner is an app that allows you to plan and track your goals effectively." },
-    { question: "How does a planner use SMART Goals?", answer: "Planner uses the SMART concept to help make your goals clear and measurable, and your goals are analyzed by AI." },
-    { question: "Can I use Planner for free?", answer: "Planner has a free version, and you can use the features for free, but if you want to have fun, you can press Donate so we can use the money to continue developing the app." },
-    { question: "Can I share my plan with others?", answer: "Yes, you can share your plan with your team or others through the app's share feature." },
+const faqCategories = [
+    {
+        category: "How to use the application",
+        questions: [
+            { question: "What is Planner?", answer: "Planner is an app that allows you to plan and track your goals effectively." },
+            { question: "Who is this app for?", answer: "Suitable for those who want to set goals. Track your progress and build good habits." },
+        ],
+    },
+    {
+        category: "How to use the application",
+        questions: [
+            { question: "What goals can be set?", answer: "You can set goals in categories such as health, finance, etc. Learning and self-development." },
+            { question: "Can I change my goal after setting it?", answer: "Of course! You can change the schedule and customize the details." },
+        ],
+    },
+    {
+        category: "AI and SMART Goal in action",
+        questions: [
+            { question: "How does a planner use SMART Goals?", answer: "Planner uses the SMART concept to help make your goals clear and measurable." },
+            { question: "How does in-app AI help?", answer: "AI helps you set possible goals Introduce guidelines and monitor progress." },
+        ],
+    },
+    {
+        category: "Goal Tracking and Analysis",
+        questions: [
+            { question: "Does the app have a notification system?", answer: "Have! You can set reminders for your goals." },
+            { question: "Can I opt for a goal template?", answer: "Have! Goal templates are available, such as health goals. Saving money and developing yourself." },
+        ],
+    },
 ];
 
 const FAQ = () => {
-    const [activeIndex, setActiveIndex] = useState(null);
+    const [activeCategory, setActiveCategory] = useState(null);
 
-    const toggleFAQ = (index) => {
-        setActiveIndex(activeIndex === index ? null : index);
+    const scrollToCategory = (index) => {
+        setActiveCategory(index);
+        document.getElementById(`faq-category-${index}`).scrollIntoView({ behavior: "smooth" });
     };
 
     return (
         <div className="faq-container">
-            <h1>Frequently Asked Questions</h1>
-            {faqs.map((faq, index) => (
-                <div key={index} className="faq-item">
-                    <div className="faq-question" onClick={() => toggleFAQ(index)}>
-                        <span>{faq.question}</span>
-                        <span className="faq-icon">{activeIndex === index ? "-" : "+"}</span>
-                    </div>
-                    {activeIndex === index && <div className="faq-answer">{faq.answer}</div>}
-                </div>
-            ))}
+            <div className="faq-sidebar">
+                {faqCategories.map((item, index) => (
+                    <button key={index} className="faq-sidebar-item" onClick={() => scrollToCategory(index)}>
+                        {item.category}
+                    </button>
+                ))}
+            </div>
 
-            <footer class="footer">
-                <div class="footer-container">
-                    <p>© 2025 Planner. All Rights Reserved.</p>
-                    <p>Designed & Developed by <strong>BE PLANNER</strong></p>
-                </div>
-            </footer>
+            <div className="faq-content">
+                <h1>Frequently asked questions</h1>
+                {faqCategories.map((category, index) => (
+                    <div key={index} id={`faq-category-${index}`} className="faq-category">
+                        <h2>{category.category}</h2>
+                        {category.questions.map((faq, idx) => (
+                            <div key={idx} className="faq-item">
+                                <div className="faq-question">{faq.question}</div>
+                                <div className="faq-answer">{faq.answer}</div>
+                            </div>
+                        ))}
+                    </div>
+                ))}
+                <footer class="footer">
+                    <div class="footer-container">
+                        <p>© 2025 Planner. All Rights Reserved.</p>
+                        <p>Designed & Developed by <strong>BE PLANNER</strong></p>
+                    </div>
+                </footer>
+            </div>
+
+
         </div>
     );
 };

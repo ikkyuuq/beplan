@@ -139,7 +139,7 @@ body {
   }
   
   .footer {
-    background: linear-gradient(180deg, #2a2d45, #1b1d2a); /* ไล่สีแบบ Discord */
+    background: #111;
     color: #ffffff;
     text-align: center;
     padding: 30px 0;
@@ -152,6 +152,6 @@ body {
   }
   
   .footer-container strong {
-    color: #6495ED; /* สีเน้น */
+    color: #6495ED;
   }
   
