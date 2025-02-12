@@ -36,6 +36,7 @@ class TaskCreate(BaseModel):
 
 # รูปแบบข้อมูล Topic ที่ประกอบด้วยหลาย Task
 class TopicCreate(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # เพิ่ม ID
     topic: str
     tasks: List[TaskCreate]
 
@@ -79,3 +80,10 @@ def delete_task(task_id: str):
                 return JSONResponse(content={"status": "success", "message": "Task deleted successfully"})
     
     return JSONResponse(content={"error": "Task not found"}, status_code=404)
+
+@router.delete("/topics/{topic_id}")
+def delete_topic(topic_id: str):
+    global tasks_db
+    tasks_db = [topic for topic in tasks_db if topic.id != topic_id]
+    return JSONResponse(content={"status": "success", "message": "Topic deleted successfully"})
+
