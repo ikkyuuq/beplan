@@ -55,3 +55,12 @@ def create_task(topic: TopicCreate):
 @router.get("/tasks")
 def get_tasks():
     return JSONResponse(content=tasks_db)
+
+@router.put("/tasks/{task_id}")
+def update_task(task_id: str, updated_task: TaskCreate):
+    for topic in tasks_db:
+        for index, task in enumerate(topic.tasks):
+            if task.id == task_id:
+                topic.tasks[index] = updated_task
+                return JSONResponse(content={"status": "success", "message": "Task updated successfully"})
+    raise JSONResponse(status_code=404, detail="Task not found")
