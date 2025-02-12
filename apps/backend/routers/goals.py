@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field
 from enum import Enum
 from datetime import date
 from typing import List, Optional
+import uuid
+from fastapi.encoders import jsonable_encoder
 
 router = APIRouter()
 
@@ -50,11 +52,14 @@ def create_task(topic: TopicCreate):
         return JSONResponse(content={"status": "success", "message": "Topic with tasks created successfully"})
     except ValueError as e:
         return JSONResponse(content={"error": str(e)}, status_code=400)
+    except Exception as e:
+        return JSONResponse(content={"error": f"Unexpected error: {str(e)}"}, status_code=500)
+
 
 # GET /tasks → ดึงรายการ Topic และ Task ทั้งหมด
 @router.get("/tasks")
 def get_tasks():
-    return JSONResponse(content=tasks_db)
+    return JSONResponse(content=jsonable_encoder(tasks_db))
 
 @router.put("/tasks/{task_id}")
 def update_task(task_id: str, updated_task: TaskCreate):
@@ -64,3 +69,13 @@ def update_task(task_id: str, updated_task: TaskCreate):
                 topic.tasks[index] = updated_task
                 return JSONResponse(content={"status": "success", "message": "Task updated successfully"})
     raise JSONResponse(status_code=404, detail="Task not found")
+
+@router.delete("/tasks/{task_id}")
+def delete_task(task_id: str):
+    for topic in tasks_db:
+        for index, task in enumerate(topic.tasks):
+            if task.id == task_id:
+                del topic.tasks[index]  # ลบ Task ออกจากรายการ
+                return JSONResponse(content={"status": "success", "message": "Task deleted successfully"})
+    
+    return JSONResponse(content={"error": "Task not found"}, status_code=404)
