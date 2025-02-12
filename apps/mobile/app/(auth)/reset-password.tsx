@@ -1,21 +1,14 @@
 import React, { useState } from "react";
-import {
-  Text,
-  View,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
+import { Text, View, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { useSignIn } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
+import { routes } from "@/routesConfig";
 import { InriaSerif_400Regular } from "@expo-google-fonts/inria-serif";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
 import VerificationScreen from "@/components/VerificationScreen";
-import { routes } from "@/routesConfig";
 
 export default function ResetPasswordScreen() {
   const { isLoaded, signIn } = useSignIn();
@@ -29,14 +22,6 @@ export default function ResetPasswordScreen() {
   const [fontsLoaded, loadError] = useFonts({
     InriaSerif_400Regular,
   });
-
-  if (!fontsLoaded) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2D4A2E" />
-      </View>
-    );
-  }
 
   if (loadError) {
     return (
@@ -66,7 +51,7 @@ export default function ResetPasswordScreen() {
         err.errors?.[0]?.message ||
           "Failed to send reset link. Please try again."
       );
-    } 
+    }
   };
 
   const onVerifyPress = async () => {

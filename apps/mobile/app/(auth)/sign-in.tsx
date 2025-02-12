@@ -1,14 +1,7 @@
 import React from "react";
 import { useSignIn, useOAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import {
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Button,
-} from "react-native";
+import { Text, View, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
 import { InriaSerif_400Regular } from "@expo-google-fonts/inria-serif";
@@ -16,6 +9,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
+import { routes } from "@/routesConfig";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -30,7 +24,7 @@ export default function Page() {
 
   const router = useRouter();
 
-  const [fontsLoaded, loadError] = useFonts({
+  const [fontsLoaded] = useFonts({
     InriaSerif_400Regular,
   });
 
@@ -46,7 +40,7 @@ export default function Page() {
   const onSignInPress = async () => {
     setErrorMessage("");
     if (!isLoaded) {
-      console.error("Clerk is not loaded yet.");
+      setErrorMessage("Clerk is not loaded yet.");
       return;
     }
     if (!emailAddress.trim() || !password.trim()) {
@@ -58,65 +52,73 @@ export default function Page() {
       return;
     }
     try {
-      console.log("Trying to sign in with:", emailAddress);
       const signInAttempt = await signIn.create({
         identifier: emailAddress,
         password,
       });
       if (signInAttempt.status === "complete") {
         await setActive({ session: signInAttempt.createdSessionId });
-        router.replace("/Dashboard");
+        router.replace(routes.loggedInRedirect);
       } else {
-        console.error(JSON.stringify(signInAttempt, null, 2));
+        setErrorMessage("Sign-in is incomplete. Please try again.");
       }
     } catch (err: any) {
-      console.error(err);
       setErrorMessage(
-        err.errors?.[0]?.message || "Sign-in failed. Please try again."
+        err.errors?.[0]?.message || "Sign-in failed. Please try again.",
       );
     }
   };
 
   const onGoogleSignInPress = async () => {
     try {
-      const { createdSessionId, setActive } = await startGoogleOAuth({
+      if (!isLoaded || !setActive) {
+        setErrorMessage("Clerk is not loaded yet. Please wait.");
+        return;
+      }
+
+      const result = await startGoogleOAuth({
         redirectUrl: process.env.EXPO_PUBLIC_CLERK_REDIRECT_URL,
       });
-      if (createdSessionId && setActive) {
-        setActive({ session: createdSessionId });
+
+      if (result?.createdSessionId) {
+        await setActive({ session: result.createdSessionId });
+        router.replace(routes.loggedInRedirect);
       } else {
-        console.warn(
-          "OAuth login did not return a session ID or setActive function."
-        );
+        setErrorMessage("Google Sign-in failed. Please try again.");
       }
     } catch (err) {
-      console.error(JSON.stringify(err, null, 2));
+      console.error("Google OAuth error:", err);
+      setErrorMessage("Google OAuth failed. Please check your settings.");
     }
   };
 
   const onGitHubSignInPress = async () => {
     try {
-      const { createdSessionId, setActive } = await startGitHubOAuth({
-        redirectUrl: Linking.createURL("/Dashboard", { scheme: "myapp" }),
+      if (!isLoaded || !setActive) {
+        setErrorMessage("Clerk is not loaded yet. Please wait.");
+        return;
+      }
+
+      const result = await startGitHubOAuth({
+        redirectUrl: Linking.createURL(routes.loggedInRedirect, {
+          scheme: "myapp",
+        }),
       });
 
-      if (createdSessionId && setActive) {
-        setActive({ session: createdSessionId });
+      if (result?.createdSessionId) {
+        await setActive({ session: result.createdSessionId });
+        router.replace(routes.loggedInRedirect);
       } else {
-        console.warn(
-          "OAuth login did not return a session ID or setActive function."
-        );
+        setErrorMessage("GitHub Sign-in failed. Please try again.");
       }
     } catch (err) {
-      console.error(JSON.stringify(err, null, 2));
+      console.error("GitHub OAuth error:", err);
+      setErrorMessage("GitHub OAuth failed. Please check your settings.");
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={24} color="black" />
-      </TouchableOpacity> */}
       <Ionicons name="hammer" size={40} color="#222" style={styles.logo} />
       <Text style={styles.title}>Welcome back!</Text>
       <View style={styles.inputWrapper}>
@@ -136,7 +138,7 @@ export default function Page() {
           secureTextEntry
           marginBottom={2}
         />
-        <TouchableOpacity onPress={() => router.push("/(auth)/reset-password")}>
+        <TouchableOpacity onPress={() => router.push(routes.resetPassword)}>
           <Text style={styles.forgotPassword}>Recovery Password</Text>
         </TouchableOpacity>
       </View>
@@ -165,7 +167,7 @@ export default function Page() {
 
       <View style={styles.registerContainer}>
         <Text style={styles.registerText}>Don't have an account? </Text>
-        <TouchableOpacity onPress={() => router.push("/(auth)/sign-up")}>
+        <TouchableOpacity onPress={() => router.push(routes.signUp)}>
           <Text style={styles.registerLink}>Register now</Text>
         </TouchableOpacity>
       </View>
