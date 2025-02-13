@@ -25,7 +25,8 @@ class MonthlyOption(str, Enum):
 class TaskCreate(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # สร้าง id อัตโนมัติ
     title: str = Field(..., example="xxxx")
-    repeat: RepeatMode
+    repeat_enabled: bool = False
+    repeat: Optional[RepeatMode] = None
     
     # เงื่อนไขเพิ่มเติม
     days: Optional[List[str]] = None  # สำหรับ Weekly เท่านั้น
@@ -34,10 +35,18 @@ class TaskCreate(BaseModel):
 
     # ตรวจสอบเงื่อนไขการใช้งาน
     def validate_task(self):
-        if self.repeat == RepeatMode.weekly and not self.days:
-            raise ValueError("ต้องระบุ days เมื่อเลือก Weekly")
-        if self.repeat == RepeatMode.monthly and not self.monthly_option:
-            raise ValueError("ต้องระบุ monthly_option เมื่อเลือก Monthly")
+        if not self.repeat_enabled:
+            # ถ้าปิด repeat ห้ามมีค่า repeat, days, monthly_option
+            if self.repeat or self.days or self.monthly_option:
+                raise ValueError("ไม่สามารถกำหนด repeat, days หรือ monthly_option ได้ เมื่อปิด repeat")
+        else:
+            # ถ้าเปิด repeat ต้องมี repeat mode
+            if not self.repeat:
+                raise ValueError("ต้องระบุ repeat mode ถ้าเปิดใช้งาน repeat")
+            if self.repeat == RepeatMode.weekly and not self.days:
+                raise ValueError("ต้องระบุ days เมื่อเลือก Weekly")
+            if self.repeat == RepeatMode.monthly and not self.monthly_option:
+                raise ValueError("ต้องระบุ monthly_option เมื่อเลือก Monthly")
 
 
 # รูปแบบข้อมูล Topic ที่ประกอบด้วยหลาย Task
