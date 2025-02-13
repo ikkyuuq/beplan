@@ -51,7 +51,7 @@ class TaskCreate(BaseModel):
                 raise ValueError("ต้องระบุ monthly_option เมื่อเลือก Monthly")
 
 
-# รูปแบบข้อมูล Topic ที่ประกอบด้วยหลาย Task
+# รูปแบบข้อมูล Topic 
 class TopicCreate(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # เพิ่ม ID
     topic: str
