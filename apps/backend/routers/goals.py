@@ -20,8 +20,7 @@ class TaskCreate(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # สร้าง id อัตโนมัติ
     title: str = Field(..., example="xxxx")
     repeat: RepeatMode
-    start_date: Optional[date] = Field(None, example="2025-02-01")
-    finish_date: Optional[date] = Field(None, example="2025-12-31")
+   
     
     # เงื่อนไขเพิ่มเติม
     days: Optional[List[str]] = None  # สำหรับ Weekly เท่านั้น
@@ -39,6 +38,8 @@ class TaskCreate(BaseModel):
 class TopicCreate(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # เพิ่ม ID
     topic: str
+    start_date: Optional[date] = Field(None, example="2025-02-01")
+    finish_date: Optional[date] = Field(None, example="2025-12-31")
     tasks: List[TaskCreate] = None
 
 # เก็บข้อมูลไว้ใน memory
@@ -105,6 +106,8 @@ def update_topic(topic_id: str, updated_topic: TopicCreate):
         if topic.id == topic_id:
             # อัปเดตแค่ชื่อของ topic
             tasks_db[idx].topic = updated_topic.topic
+            tasks_db[idx].start_date = updated_topic.start_date  # อัปเดต start_date
+            tasks_db[idx].finish_date = updated_topic.finish_date  # อัปเดต finish_date
             # ถ้ามีการส่ง tasks ใหม่เข้ามา จะอัปเดต tasks ด้วย
             if updated_topic.tasks:
                 tasks_db[idx].tasks = updated_topic.tasks
