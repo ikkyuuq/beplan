@@ -2,9 +2,10 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from enum import Enum
-from datetime import date
+from datetime import date,datetime,timedelta
 from typing import List, Optional
 import uuid
+import calendar
 from fastapi.encoders import jsonable_encoder
 
 router = APIRouter()
@@ -47,6 +48,26 @@ class TopicCreate(BaseModel):
     finish_date: Optional[date] = Field(None, example="2025-12-31")
     tasks: List[TaskCreate] = None
 
+def calculate_monthly_date_from_range(start_date: date, finish_date: date, monthly_option: MonthlyOption) -> date:
+    if not start_date or not finish_date:
+        raise ValueError("Start date and Finish date must be provided")
+    
+    # คำนวณวันที่ 1 ของเดือนจาก start_date
+    first_day_of_month = datetime(start_date.year, start_date.month, 1)
+    
+    # คำนวณวันที่กลางของเดือน
+    mid_day = first_day_of_month + timedelta(days=calendar.monthrange(start_date.year, start_date.month)[1] // 2)
+    
+    # คำนวณวันที่สุดท้ายของเดือนจาก finish_date
+    last_day_of_month = datetime(finish_date.year, finish_date.month, calendar.monthrange(finish_date.year, finish_date.month)[1])
+    
+    if monthly_option == MonthlyOption.start:
+        return first_day_of_month.date()
+    elif monthly_option == MonthlyOption.mid:
+        return mid_day.date()
+    elif monthly_option == MonthlyOption.end:
+        return last_day_of_month.date()
+
 # เก็บข้อมูลไว้ใน memory
 tasks_db: List[TopicCreate] = []
 
@@ -54,8 +75,13 @@ tasks_db: List[TopicCreate] = []
 @router.post("/tasks")
 def create_task(topic: TopicCreate):
     try:
+        # คำนวณวันที่สำหรับ Task ที่มี repeat เป็น Monthly
         for task in topic.tasks:
+            if task.repeat == RepeatMode.monthly and task.monthly_option:
+                task_date = calculate_monthly_date_from_range(topic.start_date, topic.finish_date, task.monthly_option)
+                task.start_date = task_date  # กำหนดวันที่ที่คำนวณได้ให้กับ Task
             task.validate_task()
+        
         tasks_db.append(topic)
         return JSONResponse(content={"status": "success", "message": "Topic with tasks created successfully"})
     except ValueError as e:
