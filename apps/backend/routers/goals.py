@@ -26,11 +26,11 @@ class TaskCreate(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # สร้าง id อัตโนมัติ
     title: str = Field(..., example="xxxx")
     repeat: RepeatMode
-   
     
     # เงื่อนไขเพิ่มเติม
     days: Optional[List[str]] = None  # สำหรับ Weekly เท่านั้น
     monthly_option: Optional[MonthlyOption] = None  # สำหรับ Monthly เท่านั้น
+    start_date: Optional[date] = None  # เพิ่ม start_date ใน Task
 
     # ตรวจสอบเงื่อนไขการใช้งาน
     def validate_task(self):
@@ -79,7 +79,8 @@ def create_task(topic: TopicCreate):
         for task in topic.tasks:
             if task.repeat == RepeatMode.monthly and task.monthly_option:
                 task_date = calculate_monthly_date_from_range(topic.start_date, topic.finish_date, task.monthly_option)
-                task.start_date = task_date  # กำหนดวันที่ที่คำนวณได้ให้กับ Task
+                # อัปเดต start_date ของ Task ที่คำนวณแล้ว
+                task.start_date = task_date  
             task.validate_task()
         
         tasks_db.append(topic)
@@ -135,7 +136,7 @@ def update_topic(topic_id: str, updated_topic: TopicCreate):
 def update_topic(topic_id: str, updated_topic: TopicCreate):
     for idx, topic in enumerate(tasks_db):
         if topic.id == topic_id:
-            # อัปเดตแค่ชื่อของ topic
+            # อัปเดตชื่อของ topic
             tasks_db[idx].topic = updated_topic.topic
             tasks_db[idx].start_date = updated_topic.start_date  # อัปเดต start_date
             tasks_db[idx].finish_date = updated_topic.finish_date  # อัปเดต finish_date
@@ -144,4 +145,5 @@ def update_topic(topic_id: str, updated_topic: TopicCreate):
                 tasks_db[idx].tasks = updated_topic.tasks
             return JSONResponse(content={"status": "success", "message": "Topic updated successfully"})
     return JSONResponse(content={"error": "Topic not found"}, status_code=404)
+
 
