@@ -14,6 +14,11 @@ class RepeatMode(str, Enum):
     daily = "Daily"
     weekly = "Weekly"
     monthly = "Monthly"
+    
+class MonthlyOption(str, Enum):
+    start = "START"
+    mid = "MID"
+    end = "END"
 
 # รูปแบบข้อมูล Task ที่รับจากฟอร์ม
 class TaskCreate(BaseModel):
@@ -24,14 +29,14 @@ class TaskCreate(BaseModel):
     
     # เงื่อนไขเพิ่มเติม
     days: Optional[List[str]] = None  # สำหรับ Weekly เท่านั้น
-    day: Optional[int] = None  # สำหรับ Monthly เท่านั้น
+    monthly_option: Optional[MonthlyOption] = None  # สำหรับ Monthly เท่านั้น
 
     # ตรวจสอบเงื่อนไขการใช้งาน
     def validate_task(self):
         if self.repeat == RepeatMode.weekly and not self.days:
             raise ValueError("ต้องระบุ days เมื่อเลือก Weekly")
-        if self.repeat == RepeatMode.monthly and not self.day:
-            raise ValueError("ต้องระบุ day เมื่อเลือก Monthly")
+        if self.repeat == RepeatMode.monthly and not self.monthly_option:
+            raise ValueError("ต้องระบุ monthly_option เมื่อเลือก Monthly")
 
 
 # รูปแบบข้อมูล Topic ที่ประกอบด้วยหลาย Task
