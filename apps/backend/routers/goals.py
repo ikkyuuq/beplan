@@ -8,6 +8,7 @@ import uuid
 import calendar
 from fastapi.encoders import jsonable_encoder
 
+
 router = APIRouter()
 
 # ตัวเลือกสำหรับ Repeat Mode
