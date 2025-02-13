@@ -102,7 +102,8 @@ def create_task(topic: TopicCreate):
         return JSONResponse(content={"error": f"Unexpected error: {str(e)}"}, status_code=500)
 
 
-# GET /tasks → ดึงรายการ Topic และ Task ทั้งหมด
+
+# GET /tasks → ดึงรายการ Topic และ Task 
 @router.get("/tasks")
 def get_tasks():
     return JSONResponse(content=jsonable_encoder(tasks_db))
