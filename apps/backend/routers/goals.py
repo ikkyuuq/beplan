@@ -15,7 +15,8 @@ class RepeatMode(str, Enum):
     daily = "Daily"
     weekly = "Weekly"
     monthly = "Monthly"
-    
+
+# ตัวเลือกเมื่อเลือก Monthly    
 class MonthlyOption(str, Enum):
     start = "START"
     mid = "MID"
