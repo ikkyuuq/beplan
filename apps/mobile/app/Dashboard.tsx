@@ -1,12 +1,6 @@
 import React from "react";
 import { useUser, useClerk } from "@clerk/clerk-expo";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
 
@@ -37,8 +31,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F8F8F8",
     padding: 20,
+    backgroundColor: "#F8F8F8",
   },
   welcomeText: {
     fontSize: 24,

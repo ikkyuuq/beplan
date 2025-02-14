@@ -1,35 +1,49 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter as Router, Route, Routes, Link, Outlet } from "react-router-dom";
+import Home from "./Home";
+import AboutMe from "./AboutMe";
+import Donate from "./Donate";
+import "./Home.css";
+import FAQ from "./FAQ";
+
+const Layout = () => {
+  return (
+    <div>
+      <header className="App-header">
+        <nav>
+          <ul>
+            <div className="logo-container">
+            <img src="https://img2.pic.in.th/pic/Screenshot-2025-02-11-215739.png" alt="Logo" border="0" />
+            <a href="/">SMART GOAL</a>
+            </div>
+            <li><Link to="/">Home</Link></li>
+            <li><Link to="/aboutme">About Me</Link></li>
+            <li><Link to="/donate">Donate</Link></li>
+            <li><Link to="/faq">FAQ</Link></li>
+            <button className="start">GET STARTED!</button>
+            </ul>
+        </nav>
+      </header>
+      <main>
+        <Outlet />
+      </main>
+    
+    </div>
+  );
+};
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <Router>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="aboutme" element={<AboutMe />} />
+          <Route path="donate" element={<Donate />} />
+          <Route path="faq" element={<FAQ />} />
+        </Route>
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;

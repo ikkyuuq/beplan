@@ -4,11 +4,11 @@ import { useSignUp } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
+import { routes } from "@/routesConfig";
 import { InriaSerif_400Regular } from "@expo-google-fonts/inria-serif";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
 import VerificationScreen from "@/components/VerificationScreen";
-import { routes } from "@/routesConfig"; // ✅ ใช้ routesConfig.ts
 
 export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp();
