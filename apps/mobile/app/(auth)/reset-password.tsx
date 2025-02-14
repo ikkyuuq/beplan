@@ -49,7 +49,7 @@ export default function ResetPasswordScreen() {
       console.error(err);
       setErrorMessage(
         err.errors?.[0]?.message ||
-          "Failed to send reset link. Please try again."
+          "Failed to send reset link. Please try again.",
       );
     }
   };
@@ -65,13 +65,13 @@ export default function ResetPasswordScreen() {
 
       if (verifyAttempt.status === "needs_new_password") {
         console.log(
-          "Verification successful! Redirecting to set new password..."
+          "Verification successful! Redirecting to set new password...",
         );
         router.replace(routes.setNewPassword);
       } else {
         console.error(
           "Unexpected response:",
-          JSON.stringify(verifyAttempt, null, 2)
+          JSON.stringify(verifyAttempt, null, 2),
         );
         setErrorMessage("Unexpected error occurred. Please try again.");
       }
@@ -95,7 +95,7 @@ export default function ResetPasswordScreen() {
           Alert.alert(
             "Verification Code",
             "We have resent the verification code to your email.",
-            [{ text: "OK" }]
+            [{ text: "OK" }],
           );
         }}
       />

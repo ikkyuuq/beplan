@@ -1,5 +1,13 @@
 import { Feather } from "@expo/vector-icons";
-import { View, Text, Image, Pressable, LayoutChangeEvent } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  Pressable,
+  LayoutChangeEvent,
+  ScrollView,
+  FlatList,
+} from "react-native";
 import {
   addDays,
   eachDayOfInterval,
@@ -23,7 +31,7 @@ import { useClerk } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
 
-function schedule() {
+export default function schedule() {
   const { signOut } = useClerk();
   const router = useRouter();
 
@@ -113,8 +121,103 @@ function schedule() {
     };
   });
 
+  const [data, setData] = useState([
+    {
+      id: 1,
+      title: "I want to save $5000 by the end of the months",
+      type: "SMART GOALS",
+      startDate: new Date(),
+      dueDate: new Date(startDate.getDate() + 30),
+      tasks: [
+        {
+          id: 1,
+          title: "Morning Routine",
+          status: "inProgress",
+          description:
+            "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
+          repeat: {
+            id: 1,
+            type: "daily",
+            interval: null,
+          },
+        },
+        {
+          id: 2,
+          title: "Morning Routine",
+          status: "inProgress",
+          description:
+            "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
+          repeat: {
+            id: 2,
+            type: "weekly",
+            interval: [1, 3, 5], // Monday, Wednesday, Friday
+          },
+        },
+      ],
+    },
+    {
+      id: 2,
+      title: "I want to save $5000 by the end of the months",
+      type: "SMART GOALS",
+      startDate: new Date(),
+      dueDate: new Date(startDate.getDate() + 30),
+      tasks: [
+        {
+          id: 1,
+          title: "Morning Routine",
+          status: "inProgress",
+          description:
+            "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
+          repeat: {
+            id: 1,
+            type: "daily",
+            interval: null,
+          },
+        },
+        {
+          id: 2,
+          title: "Morning Routine",
+          status: "inProgress",
+          description:
+            "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
+          repeat: {
+            id: 2,
+            type: "weekly",
+            interval: [1, 3, 5], // Monday, Wednesday, Friday
+          },
+        },
+      ],
+    },
+  ]);
+
+  const handleFailAllTasks = (goalId: number) => {
+    setData((prev) =>
+      prev.map((goal) =>
+        goal.id === goalId
+          ? {
+              ...goal,
+              tasks: goal.tasks.map((task) => ({
+                ...task,
+                status: "failed",
+              })),
+            }
+          : goal,
+      ),
+    );
+    console.log(data);
+    setData((prev) => prev.filter((goal) => goal.id !== goalId));
+  };
+
+  const handleCompleteAllTasks = (goalId: number) => {
+    console.log(data.filter((goal) => goal.id !== goalId));
+    setTimeout(
+      () => setData((prev) => prev.filter((goal) => goal.id !== goalId)),
+      300,
+    );
+  };
+
   return (
-    <View style={{ flex: 1, gap: 24 }}>
+    <View style={{ flex: 1 }}>
       <View
         style={{
           height: 320,
@@ -267,21 +370,27 @@ function schedule() {
         </View>
       </View>
 
-      <View style={{ gap: 16 }}>
-        <Collapsable
-          title="I want to save $5000 by the end of the months"
-          type="SMART GOALS"
-        >
-          <CollapseItem
-            title="Morning Routine"
-            description="Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness"
-          />
-          <CollapseItem title="Morning Routine 2" />
-          <CollapseItem title="Morning Routine 3" />
-        </Collapsable>
-      </View>
+      <ScrollView>
+        <Animated.View style={{ marginTop: 20, marginBottom: 120 }}>
+          {data.map((goal, _) => (
+            <Collapsable
+              key={goal.id}
+              title={goal.title}
+              type={goal.type}
+              onComplete={() => handleCompleteAllTasks(goal.id)}
+              onFail={() => handleFailAllTasks(goal.id)}
+            >
+              {goal.tasks.map((task) => (
+                <CollapseItem
+                  key={task.id}
+                  title={task.title}
+                  description={task.description}
+                />
+              ))}
+            </Collapsable>
+          ))}
+        </Animated.View>
+      </ScrollView>
     </View>
   );
 }
-
-export default schedule;
