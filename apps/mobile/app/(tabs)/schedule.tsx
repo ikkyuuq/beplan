@@ -117,18 +117,32 @@ function schedule() {
     };
   });
 
-  const [goals, setGoals] = useState([
+  type TaskType = "normal" | "daily" | "weekly" | "monthly";
+
+  type Task = {
+    id: string;
+    text: string;
+    type: TaskType;
+    selectedDates?: string[];
+  };
+
+  type Goal = {
+    title: string;
+    startDate: string;
+    dueDate: string;
+    tasks: Task[];
+  };
+
+  const [goals, setGoals] = useState<Goal[]>([
     {
       title: "I want to save $5000 by the end of the year",
+      startDate: new Date(2024, 0, 1).toISOString(),
+      dueDate: new Date(2024, 11, 31).toISOString(),
       tasks: [
-        "Track expenses",
-        "Save $500 per month",
-        "Cut unnecessary spending",
+        { id: "1", text: "Track expenses", type: "daily" },
+        { id: "2", text: "Save $500 per month", type: "monthly" },
+        { id: "3", text: "Cut unnecessary spending", type: "weekly" },
       ],
-    },
-    {
-      title: "Run 5K race within 3 months",
-      tasks: ["Jog 3 times a week", "Join a running club", "Monitor progress"],
     },
   ]);
 
@@ -291,10 +305,12 @@ function schedule() {
           <Collapsable
             key={index}
             goalTitle={goal.title}
+            startDate={goal.startDate}
+            dueDate={goal.dueDate}
             onRemove={() => removeGoal(goal.title)}
           >
             {goal.tasks.map((task, taskIndex) => (
-              <CollapseItem key={taskIndex} title={task} />
+              <CollapseItem key={taskIndex} title={task.text} />
             ))}
           </Collapsable>
         ))}

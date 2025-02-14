@@ -10,58 +10,27 @@ import Animated, { useAnimatedStyle, withSpring } from "react-native-reanimated"
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing"; 
-import { routes } from "@/routesConfig";
 
 
 export default function Collapsable({
   children,
   goalTitle,
+  startDate,  
+  dueDate,    
   onRemove,
 }: {
   children: React.ReactNode;
   goalTitle: string;
-  onRemove: () => void; 
+  startDate: string; 
+  dueDate: string;  
+  onRemove: () => void;
 }) {
+
   const [collapsed, setCollapsed] = useState(false);
   const router = useRouter();
 
   const toggleCollapse = () => {
     setCollapsed(!collapsed);
-  };
-
-  const openActionSheet = () => {
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        title: goalTitle,
-        options: ["Remove", "Customize", "Share", "Cancel"],
-        destructiveButtonIndex: 0,
-        cancelButtonIndex: 3,
-      },
-      (buttonIndex) => {
-        if (buttonIndex === 0) {
-          Alert.alert("Confirm", "Do you want to remove this goal?", [
-            { text: "Cancel", style: "cancel" },
-            { text: "Remove", style: "destructive", onPress: onRemove },
-          ]);
-        } else if (buttonIndex === 1) {
-          router.push({
-            pathname: routes.customizeGoal,
-            params: { 
-              title: goalTitle,
-              tasks: JSON.stringify(
-                React.Children.toArray(children)?.map((task: any) => ({
-                  text: task.props.title,
-                  type: task.props.type || "daily",
-                })) || []
-              ),
-            },
-          });
-          
-        } else if (buttonIndex === 2) {
-          shareGoal();
-        }
-      }
-    );
   };
 
   const shareGoal = async () => {
@@ -89,7 +58,7 @@ export default function Collapsable({
         borderRadius: 10,
       }}
     >
-      <TouchableWithoutFeedback onPress={toggleCollapse} onLongPress={openActionSheet}>
+      <TouchableWithoutFeedback onPress={toggleCollapse}>
         <View
           style={{
             flexDirection: "row",
