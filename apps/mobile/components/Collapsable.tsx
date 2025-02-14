@@ -232,12 +232,9 @@ export default function Collapsable({
       }
     });
 
-  const exclusiveGesture = Gesture.Exclusive(
-    gesturePan,
-    gestureLongPressCollapse,
-  );
+  const raceGesture = Gesture.Race(gesturePan, gestureLongPressCollapse);
 
-  const composedGesture = Gesture.Race(exclusiveGesture, gestureTapCollapse);
+  const composedGesture = Gesture.Exclusive(raceGesture, gestureTapCollapse);
 
   React.useEffect(() => {
     if (androidMenuVisible) {
