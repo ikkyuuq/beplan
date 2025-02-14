@@ -84,3 +84,7 @@ async def delete_task(task_id: int, db=Depends(get_db)):
     if result == "DELETE 0":
         raise HTTPException(status_code=404, detail="Task not found")
     return {"message": "Task deleted"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
