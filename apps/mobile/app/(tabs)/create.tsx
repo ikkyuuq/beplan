@@ -27,6 +27,8 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       title: string;
       type: "normal" | "daily" | "weekly" | "monthly";
       selectedDates?: string[];
+      selectedDaysOfWeek?: number[];
+      monthlyMode?: "start" | "mid" | "end";
     }[]
   >([]);
 
@@ -76,6 +78,9 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
           title: task.title,
           type: task.type,
           selectedDates: task.selectedDates || [],
+          selectedDaysOfWeek: task.selectedDaysOfWeek || [],
+          monthlyMode:
+            task.type === "monthly" ? task.monthlyMode || "N/A" : "N/A",
         })),
       };
 
@@ -241,12 +246,26 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       {/* Create Goal Button */}
       <Pressable
         onPress={() =>
-          console.log("📌 Goal Created:", {
-            goalTitle,
-            startDate,
-            dueDate,
-            tasks: taskList,
-          })
+          console.log(
+            "📌 Goal Created:",
+            JSON.stringify(
+              {
+                goalTitle,
+                startDate,
+                dueDate,
+                tasks: taskList.map((task) => ({
+                  title: task.title,
+                  type: task.type,
+                  selectedDates: task.selectedDates || [],
+                  selectedDaysOfWeek: task.selectedDaysOfWeek || [],
+                  monthlyMode:
+                    task.type === "monthly" ? task.monthlyMode || "N/A" : "N/A",
+                })),
+              },
+              null,
+              2
+            )
+          )
         }
         style={styles.createButton}
       >

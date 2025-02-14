@@ -386,6 +386,10 @@ export default function TaskModal({
               style={styles.confirmButton}
               onPress={() => {
                 console.log("🔍 Checking selectedDates:", selectedDates);
+                console.log(
+                  "📌 Monthly Mode Selected on Confirm:",
+                  monthlyMode
+                );
 
                 const taskData = {
                   title: taskTitle,
@@ -397,6 +401,7 @@ export default function TaskModal({
                     : undefined,
                   selectedDaysOfWeek:
                     taskType === "weekly" ? [...selectedDaysOfWeek] : undefined,
+                  monthlyMode: taskType === "monthly" ? monthlyMode : undefined,
                 };
 
                 console.log(

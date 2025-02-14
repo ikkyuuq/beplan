@@ -48,6 +48,12 @@ export default function CalendarPicker({
   const [totalDays, setTotalDays] = useState<number>(selectedDates.length);
 
   useEffect(() => {
+    if (visible) {
+      setSelectedDates(initialDates || []);
+    }
+  }, [visible]);
+
+  useEffect(() => {
     setTotalDays(selectedDates.length);
   }, [selectedDates]);
 
