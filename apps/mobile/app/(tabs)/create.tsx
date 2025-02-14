@@ -78,13 +78,13 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
           selectedDates: task.selectedDates || [],
         })),
       };
-  
+
       console.log("📌 Current Goal Data:", JSON.stringify(goalData, null, 2));
-    }, 5000); // Log goal data ทุก 5 วินาที
-  
-    return () => clearInterval(interval); // Clear interval เมื่อ component unmount
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, [goalTitle, startDate, dueDate, taskList]);
-  
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Design Your Path</Text>
@@ -116,7 +116,12 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
                 </View>
                 <Text style={styles.taskText}>{task.title}</Text>
                 <View style={styles.taskActions}>
-                  <Pressable onPress={() => setEditingIndex(index)}>
+                  <Pressable
+                    onPress={() => {
+                      setEditingIndex(index);
+                      setTaskModalVisible(true);
+                    }}
+                  >
                     <Text style={styles.editIcon}>✏️</Text>
                   </Pressable>
                   <Pressable
@@ -137,8 +142,8 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       <Pressable
         onPress={() => {
           if (!startDate || !dueDate) return;
-          setTaskModalVisible(true);
           setEditingIndex(null);
+          setTaskModalVisible(true);
         }}
         style={styles.addTaskButton}
       >
@@ -155,9 +160,14 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       {/* Task Modal */}
       <TaskModal
         visible={isTaskModalVisible}
-        onClose={() => setTaskModalVisible(false)}
+        onClose={() => {
+          setTaskModalVisible(false);
+          setEditingIndex(null);
+        }}
         onSave={addTask}
-        initialTask={editingIndex !== null ? taskList[editingIndex] : undefined}
+        initialTask={
+          editingIndex !== null ? { ...taskList[editingIndex] } : undefined
+        }
         startDate={startDate}
         dueDate={dueDate}
       />

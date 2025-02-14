@@ -13,8 +13,6 @@ import {
   format,
   eachMonthOfInterval,
   getDaysInMonth,
-  startOfMonth,
-  endOfMonth,
 } from "date-fns";
 
 type TaskModalProps = {
@@ -76,43 +74,50 @@ export default function TaskModal({
 
     const months = eachMonthOfInterval({ start, end });
 
-    return months.map((monthDate) => {
-      const year = monthDate.getFullYear();
-      const month = monthDate.getMonth();
-      const daysInMonth = getDaysInMonth(monthDate);
+    return months
+      .map((monthDate) => {
+        const year = monthDate.getFullYear();
+        const month = monthDate.getMonth();
+        const daysInMonth = getDaysInMonth(monthDate);
 
-      let selectedDay;
+        let selectedDay;
 
-      if (mode === "start") {
-        selectedDay = 1;
-      } else if (mode === "mid") {
-        selectedDay = Math.ceil(daysInMonth / 2);
-      } else if (mode === "end") {
-        selectedDay = daysInMonth;
-      }
+        if (mode === "start") {
+          selectedDay = 1;
+        } else if (mode === "mid") {
+          selectedDay = Math.ceil(daysInMonth / 2);
+        } else if (mode === "end") {
+          selectedDay = daysInMonth;
+        }
 
-      return format(new Date(year, month, selectedDay), "yyyy-MM-dd");
-    });
+        const selectedDate = format(
+          new Date(year, month, selectedDay),
+          "yyyy-MM-dd"
+        );
+
+        return selectedDate >= startDate && selectedDate <= dueDate
+          ? selectedDate
+          : null;
+      })
+      .filter(Boolean) as string[];
   };
 
   useEffect(() => {
-    if (!visible) return; // ✅ ถ้า Pop-up ไม่ได้เปิด ไม่ต้องทำอะไร
+    if (!visible) return;
 
     if (initialTask) {
-      // ✅ ถ้ามี Task ให้แก้ไข → โหลดข้อมูลเดิม
       setTaskTitle(initialTask.title);
       setTaskType(initialTask.type);
       setSelectedDates(initialTask.selectedDates || []);
       setSelectedDaysOfWeek(initialTask.selectedDaysOfWeek || []);
-
       setIsRepeat(initialTask.type !== "normal");
     } else {
-      // ✅ ถ้าเป็น Task ใหม่ → รีเซ็ตค่าเริ่มต้น
       setTaskTitle("");
       setTaskType("normal");
       setSelectedDates([]);
       setSelectedDaysOfWeek([]);
       setIsRepeat(false);
+      setMonthlyMode("start");
     }
   }, [visible, initialTask]);
 
@@ -152,11 +157,17 @@ export default function TaskModal({
 
   const handleDateConfirm = (dates: string[]) => {
     console.log("📅 Selected Dates for Normal Task:", dates);
-    setSelectedDates(dates);
+    setSelectedDates([...dates]);
   };
 
   useEffect(() => {
-    if (isRepeat && taskType === "daily" && startDate && dueDate) {
+    if (
+      !initialTask &&
+      isRepeat &&
+      taskType === "daily" &&
+      startDate &&
+      dueDate
+    ) {
       const allDates = eachDayOfInterval({
         start: new Date(startDate),
         end: new Date(dueDate),
@@ -167,7 +178,14 @@ export default function TaskModal({
   }, [taskType, isRepeat, startDate, dueDate]);
 
   useEffect(() => {
-    if (isRepeat && taskType === "weekly" && startDate && dueDate) {
+    if (isRepeat && taskType === "daily" && startDate && dueDate) {
+      const allDates = eachDayOfInterval({
+        start: new Date(startDate),
+        end: new Date(dueDate),
+      }).map((date) => format(date, "yyyy-MM-dd"));
+
+      setSelectedDates(allDates);
+    } else if (isRepeat && taskType === "weekly" && startDate && dueDate) {
       const start = new Date(startDate);
       const end = new Date(dueDate);
 
@@ -180,12 +198,21 @@ export default function TaskModal({
         })
           .filter((day) => selectedDaysOfWeek.includes(day.getDay()))
           .map((date) => format(date, "yyyy-MM-dd"))
-          .filter((date) => date >= startDate && date <= dueDate); // ✅ ห้ามมีวันก่อน Start และเกิน Due Date
+          .filter((date) => date >= startDate && date <= dueDate);
       });
 
       setSelectedDates(weeklyDates);
+    } else if (isRepeat && taskType === "monthly" && startDate && dueDate) {
+      const monthlyDates = calculateMonthlyDates(
+        startDate,
+        dueDate,
+        monthlyMode
+      );
+      setSelectedDates(monthlyDates);
+    } else if (taskType === "normal") {
+      setSelectedDates([]);
     }
-  }, [taskType, isRepeat, startDate, dueDate, selectedDaysOfWeek]);
+  }, [taskType, isRepeat, startDate, dueDate, selectedDaysOfWeek, monthlyMode]);
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -238,7 +265,7 @@ export default function TaskModal({
             onClose={() => setIsCalendarVisible(false)}
             onConfirm={handleDateConfirm}
             title="Select Task Dates"
-            initialDates={selectedDates}
+            initialDates={initialTask?.selectedDates || selectedDates}
             highlightColor="#4F46E5"
             singleSelect={false}
             minDate={startDate}
@@ -286,31 +313,38 @@ export default function TaskModal({
 
           {taskType === "monthly" && (
             <View style={styles.monthlyContainer}>
-              {["Start", "Mid", "End"].map((label, index) => (
-                <Pressable
-                  key={index}
-                  onPress={() =>
-                    setMonthlyMode(
-                      label.toLowerCase() as "start" | "mid" | "end"
-                    )
-                  }
-                  style={[
-                    styles.monthlyButton,
-                    monthlyMode === label.toLowerCase() &&
-                      styles.monthlyButtonSelected,
-                  ]}
-                >
-                  <Text
+              {["Start", "Mid", "End"].map((label, index) => {
+                const mode = label.toLowerCase() as "start" | "mid" | "end";
+                const isDisabled =
+                  calculateMonthlyDates(startDate, dueDate, mode).length === 0;
+
+                return (
+                  <Pressable
+                    key={index}
+                    onPress={() => !isDisabled && setMonthlyMode(mode)}
                     style={[
-                      styles.monthlyButtonText,
-                      monthlyMode === label.toLowerCase() &&
-                        styles.monthlyButtonTextSelected,
+                      styles.monthlyButton,
+                      monthlyMode === mode &&
+                        !isDisabled &&
+                        styles.monthlyButtonSelected,
+                      isDisabled && styles.disabledButton,
                     ]}
+                    disabled={isDisabled}
                   >
-                    {label}
-                  </Text>
-                </Pressable>
-              ))}
+                    <Text
+                      style={[
+                        styles.monthlyButtonText,
+                        monthlyMode === mode &&
+                          !isDisabled &&
+                          styles.monthlyButtonTextSelected,
+                        isDisabled && styles.disabledButtonText,
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           )}
 
@@ -357,12 +391,12 @@ export default function TaskModal({
                   title: taskTitle,
                   type: isRepeat ? taskType : "normal",
                   selectedDates: isRepeat
-                    ? selectedDates
+                    ? [...selectedDates]
                     : selectedDates.length > 0
-                    ? selectedDates
+                    ? [...selectedDates]
                     : undefined,
                   selectedDaysOfWeek:
-                    taskType === "weekly" ? selectedDaysOfWeek : undefined,
+                    taskType === "weekly" ? [...selectedDaysOfWeek] : undefined,
                 };
 
                 console.log(
@@ -536,6 +570,12 @@ const styles = StyleSheet.create({
   monthlyButtonTextSelected: {
     color: "#FFF",
     fontWeight: "bold",
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  disabledButtonText: {
+    color: "#888",
   },
   cancelText: { color: "#fff", fontWeight: "bold" },
   confirmText: { color: "#fff", fontWeight: "bold" },
