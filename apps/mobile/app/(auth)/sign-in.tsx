@@ -75,11 +75,15 @@ export default function Page() {
         setErrorMessage("Clerk is not loaded yet. Please wait.");
         return;
       }
-
-      const result = await startGoogleOAuth({
-        redirectUrl: process.env.EXPO_PUBLIC_CLERK_REDIRECT_URL,
+  
+      const redirectUrl = Linking.createURL("/", {
+        scheme: "myapp"
       });
-
+  
+      const result = await startGoogleOAuth({
+        redirectUrl: redirectUrl
+      });
+  
       if (result?.createdSessionId) {
         await setActive({ session: result.createdSessionId });
         router.replace(routes.loggedInRedirect);

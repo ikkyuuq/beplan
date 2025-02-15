@@ -8,6 +8,7 @@ import Animated, {
   useAnimatedStyle,
 } from "react-native-reanimated";
 
+// ====================== Type Definitions ======================
 type CalendarPickerProps = {
   visible: boolean;
   onClose: () => void;
@@ -20,9 +21,12 @@ type CalendarPickerProps = {
   otherHighlightColor?: string;
   minDate?: string;
   maxDate?: string;
-  mode?: "startGoal" | "pickTask";
+  mode?: "startDate" | "dueDate" | "pickTask";
+  startDate?: string;
+  dueDate?: string;
 };
 
+// ====================== Main Component ======================
 export default function CalendarPicker({
   visible,
   onClose,
@@ -36,52 +40,99 @@ export default function CalendarPicker({
   minDate,
   maxDate,
   mode = "pickTask",
+  startDate,
+  dueDate,
 }: CalendarPickerProps) {
+  // ====================== Constants ======================
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayString = today.toISOString().split("T")[0];
 
-  const finalMinDate = mode === "startGoal" ? todayString : minDate;
-  const finalMaxDate = mode === "startGoal" ? undefined : maxDate;
-
+  // ====================== State Hooks ======================
   const [selectedDates, setSelectedDates] = useState<string[]>(initialDates);
-  const [totalDays, setTotalDays] = useState<number>(selectedDates.length);
+  const [totalDays, setTotalDays] = useState<number>(initialDates.length);
+
+  // ====================== Animation Hooks ======================
+  const modalTranslateY = useSharedValue(300);
+  const modalAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: modalTranslateY.value }],
+  }));
+
+  // ====================== Effects ======================
+  useEffect(() => {
+    modalTranslateY.value = visible ? withSpring(0) : withSpring(300);
+  }, [visible]);
 
   useEffect(() => {
-    if (visible) {
-      setSelectedDates(initialDates || []);
-    }
+    if (visible) setSelectedDates(initialDates);
   }, [visible]);
 
   useEffect(() => {
     setTotalDays(selectedDates.length);
   }, [selectedDates]);
 
-  const modalTranslateY = useSharedValue(300);
-  useEffect(() => {
-    modalTranslateY.value = visible ? withSpring(0) : withSpring(300);
-  }, [visible]);
-
-  const modalAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: modalTranslateY.value }],
-  }));
-
-  const toggleDateSelection = (date: string) => {
-    if (date === otherSelectedDate) {
-      console.log("⛔ ห้ามเลือกวันเดียวกับอีกอัน:", date);
-      return;
+  // ====================== Date Restrictions Logic ======================
+  const getDateRestrictions = () => {
+    switch (mode) {
+      case "startDate":
+        return { minDate: todayString, maxDate: dueDate };
+      case "dueDate":
+        return { minDate: startDate || todayString, maxDate: undefined };
+      default:
+        return { minDate, maxDate };
     }
+  };
 
-    setSelectedDates((prevSelected) =>
+  const { minDate: finalMinDate, maxDate: finalMaxDate } =
+    getDateRestrictions();
+
+  // ====================== Date Selection Handlers ======================
+  const toggleDateSelection = (date: string) => {
+    if (date === otherSelectedDate) return;
+
+    setSelectedDates((prev) =>
       singleSelect
         ? [date]
-        : prevSelected.includes(date)
-        ? prevSelected.filter((d) => d !== date)
-        : [...prevSelected, date]
+        : prev.includes(date)
+        ? prev.filter((d) => d !== date)
+        : [...prev, date]
     );
   };
 
+  // ====================== Disabled Dates Generation ======================
+  const createDisabledDates = () => {
+    const disabledDates: Record<string, any> = {};
+    const currentDate = new Date(finalMinDate || todayString);
+    const endDate = new Date(finalMaxDate || "2099-12-31");
+
+    // Disable dates before minDate
+    if (finalMinDate) {
+      const tempDate = new Date(currentDate);
+      tempDate.setDate(tempDate.getDate() - 1);
+      while (tempDate >= new Date(todayString)) {
+        const dateString = tempDate.toISOString().split("T")[0];
+        disabledDates[dateString] = { disabled: true, disableTouchEvent: true };
+        tempDate.setDate(tempDate.getDate() - 1);
+      }
+    }
+
+    // Disable dates after maxDate
+    if (finalMaxDate) {
+      const tempDate = new Date(endDate);
+      tempDate.setDate(tempDate.getDate() + 1);
+      while (tempDate <= new Date("2099-12-31")) {
+        const dateString = tempDate.toISOString().split("T")[0];
+        disabledDates[dateString] = { disabled: true, disableTouchEvent: true };
+        tempDate.setDate(tempDate.getDate() + 1);
+      }
+    }
+
+    return disabledDates;
+  };
+
+  // ====================== Calendar Markings ======================
   const markedDates = {
+    ...createDisabledDates(),
     ...selectedDates.reduce(
       (acc, date) => ({
         ...acc,
@@ -95,13 +146,9 @@ export default function CalendarPicker({
         selectedColor: otherHighlightColor,
       },
     }),
-    [todayString]: {
-      disabled: true,
-      disableTouchEvent: true,
-      textColor: "gray",
-    },
   };
 
+  // ====================== Render ======================
   return (
     <Modal isVisible={visible} onBackdropPress={onClose}>
       <Animated.View style={[styles.modalContent, modalAnimatedStyle]}>
@@ -114,7 +161,7 @@ export default function CalendarPicker({
               toggleDateSelection(day.dateString)
             }
             markedDates={markedDates}
-            disableAllTouchEventsForDisabledDays={true}
+            disableAllTouchEventsForDisabledDays
           />
         </View>
 
@@ -143,6 +190,7 @@ export default function CalendarPicker({
   );
 }
 
+// ====================== Styles ======================
 const styles = StyleSheet.create({
   modalContent: {
     width: "90%",
