@@ -1,5 +1,5 @@
 import { View, Text, LayoutChangeEvent, Dimensions } from "react-native";
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -38,6 +38,10 @@ export default function Collapsable({
   const [collapsed, setCollapsed] = useState(false);
   const innerCollapseHeight = useSharedValue(0);
   const innerCollapsePaddingBottom = useSharedValue(24);
+
+  const HEADER_HEIGHT = 70;
+  const headerHeight = useSharedValue(HEADER_HEIGHT);
+
   const [androidMenuVisible, setAndroidMenuVisible] = useState(false);
   const [anchorPosition, setAnchorPosition] = useState({
     bottomLeft: { x: 0, y: 0 },
@@ -50,20 +54,8 @@ export default function Collapsable({
     topLeft: { x: 0, y: 0 },
   });
 
-  // Shared values for header height and margin
-  const collapseHeight = useSharedValue(70);
   const collapseMarginBottom = useSharedValue(10);
-
-  const onCollapseLayout = (e: LayoutChangeEvent) => {
-    const height = e.nativeEvent.layout.height;
-    if (height > 0 && height !== innerCollapseHeight.value) {
-      if (!collapsed) {
-        innerCollapseHeight.value = 0;
-      } else {
-        innerCollapseHeight.value = height;
-      }
-    }
-  };
+  const collapseContentRef = useRef<Animated.View>(null);
 
   const updateMenuPosition = useCallback(() => {
     return new Promise<void>((resolve) => {
@@ -113,29 +105,37 @@ export default function Collapsable({
   const VELOCITY_THRESHOLD = 800;
   const MIN_SWIPE_DISTANCE = 60;
 
-  const closeCollapse = () => {
+  const closeCollapse = (callback?: () => void) => {
     if (collapsed) {
-      collapseHeight.value = withTiming(
-        collapseHeight.value - innerCollapseHeight.value,
-        { duration: 200 },
-      );
       runOnJS(setCollapsed)(false);
-      innerCollapseHeight.value = withTiming(0, { duration: 200 });
-      innerCollapsePaddingBottom.value = withTiming(0, { duration: 200 });
-      collapseMarginBottom.value = withTiming(0, { duration: 600 });
-      collapseHeight.value = withTiming(0, { duration: 600 });
+      innerCollapsePaddingBottom.value = withTiming(
+        0,
+        { duration: 200 },
+        () => {
+          innerCollapseHeight.value = withTiming(
+            0,
+            { duration: 200 },
+            (finished) => {
+              if (finished && callback) {
+                runOnJS(callback)();
+              }
+            },
+          );
+        },
+      );
+    } else {
+      callback && callback();
     }
   };
 
+  // Animate swipe only after collapse is closed
   const runSwipeAnimation = (
     direction: "left" | "right",
     callback?: () => void,
     durationOverride?: number,
   ) => {
     const animDuration = durationOverride ?? 300;
-    const fadeDuration = durationOverride
-      ? Math.floor(durationOverride * 1.5)
-      : 200;
+    const fadeDuration = 200;
     const currentX = translateX.value;
     const targetX =
       direction === "left"
@@ -144,7 +144,7 @@ export default function Collapsable({
     translateX.value = withTiming(targetX, { duration: animDuration }, () => {
       opacity.value = withTiming(0, { duration: fadeDuration }, () => {
         collapseMarginBottom.value = withTiming(0, { duration: 200 }, () => {
-          collapseHeight.value = withTiming(0, { duration: 200 }, () => {
+          headerHeight.value = withTiming(0, { duration: 200 }, () => {
             callback && runOnJS(callback)();
           });
         });
@@ -153,39 +153,43 @@ export default function Collapsable({
   };
 
   const handleFail = () => {
-    closeCollapse();
-    runSwipeAnimation("left", () => {
-      if (onFail) runOnJS(onFail)();
+    closeCollapse(() => {
+      runSwipeAnimation("left", () => {
+        if (onFail) runOnJS(onFail)();
+      });
     });
   };
 
   const handleComplete = () => {
-    closeCollapse();
-    runSwipeAnimation("right", () => {
-      if (onComplete) runOnJS(onComplete)();
+    closeCollapse(() => {
+      runSwipeAnimation("right", () => {
+        if (onComplete) runOnJS(onComplete)();
+      });
     });
   };
 
   const handleFailContextMenu = () => {
-    closeCollapse();
-    runSwipeAnimation(
-      "left",
-      () => {
-        if (onFail) runOnJS(onFail)();
-      },
-      600,
-    );
+    closeCollapse(() => {
+      runSwipeAnimation(
+        "left",
+        () => {
+          if (onFail) runOnJS(onFail)();
+        },
+        600,
+      );
+    });
   };
 
   const handleCompleteContextMenu = () => {
-    closeCollapse();
-    runSwipeAnimation(
-      "right",
-      () => {
-        if (onComplete) runOnJS(onComplete)();
-      },
-      600,
-    );
+    closeCollapse(() => {
+      runSwipeAnimation(
+        "right",
+        () => {
+          if (onComplete) runOnJS(onComplete)();
+        },
+        600,
+      );
+    });
   };
 
   const gesturePan = Gesture.Pan()
@@ -226,17 +230,16 @@ export default function Collapsable({
       runOnJS(handleLongPressStart)();
       runOnJS(handleAndroidPress)();
     })
-    .onFinalize((_, success) => {
+    .onEnd((_, success) => {
       if (!success) {
         runOnJS(handleModalClose)();
       }
     });
 
   const raceGesture = Gesture.Race(gesturePan, gestureLongPressCollapse);
-
   const composedGesture = Gesture.Exclusive(raceGesture, gestureTapCollapse);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (androidMenuVisible) {
       updateMenuPosition();
     }
@@ -257,22 +260,28 @@ export default function Collapsable({
     ),
   }));
 
+  useEffect(() => {
+    if (collapsed) {
+      if (collapseContentRef.current) {
+        collapseContentRef.current.measure((_x, _y, _width, height) => {
+          innerCollapseHeight.value = withTiming(height, { duration: 200 });
+        });
+      }
+    } else {
+      innerCollapseHeight.value = withTiming(0, { duration: 200 });
+    }
+  }, [collapsed]);
+
   const animateCollapse = useAnimatedStyle(() => {
-    const animateHeight = collapsed
-      ? withSpring(innerCollapseHeight.value, {
-          damping: 20,
-          stiffness: 100,
-        })
-      : withSpring(0);
     const animateMargin = collapsed
-      ? withSpring(10, {
-          damping: 20,
-          stiffness: 100,
-        })
+      ? withSpring(10, { damping: 20, stiffness: 100 })
       : withSpring(0);
     return {
       opacity: withTiming(collapsed ? 1 : 0),
-      height: animateHeight,
+      height: withSpring(innerCollapseHeight.value, {
+        damping: 20,
+        stiffness: 100,
+      }),
       marginVertical: animateMargin,
     };
   });
@@ -289,7 +298,7 @@ export default function Collapsable({
         [-65, -20, 0, 20, 65],
         ["#F05353", "#fff", "#fff", "#fff", "#53F07D"],
       ),
-      height: withSpring(collapseHeight.value + innerCollapseHeight.value, {
+      height: withSpring(headerHeight.value + innerCollapseHeight.value, {
         damping: 20,
         stiffness: 100,
       }),
@@ -384,9 +393,6 @@ export default function Collapsable({
             status: "enabled",
             onPress: () => {
               handleModalClose();
-              // Use the slower animation for context menu:
-              handleCompleteContextMenu && handleCompleteContextMenu();
-              // Alternatively, call our new function:
               handleCompleteContextMenu
                 ? handleCompleteContextMenu()
                 : handleComplete();
@@ -400,7 +406,6 @@ export default function Collapsable({
             status: "enabled",
             onPress: () => {
               handleModalClose();
-              // Use the slower animation for context menu:
               handleFailContextMenu ? handleFailContextMenu() : handleFail();
               console.log("Failed");
             },
@@ -488,7 +493,7 @@ export default function Collapsable({
         </GestureDetector>
         <Animated.View style={[animateCollapse, { overflow: "hidden" }]}>
           <Animated.View
-            onLayout={onCollapseLayout}
+            ref={collapseContentRef}
             style={[
               animatedInnerCollapseStyle,
               {
