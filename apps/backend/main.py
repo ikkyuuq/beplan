@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-from database import lifespan
-from routers import ai, fetching, goals
+from .database import lifespan
+from .routers import ai, fetching, goals
 
 app = FastAPI(lifespan=lifespan)
 
