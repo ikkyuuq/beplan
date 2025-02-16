@@ -191,6 +191,13 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
         <Text style={styles.addTaskButtonText}>Add task</Text>
       </Pressable>
 
+      {/* Error Message */}
+      {(!startDate || !dueDate) && (
+        <Text style={styles.errorText}>
+          ⚠ Please set Goal Start and Finish Date first.
+        </Text>
+      )}
+
       {/* Date Pickers */}
       <View style={styles.dateContainer}>
         <View style={styles.dateBox}>
@@ -282,13 +289,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
         <Feather name="plus-circle" size={20} color="#fff" />
         <Text style={styles.createButtonText}>Create your path</Text>
       </Pressable>
-
-      {/* Error Message */}
-      {(!startDate || !dueDate) && (
-        <Text style={styles.errorText}>
-          ⚠ Please set Goal Start and Finish Date first.
-        </Text>
-      )}
     </View>
   );
 }

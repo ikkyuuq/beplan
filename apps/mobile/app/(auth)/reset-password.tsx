@@ -1,36 +1,25 @@
 import React, { useState } from "react";
 import { Text, View, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useSignIn } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { useFonts } from "expo-font";
 import { routes } from "@/routesConfig";
-import { InriaSerif_400Regular } from "@expo-google-fonts/inria-serif";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
 import VerificationScreen from "@/components/VerificationScreen";
 
+// ====================== Main Component ======================
 export default function ResetPasswordScreen() {
+  // ====================== Hooks & State ======================
   const { isLoaded, signIn } = useSignIn();
   const router = useRouter();
-
   const [emailAddress, setEmailAddress] = useState("");
   const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const [fontsLoaded, loadError] = useFonts({
-    InriaSerif_400Regular,
-  });
-
-  if (loadError) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Error loading fonts</Text>
-      </View>
-    );
-  }
-
+  // ====================== Handlers ======================
+  // Handle sending reset password request
   const onResetPress = async () => {
     setErrorMessage("");
     if (!isLoaded) return;
@@ -54,6 +43,7 @@ export default function ResetPasswordScreen() {
     }
   };
 
+  // Handle verification of the reset code
   const onVerifyPress = async () => {
     if (!isLoaded) return;
 
@@ -75,12 +65,12 @@ export default function ResetPasswordScreen() {
         );
         setErrorMessage("Unexpected error occurred. Please try again.");
       }
-    } catch (err) {
-      console.error(JSON.stringify(err, null, 2));
+    } catch (err: any) {
       setErrorMessage("Verification failed. Please try again.");
     }
   };
 
+  // ====================== Verification Screen ======================
   if (pendingVerification) {
     return (
       <VerificationScreen
@@ -102,16 +92,22 @@ export default function ResetPasswordScreen() {
     );
   }
 
+  // ====================== Render Reset Password Form ======================
   return (
     <View style={styles.container}>
+      {/* Back Button */}
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <Ionicons name="arrow-back" size={24} color="black" />
       </TouchableOpacity>
+
+      {/* Title & Description */}
       <Text style={styles.title}>Forgot your password?</Text>
       <Text style={styles.description}>
         Don’t worry. Just fill in your email and we’ll send you a link to reset
         your password.
       </Text>
+
+      {/* Email Input */}
       <Text style={styles.label}>Recovery Email Address</Text>
       <InputField
         iconName="mail-outline"
@@ -119,14 +115,19 @@ export default function ResetPasswordScreen() {
         value={emailAddress}
         onChangeText={setEmailAddress}
       />
+
+      {/* Error Message */}
       {errorMessage ? (
         <Text style={styles.errorText}>{errorMessage}</Text>
       ) : null}
+
+      {/* Send Reset Link Button */}
       <SignButton onPress={onResetPress} buttonText="Send Reset Link" />
     </View>
   );
 }
 
+// ====================== Styles ======================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -135,11 +136,14 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#F8F8F8",
   },
+
+  // Typography
   title: {
     fontFamily: "InriaSerif_400Regular",
     fontSize: 60,
     fontWeight: "normal",
     textAlign: "center",
+    color: "#2D4A2E",
   },
   description: {
     fontSize: 15,
@@ -157,12 +161,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 5,
   },
+
+  // Button
   backButton: {
     position: "absolute",
     top: 50,
     left: 20,
     padding: 10,
   },
+
+  // Loading/Error States
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
