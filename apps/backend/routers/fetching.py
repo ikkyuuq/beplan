@@ -1,22 +1,17 @@
 import os
-from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional
-
-import asyncpg
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, FastAPI, HTTPException
 from pydantic import BaseModel
-
-from database import get_db_pool
+from ..database import get_db_pool
 
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 router = APIRouter()
 
-
+#Define goals & tasks medel
 class Task(BaseModel):
     id: Optional[int] = None
     title: str
@@ -24,58 +19,112 @@ class Task(BaseModel):
     due_date: datetime
     completed: bool = False
 
+class Goal(BaseModel):
+    id: Optional[int] = None
+    title: str
+    completed: bool = False
+    category: Optional[str] = None
+    subtasks: List[Task] = []
 
-@router.get(
-    "/tasks/",
-)
+#Implement get goals from database
+@router.get("/goals/",response_model=List[Goal]) #Fetch all goals
+
+async def get_goals():
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        goals = await conn.fetch("SELECT * FROM public.goal")
+        goal_list=[]
+
+        for goal in goals:
+            subtasks = await conn.fetch("SELECT * FROM public.task WHERE goal_id=$1", goal["id"])
+            goal_list.append(
+                Goal(
+                    id = goal["id"],
+                    title = goal["title"],
+                    completed = goal["completed"],
+                    category = goal["category"],
+                    subtasks = [
+                        Task(
+                            id = subtask["id"],
+                            title = subtask["title"],
+                            completed = subtask["completed"],
+                            description = subtask["description"],
+                            due_date = subtask["due_date"],
+                        )
+
+                        for subtask in subtasks
+
+                    ],
+                )
+            )
+        return goal_list
+
+@router.get("/goals/{goal_id}", response_model=Goal) #Fetch single goal
+async def get_goal(goal_id: int):
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        goal = await conn.fetchrow("SELECT * FROM public.goal WHERE id=$1", goal_id)
+        if not goal:
+            raise HTTPException(status_code=404, detail="Goal not found")
+
+        subtasks = await conn.fetch("SELECT * FROM public.task WHERE goal_id=$1", goal_id)
+        return Goal(
+                id = goal["id"],
+                title = goal["title"],
+                completed = goal["completed"],
+                category = goal["category"],
+                subtasks = [
+                    Task(
+                        id = subtask["id"],
+                        title = subtask["title"],
+                        completed = subtask["completed"],
+                        description = subtask["description"],
+                        due_date = subtask["due_date"],
+                    )
+                    
+                    for subtask in subtasks
+
+                ],
+            )
+        
+
+#Implement get tasks from database
+@router.get("/tasks/",response_model=List[Task]) #Fetch all task
+
 async def get_tasks():
     pool = await get_db_pool()
     async with pool.acquire() as conn:
-        resp = await conn.fetch("SELECT * FROM public.task")
-        return resp
+        tasks = await conn.fetch("SELECT * FROM public.task")
+        return [
+            Task(
+                id = task["id"],
+                title = task["title"],
+                completed = task["completed"],
+                description = task["description"],
+                due_date = task["due_date"],
+            )
+
+            for task in tasks
+
+        ]
 
 
-@router.get(
-    "/tasks/{task_id}",
-)
-async def get_task(
-    task_id: int,
-):
+@router.get("/tasks/{task_id}", response_model = Task) #Fetch single task
+
+async def get_task(task_id: int):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
-        resp = await conn.fetchrow("SELECT * FROM public.task WHERE id=$1", task_id)
-    if resp is None:
+        task = await conn.fetchrow("SELECT * FROM public.task WHERE id=$1", task_id)
+    if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
-    return resp
+    return Task(
+        id=task["id"],
+        title=task["title"],
+        description=task["description"],
+        due_date=task["due_date"],
+        completed=task["completed"],
+    )
 
 
-# FIX: This is fucking shit, please recheck the neon table schema carefully
-# You can pass response_model if want to validate the result, but without it's ok.
-#
-# @router.put("/tasks/{task_id}", response_model=Task)
-# async def update_task(task_id: int, updated_task: Task, db=Depends(get_db)):
-#     async with db.acquire() as conn:
-#         result = await conn.execute(
-#             """
-#             UPDATE tasks SET title=$1, description=$2, due_date=$3, completed=$4
-#             WHERE id=$5
-#         """,
-#             updated_task.title,
-#             updated_task.description,
-#             updated_task.due_date,
-#             updated_task.completed,
-#             task_id,
-#         )
-#     if result == "UPDATE 0":
-#         raise HTTPException(status_code=404, detail="Task not found")
-#     return updated_task
-#
-#
-# @router.delete("/tasks/{task_id}", status_code=204)
-# async def delete_task(task_id: int, db=Depends(get_db)):
-#     async with db.acquire() as conn:
-#         result = await conn.execute("DELETE FROM tasks WHERE id=$1", task_id)
-#     if result == "DELETE 0":
-#         raise HTTPException(status_code=404, detail="Task not found")
-#     return {"message": "Task deleted"}
-#
+app = FastAPI()
+app.include_router(router)
