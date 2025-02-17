@@ -58,7 +58,10 @@ async def get_goals_today(
             SELECT ag.*, g.*
             FROM public.assigned_goal ag
             JOIN public.goal g ON ag.goal_id = g.id
-            WHERE ag.user_id = $1 AND ag.start_date <= $2 AND ag.due_date >= $2
+            WHERE ag.user_id = $1 
+            AND ag.status = 'pending'
+            AND ag.start_date <= $2 
+            AND ag.due_date >= $2
             """,
             str(user_id),
             today,
@@ -72,7 +75,9 @@ async def get_goals_today(
                 SELECT at.*, ati.interval_date
                 FROM public.assigned_task at
                 JOIN public.assigned_task_interval ati ON at.id = ati.assigned_task_id
-                WHERE at.assigned_goal_id = $1 AND ati.interval_date = $2
+                WHERE at.assigned_goal_id = $1 
+                AND at.status = 'pending'
+                AND ati.interval_date = $2
                 """,
                 ag["id"],
                 today,
