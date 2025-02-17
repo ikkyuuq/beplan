@@ -124,7 +124,3 @@ async def get_task(task_id: int):
         due_date=task["due_date"],
         completed=task["completed"],
     )
-
-
-app = FastAPI()
-app.include_router(router)
