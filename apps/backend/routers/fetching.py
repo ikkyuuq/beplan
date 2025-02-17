@@ -116,6 +116,12 @@ async def get_goals_today(
         return goals  # Return the list of goals (filtered to include only those with tasks)
 
 
+# NOTE: Be sure to communicate with Korn and the team to not repeat the same work
+# or same functionality routes
+
+# NOTE: This might be useful for the analysis page to show the user's progress
+# but it's still need more work to be done
+
 # Implement get goals from database
 # @router.get("/goals/", response_model=List[Goal])  # Fetch all goals
 # async def get_goals():
@@ -149,6 +155,9 @@ async def get_goals_today(
 #         return goal_list
 #
 #
+
+# NOTE: This might be useful for the analysis page to show the user's progress
+
 # @router.get("/goals/{goal_id}", response_model=Goal)  # Fetch single goal
 # async def get_goal(goal_id: int):
 #     pool = await get_db_pool()
