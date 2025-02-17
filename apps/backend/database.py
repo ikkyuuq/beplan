@@ -16,7 +16,7 @@ db_pool: asyncpg.Pool
 async def init_db():
     """Initialize the connection pool"""
     global db_pool
-    db_pool = await asyncpg.create_pool(DATABASE_URL)
+    db_pool = await asyncpg.create_pool(DATABASE_URL, statement_cache_size=0)
 
 
 async def close_db():
