@@ -18,7 +18,6 @@ export function useProtectedRoute() {
       const isPublicPage = routes.public.includes(currentPath);
       const isPrivatePage = routes.private.includes(currentPath);
 
-      // ✅ ตรวจสอบว่า Route นี้อยู่ใน `routesConfig.ts` หรือไม่
       const isKnownRoute = isPublicPage || isPrivatePage;
 
       // ====================== Redirect Logic Based on Authentication Status ======================

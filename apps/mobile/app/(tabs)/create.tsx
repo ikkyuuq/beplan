@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,26 +8,13 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
-import { useState, useEffect } from "react";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import TaskModal from "@/components/TaskModal";
 import CalendarPicker from "@/components/CalendarPicker";
-
-// ====================== Type Definitions ======================
-type Task = {
-  title: string;
-  description?: string;
-  type: "normal" | "daily" | "weekly" | "monthly";
-  selectedDates?: string[];
-  selectedDaysOfWeek?: number[];
-  monthlyMode?: "start" | "mid" | "end";
-};
+import { Task } from "@/types/taskTypes";
 
 // ====================== Main Component ======================
 export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
-  const router = useRouter();
-
   // ====================== State Hooks ======================
   const [goalTitle, setGoalTitle] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
@@ -39,54 +27,89 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
 
   // ====================== Handlers ======================
   const handleDateChange = (newDate: string, type: "start" | "due") => {
+    if (type === "due" && newDate < startDate) {
+      return Alert.alert(
+        "Invalid Date",
+        "Finish date cannot be before the start date."
+      );
+    }
     if (taskList.length > 0) {
-      Alert.alert(
+      return Alert.alert(
         "Clear Tasks",
-        "Changing the date will remove all existing tasks. Are you sure you want to continue?",
+        "Changing the date will remove all existing tasks. Continue?",
         [
           { text: "Cancel", style: "cancel" },
           {
             text: "Continue",
             style: "destructive",
-            onPress: () => {
-              if (type === "start") setStartDate(newDate);
-              else setDueDate(newDate);
-              setTaskList([]);
-            },
+            onPress: () => updateDate(newDate, type, true),
           },
         ]
       );
-    } else {
-      if (type === "start") setStartDate(newDate);
-      else setDueDate(newDate);
     }
+    updateDate(newDate, type);
+  };
+
+  const updateDate = (
+    newDate: string,
+    type: "start" | "due",
+    clearTasks = false
+  ) => {
+    if (type === "start") {
+      setStartDate(newDate);
+      if (newDate > dueDate) setDueDate("");
+    } else {
+      setDueDate(newDate);
+    }
+
+    if (clearTasks) setTaskList([]);
   };
 
   const addTask = (task: Task) => {
-    if (editingIndex !== null) {
-      const updatedTasks = [...taskList];
-      updatedTasks[editingIndex] = task;
-      setTaskList(updatedTasks);
-      setEditingIndex(null);
-    } else {
-      setTaskList([...taskList, task]);
-    }
+    // .map() อ่านง่ายกว่า เพราะไม่ต้องสร้าง const updatedTasks
+    setTaskList(
+      (prevTasks) =>
+        editingIndex !== null
+          ? prevTasks.map((t, index) => (index === editingIndex ? task : t)) // แก้ไข Task
+          : [...prevTasks, task] // เพิ่ม Task ใหม่
+    );
+    setEditingIndex(null);
   };
 
-  const getTaskColor = (type: string) => {
-    switch (type) {
-      case "daily":
-        return "#4CAF50";
-      case "weekly":
-        return "#FFC107";
-      case "monthly":
-        return "#FF5733";
-      default:
-        return "#888";
+  const taskColors: Record<string, string> = {
+    daily: "#4CAF50",
+    weekly: "#FFC107",
+    monthly: "#FF5733",
+    normal: "#888",
+  };
+
+  const getTaskColor = (type: string) => taskColors[type] || "#888";
+
+  // ====================== Submit Handler ======================
+  const handleSubmit = () => {
+    if (!goalTitle.trim()) {
+      Alert.alert("Missing Title", "Please enter a goal title.");
+      return;
     }
+
+    if (!startDate || !dueDate) {
+      Alert.alert("Missing Dates", "Please set both start and finish dates.");
+      return;
+    }
+    console.log(
+      "📌 Goal Created:",
+      JSON.stringify(
+        { goalTitle, startDate, dueDate, tasks: taskList },
+        null,
+        2
+      )
+    );
   };
 
   // ====================== Effects ======================
+  {
+    /* Check if initialGoal exists */
+  }
   useEffect(() => {
     if (initialGoal) {
       setGoalTitle(initialGoal.title);
@@ -96,6 +119,9 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
     }
   }, [initialGoal]);
 
+  {
+    /* Log Goal Data every 5 seconds */
+  }
   useEffect(() => {
     const interval = setInterval(() => {
       const goalData = {
@@ -130,13 +156,17 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
         style={styles.input}
       />
 
-      {/* Task List */}
+      {/* ====================== Task List Section ====================== */}
       {taskList.length > 0 && (
         <View style={styles.taskListContainer}>
+          {/* Title */}
           <Text style={styles.sectionTitle}>Tasks</Text>
+
+          {/* Task List */}
           <ScrollView style={styles.taskList} nestedScrollEnabled>
             {taskList.map((task, index) => (
               <View key={index} style={styles.taskItem}>
+                {/* Task Icon (แสดงประเภทของ Task) */}
                 <View
                   style={[
                     styles.taskIcon,
@@ -147,6 +177,8 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
                     {task.type.charAt(0).toUpperCase()}
                   </Text>
                 </View>
+
+                {/* Task Content (ชื่อและรายละเอียดของ Task) */}
                 <View style={styles.taskContent}>
                   <Text style={styles.taskText}>{task.title}</Text>
                   {task.description && (
@@ -155,7 +187,10 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
                     </Text>
                   )}
                 </View>
+
+                {/* Task Actions (ปุ่มแก้ไข & ลบ) */}
                 <View style={styles.taskActions}>
+                  {/* Edit Task Btn */}
                   <Pressable
                     onPress={() => {
                       setEditingIndex(index);
@@ -164,6 +199,8 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
                   >
                     <Text style={styles.editIcon}>✏️</Text>
                   </Pressable>
+
+                  {/* Delete Task Btn */}
                   <Pressable
                     onPress={() =>
                       setTaskList(taskList.filter((_, i) => i !== index))
@@ -186,9 +223,20 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
             setTaskModalVisible(true);
           }
         }}
-        style={styles.addTaskButton}
+        style={[
+          styles.addTaskButton,
+          !(startDate && dueDate) && styles.disabledButton,
+        ]}
+        disabled={!(startDate && dueDate)}
       >
-        <Text style={styles.addTaskButtonText}>Add task</Text>
+        <Text
+          style={[
+            styles.addTaskButtonText,
+            !(startDate && dueDate) && styles.disabledButtonText,
+          ]}
+        >
+          Add task
+        </Text>
       </Pressable>
 
       {/* Error Message */}
@@ -200,6 +248,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
 
       {/* Date Pickers */}
       <View style={styles.dateContainer}>
+        {/* Start Date Picker */}
         <View style={styles.dateBox}>
           <Text style={styles.inputLabel}>Start Date</Text>
           <Pressable
@@ -212,6 +261,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
             <Feather name="calendar" size={20} color="#fff" />
           </Pressable>
         </View>
+        {/* Finish Date Picker */}
         <View style={styles.dateBox}>
           <Text style={styles.inputLabel}>Finish Date</Text>
           <Pressable
@@ -273,19 +323,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       />
 
       {/* Create Button */}
-      <Pressable
-        style={styles.createButton}
-        onPress={() =>
-          console.log(
-            "📌 Goal Created:",
-            JSON.stringify(
-              { goalTitle, startDate, dueDate, tasks: taskList },
-              null,
-              2
-            )
-          )
-        }
-      >
+      <Pressable style={styles.createButton} onPress={handleSubmit}>
         <Feather name="plus-circle" size={20} color="#fff" />
         <Text style={styles.createButtonText}>Create your path</Text>
       </Pressable>
@@ -302,6 +340,8 @@ const styles = StyleSheet.create({
     paddingTop: 80,
     paddingHorizontal: 40,
   },
+
+  // Typography
   title: {
     color: "#fff",
     fontSize: 40,
@@ -314,22 +354,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 6,
   },
-  input: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 25,
-    marginTop: 5,
-    marginBottom: 20,
-    fontSize: 15,
-  },
-  addTaskButton: {
-    borderWidth: 1,
-    borderColor: "#fff",
-    padding: 12,
-    borderRadius: 10,
-    alignItems: "center",
-    marginBottom: 10,
-  },
   addTaskButtonText: {
     color: "#fff",
     fontSize: 16,
@@ -340,6 +364,57 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     textAlign: "center",
   },
+  taskText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  taskDescription: {
+    color: "#AAA",
+    fontSize: 14,
+    marginTop: 4,
+  },
+  createButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    marginLeft: 10,
+  },
+  sectionTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+
+  // Input
+  input: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 25,
+    marginTop: 5,
+    marginBottom: 20,
+    fontSize: 15,
+  },
+
+  // Buttons
+  addTaskButton: {
+    borderWidth: 1,
+    borderColor: "#fff",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  createButton: {
+    backgroundColor: "#8D8D8D",
+    padding: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+  },
+
+  // Task List
   taskListContainer: {
     flex: 1,
     maxHeight: 180,
@@ -376,16 +451,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 10,
   },
-  taskText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  taskDescription: {
-    color: "#AAA",
-    fontSize: 14,
-    marginTop: 4,
-  },
   taskActions: {
     flexDirection: "row",
     gap: 8,
@@ -398,6 +463,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#FF4444",
   },
+  disabledButton: {
+    backgroundColor: "#333",
+  },
+  disabledButtonText: {
+    color: "darkgray",
+  },
+
+  // Date Input
   dateContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -414,23 +487,5 @@ const styles = StyleSheet.create({
     backgroundColor: "#222",
     padding: 14,
     borderRadius: 10,
-  },
-  createButton: {
-    backgroundColor: "#8D8D8D",
-    padding: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  createButtonText: {
-    color: "#fff",
-    fontSize: 16,
-  },
-  sectionTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 10,
   },
 });

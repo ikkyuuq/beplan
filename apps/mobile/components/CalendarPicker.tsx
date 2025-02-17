@@ -59,14 +59,24 @@ export default function CalendarPicker({
   }));
 
   // ====================== Effects ======================
+  {
+    /* Control Modal Animation */
+  }
   useEffect(() => {
     modalTranslateY.value = visible ? withSpring(0) : withSpring(300);
   }, [visible]);
 
+  {
+    /* Reset date when Modal is opened */
+  }
+  // ป้องกันปัญหาว่า ถ้า Modal ถูกเปิดซ้ำ selectedDates อาจค้างจากค่าครั้งก่อน
   useEffect(() => {
     if (visible) setSelectedDates(initialDates);
   }, [visible]);
 
+  {
+    /* Update totalDays */
+  }
   useEffect(() => {
     setTotalDays(selectedDates.length);
   }, [selectedDates]);
@@ -88,15 +98,25 @@ export default function CalendarPicker({
 
   // ====================== Date Selection Handlers ======================
   const toggleDateSelection = (date: string) => {
-    if (date === otherSelectedDate) return;
+    // ป้องกันการเลือกวันที่ชนกับอีกโหมด
+    if (date === otherSelectedDate) {
+      return;
+    }
 
-    setSelectedDates((prev) =>
-      singleSelect
-        ? [date]
-        : prev.includes(date)
-        ? prev.filter((d) => d !== date)
-        : [...prev, date]
-    );
+    setSelectedDates((prev) => {
+      // ถ้าเป็นโหมดเลือกวันเดียว → แทนที่ค่าเดิม
+      if (singleSelect) {
+        return [date];
+      }
+
+      // ถ้ากดเลือกวันที่มีอยู่แล้ว → เอาออกจากลิสต์
+      if (prev.includes(date)) {
+        return prev.filter((d) => d !== date);
+      }
+
+      // ถ้าเป็นวันใหม่ → เพิ่มเข้าไปในลิสต์
+      return [...prev, date];
+    });
   };
 
   // ====================== Disabled Dates Generation ======================
@@ -131,16 +151,18 @@ export default function CalendarPicker({
   };
 
   // ====================== Calendar Markings ======================
+  // ใช้ spread operator (...) เเพ้ลดการ แก้ไขค่าของ Object โดยตรง ซึ่งไม่ดีสำหรับ Functional Programming
   const markedDates = {
-    ...createDisabledDates(),
+    ...createDisabledDates(), // เพิ่มวันที่ที่ถูกปิด (Disabled Dates)
     ...selectedDates.reduce(
       (acc, date) => ({
         ...acc,
-        [date]: { selected: true, selectedColor: highlightColor },
+        [date]: { selected: true, selectedColor: highlightColor }, // เพิ่มสีไฮไลต์ของวันที่เลือก
       }),
       {}
     ),
     ...(otherSelectedDate && {
+      // ใช้ `spread` เพื่อรวม `otherSelectedDate` เฉพาะเมื่อมีค่า
       [otherSelectedDate]: {
         selected: true,
         selectedColor: otherHighlightColor,
@@ -153,7 +175,9 @@ export default function CalendarPicker({
     <Modal isVisible={visible} onBackdropPress={onClose}>
       <Animated.View style={[styles.modalContent, modalAnimatedStyle]}>
         <View style={styles.calendarContainer}>
+          {/* หัวข้อ Modal */}
           <Text style={styles.modalTitle}>{title}</Text>
+          {/* ปฏิทินหลัก */}
           <Calendar
             minDate={finalMinDate}
             maxDate={finalMaxDate}
@@ -161,10 +185,11 @@ export default function CalendarPicker({
               toggleDateSelection(day.dateString)
             }
             markedDates={markedDates}
-            disableAllTouchEventsForDisabledDays
+            disableAllTouchEventsForDisabledDays={false}
+            enableSwipeMonths={true}
           />
         </View>
-
+        {/* แสดงจำนวนวันที่เลือก (เฉพาะโหมดหลายวัน) */}
         {!singleSelect && (
           <Animated.Text style={styles.selectedDatesText}>
             Total: {totalDays} days
@@ -172,9 +197,11 @@ export default function CalendarPicker({
         )}
 
         <View style={styles.buttonContainer}>
+          {/* ปุ่ม Cancel */}
           <Pressable style={styles.cancelButton} onPress={onClose}>
             <Text style={styles.buttonText}>Cancel</Text>
           </Pressable>
+          {/* ปุ่ม Confirm */}
           <Pressable
             style={styles.confirmButton}
             onPress={() => {
@@ -192,17 +219,22 @@ export default function CalendarPicker({
 
 // ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Modal Container
   modalContent: {
     width: "90%",
     alignSelf: "center",
     backgroundColor: "transparent",
   },
+
+  // Calendar
   calendarContainer: {
     backgroundColor: "#fff",
     borderRadius: 10,
     padding: 10,
     marginBottom: 10,
   },
+
+  // Typography
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
@@ -215,6 +247,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 10,
   },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+
+  // Buttons
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -235,10 +274,5 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 8,
     alignItems: "center",
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "500",
   },
 });
