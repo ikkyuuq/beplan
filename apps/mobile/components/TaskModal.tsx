@@ -8,6 +8,7 @@ import {
   Pressable,
   StyleSheet,
   TouchableWithoutFeedback,
+  Alert,
 } from "react-native";
 import Modal from "react-native-modal";
 import CalendarPicker from "./CalendarPicker";
@@ -24,9 +25,9 @@ import Animated, {
   useAnimatedStyle,
 } from "react-native-reanimated";
 import { Task } from "@/types/taskTypes";
+import uuid from "react-native-uuid";
 
-// ====================== Type Definitions ======================
-
+/// ====================== Type Definitions ======================
 type TaskModalProps = {
   visible: boolean;
   onClose: () => void;
@@ -34,6 +35,7 @@ type TaskModalProps = {
   initialTask?: Task;
   startDate: string;
   dueDate: string;
+  goalId: string;
 };
 
 // ====================== Main Component ======================
@@ -42,6 +44,7 @@ export default function TaskModal({
   initialTask,
   startDate,
   dueDate,
+  goalId,
   onClose,
   onSave,
 }: TaskModalProps) {
@@ -77,10 +80,8 @@ export default function TaskModal({
   const toggleDayOfWeek = (dayIndex: number) => {
     setSelectedDaysOfWeek((prev) => {
       if (prev.includes(dayIndex)) {
-        // ถ้ากดซ้ำ → เอาวันออกจากลิสต์
         return prev.filter((d) => d !== dayIndex);
       } else {
-        // ถ้ายังไม่มี → เพิ่มวันเข้าไป
         return [...prev, dayIndex];
       }
     });
@@ -92,20 +93,34 @@ export default function TaskModal({
   const handleSegmentPress = (type: "daily" | "weekly" | "monthly") => {
     if (isRepeat) setTaskType(type);
   };
+
   {
     /* Select a day in the calendar */
   }
   const handleDateConfirm = (dates: string[]) => {
     setSelectedDates(dates);
   };
+
   {
     /* Save the Task and close the Modal. */
   }
   const handleSave = () => {
+    if (!taskTitle.trim()) {
+      Alert.alert("Missing Task Name", "Please enter a task name.");
+      return;
+    }
+  
+    if (selectedDates.length === 0) {
+      Alert.alert("Missing Dates", "Please select a date for the Task.");
+      return;
+    }
+
     let taskData: Task = {
+      id: initialTask?.id || (uuid.v4() as string), 
       title: taskTitle,
       description: taskDescription,
       type: "normal",
+      goalId,
     };
 
     if (isRepeat) {
@@ -127,7 +142,7 @@ export default function TaskModal({
     onClose();
   };
 
-  // ====================== Effects ======================
+  // ====================== Effects ======================  // 
   {
     /* 
     - Reset State value every time visible or initialTask ​​changes
@@ -366,7 +381,7 @@ export default function TaskModal({
                 minDate={startDate}
                 maxDate={dueDate}
               />
- 
+
               {/* Task Type Segments */}
               <View
                 style={[styles.segmentContainer, !isRepeat && styles.disabled]}

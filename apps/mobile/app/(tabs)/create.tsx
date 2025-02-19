@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,10 +12,16 @@ import { Feather } from "@expo/vector-icons";
 import TaskModal from "@/components/TaskModal";
 import CalendarPicker from "@/components/CalendarPicker";
 import { Task } from "@/types/taskTypes";
+import uuid from "react-native-uuid";
 
-// ====================== Main Component ======================
+/// ====================== Main Component ======================
 export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   // ====================== State Hooks ======================
+  const goalId = useMemo(
+    () => initialGoal?.id || (uuid.v4() as string),
+    [initialGoal?.id]
+  );
+
   const [goalTitle, setGoalTitle] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>("");
@@ -66,13 +72,19 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   };
 
   const addTask = (task: Task) => {
-    // .map() อ่านง่ายกว่า เพราะไม่ต้องสร้าง const updatedTasks
+    const newTask = {
+      ...task,
+      id: uuid.v4() as string,
+      goalId, // เปลี่ยนเป็น `goalId` single value
+    };
+
     setTaskList(
       (prevTasks) =>
         editingIndex !== null
-          ? prevTasks.map((t, index) => (index === editingIndex ? task : t)) // แก้ไข Task
-          : [...prevTasks, task] // เพิ่ม Task ใหม่
+          ? prevTasks.map((t, index) => (index === editingIndex ? newTask : t)) // แก้ไข Task
+          : [...prevTasks, newTask] // เพิ่ม Task ใหม่
     );
+
     setEditingIndex(null);
   };
 
@@ -96,14 +108,16 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       Alert.alert("Missing Dates", "Please set both start and finish dates.");
       return;
     }
-    console.log(
-      "📌 Goal Created:",
-      JSON.stringify(
-        { goalTitle, startDate, dueDate, tasks: taskList },
-        null,
-        2
-      )
-    );
+
+    const newGoal = {
+      id: goalId,
+      title: goalTitle,
+      startDate,
+      dueDate,
+    };
+
+    console.log("📌 Goal Created:", JSON.stringify(newGoal, null, 2));
+    console.log("📌 Task List:", JSON.stringify(taskList, null, 2));
   };
 
   // ====================== Effects ======================
@@ -112,10 +126,19 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   }
   useEffect(() => {
     if (initialGoal) {
+      // ตั้งค่า Goal Title, Start Date, และ Due Date จาก initialGoal
       setGoalTitle(initialGoal.title);
       setStartDate(initialGoal.startDate);
       setDueDate(initialGoal.dueDate);
-      setTaskList(initialGoal.tasks || []);
+
+      // ป้องกันข้อผิดพลาดที่เกิดจาก `initialGoal.tasks` เป็น undefined
+      const updatedTasks = (initialGoal.tasks ?? []).map((task: Task) => ({
+        ...task,
+        goalId: initialGoal.id, // เปลี่ยนเป็น single `goalId`
+      }));
+
+      // อัปเดต Task List ใน State
+      setTaskList(updatedTasks);
     }
   }, [initialGoal]);
 
@@ -125,17 +148,20 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   useEffect(() => {
     const interval = setInterval(() => {
       const goalData = {
+        id: goalId,
         title: goalTitle,
         startDate: startDate || "Not Set",
         dueDate: dueDate || "Not Set",
-        tasks: taskList.map((task) => ({
-          ...task,
-          description: task.description || "No description",
-          selectedDates: task.selectedDates || [],
-          selectedDaysOfWeek: task.selectedDaysOfWeek || [],
-        })),
       };
+
+      const taskData = taskList.map((task) => ({
+        ...task,
+        description: task.description || "No description",
+        selectedDates: task.selectedDates || [],
+        selectedDaysOfWeek: task.selectedDaysOfWeek || [],
+      }));
       console.log("📌 Current Goal Data:", JSON.stringify(goalData, null, 2));
+      console.log("📌 Task List:", JSON.stringify(taskData, null, 2));
     }, 5000);
     return () => clearInterval(interval);
   }, [goalTitle, startDate, dueDate, taskList]);
@@ -287,6 +313,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
         initialTask={editingIndex !== null ? taskList[editingIndex] : undefined}
         startDate={startDate}
         dueDate={dueDate}
+        goalId={goalId}
       />
 
       <CalendarPicker
