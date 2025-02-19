@@ -4,7 +4,7 @@ from enum import Enum
 from typing import List, Optional
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query,FastAPI
 from pydantic import BaseModel
 
 from database import get_db_pool
@@ -13,6 +13,7 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 router = APIRouter()
+app = FastAPI()
 
 
 class GoalStatus(str, Enum):
@@ -43,7 +44,6 @@ class Goal(BaseModel):
     start_date: date
     due_date: date
     tasks: List[Task] = []
-
 
 @router.get("/goals")
 async def get_goals_today(
@@ -115,7 +115,6 @@ async def get_goals_today(
 
         return goals  # Return the list of goals (filtered to include only those with tasks)
 
-
 # NOTE: Be sure to communicate with Korn and the team to not repeat the same work
 # or same functionality routes
 
@@ -123,38 +122,36 @@ async def get_goals_today(
 # but it's still need more work to be done
 
 # Implement get goals from database
-# @router.get("/goals/", response_model=List[Goal])  # Fetch all goals
-# async def get_goals():
-#     pool = await get_db_pool()
-#     async with pool.acquire() as conn:
-#         goals = await conn.fetch("SELECT * FROM public.goal")
-#         goal_list = []
-#
-#         for goal in goals:
-#             subtasks = await conn.fetch(
-#                 "SELECT * FROM public.task WHERE goal_id=$1", goal["id"]
-#             )
-#             goal_list.append(
-#                 Goal(
-#                     id=goal["id"],
-#                     title=goal["title"],
-#                     completed=goal["status"],
-#                     category=goal["category"],
-#                     subtasks=[
-#                         Task(
-#                             id=subtask["id"],
-#                             title=subtask["title"],
-#                             completed=subtask["status"],
-#                             description=subtask["description"],
-#                             due_date=subtask["due_date"],
-#                         )
-#                         for subtask in subtasks
-#                     ],
-#                 )
-#             )
-#         return goal_list
-#
-#
+@router.get("/goal/", response_model=List[Goal])  # Fetch all goals
+async def get_goals():
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        goals = await conn.fetch("SELECT * FROM public.goal")
+        goal_list = []
+
+        for goal in goals:
+            subtasks = await conn.fetch(
+                "SELECT * FROM public.task WHERE goal_id=$1", goal["id"]
+            )
+            goal_list.append(
+                Goal(
+                    id=goal["id"],
+                    title=goal["title"],
+                    completed=goal["status"],
+                    category=goal["category"],
+                    subtasks=[
+                        Task(
+                            id=subtask["id"],
+                            title=subtask["title"],
+                            completed=subtask["status"],
+                            description=subtask["description"],
+                            due_date=subtask["due_date"],
+                        )
+                        for subtask in subtasks
+                    ],
+                )
+            )
+        return goal_list
 
 # NOTE: This might be useful for the analysis page to show the user's progress
 
