@@ -31,7 +31,7 @@ export const useWarmUpBrowser = () => {
 WebBrowser.maybeCompleteAuthSession(); // Handle any pending authentication sessions
 
 // ====================== Authentication & Navigation Hooks ======================
-export default function Page() {
+export default function SignInScreen() {
   useWarmUpBrowser();
 
   const { signIn, isLoaded, setActive } = useSignIn();
