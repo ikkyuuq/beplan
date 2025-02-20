@@ -1,0 +1,201 @@
+/* Layout หลักของ Admin */
+.admin-container {
+    display: flex;
+    height: 100vh;
+    background-color: #161616;
+  }
+  
+  /* Sidebar */
+  .sidebar {
+    width: 250px;
+    margin-top: 40px;
+    background: #333;
+    color: white;
+    padding: 20px;
+    height: 100vh;
+  }
+  
+  .sidebar h2 {
+    text-align: center;
+  }
+  
+  .sidebar ul {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .sidebar li {
+    padding: 10px;
+    cursor: pointer;
+  }
+  
+  .sidebar li:hover {
+    background: #555;
+  }
+  
+  /* Dashboard Content */
+  .dashboard-content {
+    margin: 60px auto;
+    flex: 1;
+    padding: 20px;
+  }
+  
+  .create-btn {
+    background: #28a745;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .create-btn:hover {
+    background: #218838;
+  }
+  
+  /* Table */
+  .template-table {
+    width: 90%;
+    max-width: 1000px;
+    margin: 50px auto;
+    border-collapse: collapse;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #222;
+    box-shadow: 0px 4px 10px rgba(255, 255, 255, 0.1);
+}
+  
+.template-table th, .template-table td {
+    border: 1px solid #444;
+    padding: 15px;
+    text-align: center;
+}
+  
+.template-table th {
+    background: #333;
+    color: white;
+    font-size: 1rem;
+}
+  
+.edit-btn, .delete-btn {
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+  
+.template-img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 5px;
+  }
+  
+  .preview-img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    margin-top: 10px;
+  }
+  
+  .edit-btn {
+    background: #ffc107;
+    color: black;
+  }
+  
+  .delete-btn {
+    background: #dc3545;
+    color: white;
+  }
+  
+  
+  /* Modal */
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .modal-content {
+    background: white;
+    padding: 20px;
+    width: 400px;
+    text-align: center;
+    border-radius: 5px;
+  }
+  
+  .modal-buttons {
+    margin-top: 15px;
+  }
+  
+  .save-btn {
+    background: #007bff;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .cancel-btn {
+    background: #6c757d;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .admin-navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #222;
+    color: white;
+    padding: 10px 20px;
+}
+
+.navbar-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.navbar-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-icon {
+    position: relative;
+    right: 50px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: white;
+}
+
+.user-name {
+    position: relative;
+    right: 50px;
+    font-size: 1rem;
+}
+
+.logout-btn {
+    position: relative;
+    right: 50px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.logout-btn:hover {
+    background: #c0392b;
+}
+
+  
