@@ -7,7 +7,7 @@ from fastapi import FastAPI
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("postgresql://neondb_owner:npg_pmkZ3MYE9wKe@ep-bold-mode-a8y18mpn-pooler.eastus2.azure.neon.tech/neondb?sslmode=require")
 
 app = FastAPI()
 
