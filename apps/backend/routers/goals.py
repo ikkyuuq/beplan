@@ -1,161 +1,131 @@
-from fastapi import APIRouter
+from fastapi import FastAPI, APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from enum import Enum
-from datetime import date,datetime,timedelta
+from datetime import date
 from typing import List, Optional
-import uuid
-import calendar
 from fastapi.encoders import jsonable_encoder
+from dotenv import load_dotenv
+import databases
+import os
+load_dotenv()
+# ตั้งค่าการเชื่อมต่อกับฐานข้อมูล Neon
+#DATABASE_URL = "postgresql://neondb_owner:npg_5TynrRlFLPx8@ep-autumn-poetry-a1ijhfkw-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&options=-c%20search_path%3Dmydb"
+DATABASE_URL = os.getenv("DATABASE_URL")
+database = databases.Database(DATABASE_URL)
 
+app = FastAPI()
 
+# การตั้งค่า Router สำหรับการเชื่อมต่อ API
 router = APIRouter()
+
+@app.on_event("startup")
+async def startup():
+    await database.connect()
+    await database.execute("SET search_path TO mydb")  # กำหนด search_path เป็น mydb
+
+@app.on_event("shutdown")
+async def shutdown():
+    await database.disconnect()
+
+@app.get("/test_connection")
+async def test_connection():
+    query = "SELECT 1"
+    result = await database.fetch_one(query)
+    if result:
+        return {"message": "Database connection successful"}
+    else:
+        return {"message": "Database connection failed"}
+
+@app.get("/test")
+async def test():
+    query = "SELECT * from task"  # เปลี่ยนเป็นชื่อของตาราง assigned_goal
+    result = await database.fetch_all(query)
+    if result:
+        return {"data": result}
+    else:
+        return {"message": "No data found"}
+
 
 # ตัวเลือกสำหรับ Repeat Mode
 class RepeatMode(str, Enum):
-    daily = "Daily"
-    weekly = "Weekly"
-    monthly = "Monthly"
-
+    daily = "daily"
+    weekly = "weekly"
+    monthly = "monthly"
+  
 # ตัวเลือกเมื่อเลือก Monthly    
 class MonthlyOption(str, Enum):
     start = "START"
     mid = "MID"
     end = "END"
 
-# รูปแบบข้อมูล Task ที่รับจากฟอร์ม
+current_id = 1
+
+def generate_id():
+    global current_id
+    id = current_id
+    current_id += 1
+    return id
+
+
 class TaskCreate(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # สร้าง id อัตโนมัติ
+    id: int = Field(default_factory=generate_id)  
     title: str = Field(..., example="xxxx")
     repeat_enabled: bool = False
     repeat: Optional[RepeatMode] = None
+    days: Optional[List[str]] = None  
+    monthly_option: Optional[MonthlyOption] = None
+    task_date_new: Optional[date] = None  
     
-    # เงื่อนไขเพิ่มเติม
-    days: Optional[List[str]] = None  # สำหรับ Weekly เท่านั้น
-    monthly_option: Optional[MonthlyOption] = None  # สำหรับ Monthly เท่านั้น
-    start_date: Optional[date] = None  # เพิ่ม start_date ใน Task
 
-    # ตรวจสอบเงื่อนไขการใช้งาน
-    def validate_task(self):
-        if not self.repeat_enabled:
-            # ถ้าปิด repeat ห้ามมีค่า repeat, days, monthly_option
-            if self.repeat or self.days or self.monthly_option:
-                raise ValueError("ไม่สามารถกำหนด repeat, days หรือ monthly_option ได้ เมื่อปิด repeat")
-        else:
-            # ถ้าเปิด repeat ต้องมี repeat mode
-            if not self.repeat:
-                raise ValueError("ต้องระบุ repeat mode ถ้าเปิดใช้งาน repeat")
-            if self.repeat == RepeatMode.weekly and not self.days:
-                raise ValueError("ต้องระบุ days เมื่อเลือก Weekly")
-            if self.repeat == RepeatMode.monthly and not self.monthly_option:
-                raise ValueError("ต้องระบุ monthly_option เมื่อเลือก Monthly")
-
-
-# รูปแบบข้อมูล Topic 
-class TopicCreate(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # เพิ่ม ID
-    topic: str
+class goalCreate(BaseModel):
+    id: int = Field(default_factory=generate_id)
+    goal: str
     start_date: Optional[date] = Field(None, example="2025-02-01")
     finish_date: Optional[date] = Field(None, example="2025-12-31")
     tasks: List[TaskCreate] = None
+    user_id: int  
 
-def calculate_monthly_date_from_range(start_date: date, finish_date: date, monthly_option: MonthlyOption) -> date:
-    if not start_date or not finish_date:
-        raise ValueError("Start date and Finish date must be provided")
-    
-    # คำนวณวันที่ 1 ของเดือนจาก start_date
-    first_day_of_month = datetime(start_date.year, start_date.month, 1)
-    
-    # คำนวณวันที่กลางของเดือน
-    mid_day = first_day_of_month + timedelta(days=calendar.monthrange(start_date.year, start_date.month)[1] // 2)
-    
-    # คำนวณวันที่สุดท้ายของเดือนจาก finish_date
-    last_day_of_month = datetime(finish_date.year, finish_date.month, calendar.monthrange(finish_date.year, finish_date.month)[1])
-    
-    if monthly_option == MonthlyOption.start:
-        return first_day_of_month.date()
-    elif monthly_option == MonthlyOption.mid:
-        return mid_day.date()
-    elif monthly_option == MonthlyOption.end:
-        return last_day_of_month.date()
-
-# เก็บข้อมูลไว้ใน memory
-tasks_db: List[TopicCreate] = []
-
-# POST /tasks → เพิ่ม Task ใหม่
-@router.post("/tasks")
-def create_task(topic: TopicCreate):
+@router.post("/goals")
+async def create_goal(goal: goalCreate):
     try:
-        # คำนวณวันที่สำหรับ Task ที่มี repeat เป็น Monthly
-        for task in topic.tasks:
-            if task.repeat == RepeatMode.monthly and task.monthly_option:
-                task_date = calculate_monthly_date_from_range(topic.start_date, topic.finish_date, task.monthly_option)
-                # อัปเดต start_date ของ Task ที่คำนวณแล้ว
-                task.start_date = task_date  
-            task.validate_task()
         
-        tasks_db.append(topic)
-        return JSONResponse(content={"status": "success", "message": "Topic with tasks created successfully"})
+        query_goal = """
+        INSERT INTO goal (title, type, category, created_at, updated_at)
+        VALUES (:title, :type, :category, DEFAULT, DEFAULT) RETURNING id
+        """
+        goal_values = {
+            "title": goal.goal,  
+            "type": "test",  
+            "category": None,
+        }
+        goal_id = await database.fetch_one(query_goal, values=goal_values)
+
+        if not goal_id:
+            raise ValueError("ไม่สามารถเพิ่ม goal ได้")
+
+        # เพิ่ม Task ลงในตาราง tasks
+        query_task = """
+        INSERT INTO task (title, description, goal_id, created_at, updated_at, type)
+        VALUES (:title, :description, :goal_id, DEFAULT, DEFAULT, :type)
+        """
+
+        for task in goal.tasks:
+            # กำหนดค่า repeat_type ให้กับ type
+            repeat_type = task.repeat if task.repeat_enabled else None  # กำหนดค่าเริ่มต้น
+            task_values = {
+                "title": task.title,
+                "description": "test",  # หรือปรับเป็นค่าที่คุณต้องการ
+                "goal_id": goal_id["id"],
+                "type": repeat_type  # ใช้ค่า type ที่กำหนด
+            }
+            await database.execute(query_task, values=task_values)
+
+        return JSONResponse(content={"status": "success", "message": "Goal with tasks created successfully"})
     except ValueError as e:
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
         return JSONResponse(content={"error": f"Unexpected error: {str(e)}"}, status_code=500)
 
 
-
-# GET /tasks → ดึงรายการ Topic และ Task 
-@router.get("/tasks")
-def get_tasks():
-    return JSONResponse(content=jsonable_encoder(tasks_db))
-
-@router.put("/tasks/{task_id}")
-def update_task(task_id: str, updated_task: TaskCreate):
-    for topic in tasks_db:
-        for index, task in enumerate(topic.tasks):
-            if task.id == task_id:
-                topic.tasks[index] = updated_task
-                return JSONResponse(content={"status": "success", "message": "Task updated successfully"})
-    raise JSONResponse(status_code=404, detail="Task not found")
-
-@router.delete("/tasks/{task_id}")
-def delete_task(task_id: str):
-    for topic in tasks_db:
-        for index, task in enumerate(topic.tasks):
-            if task.id == task_id:
-                del topic.tasks[index]  # ลบ Task ออกจากรายการ
-                return JSONResponse(content={"status": "success", "message": "Task deleted successfully"})
-    
-    return JSONResponse(content={"error": "Task not found"}, status_code=404)
-
-@router.delete("/topics/{topic_id}")
-def delete_topic(topic_id: str):
-    global tasks_db
-    tasks_db = [topic for topic in tasks_db if topic.id != topic_id]
-    return JSONResponse(content={"status": "success", "message": "Topic deleted successfully"})
-
-
-@router.put("/tasks/{topic_id}")
-def update_topic(topic_id: str, updated_topic: TopicCreate):
-    for index, topic in enumerate(tasks_db):
-        if topic.id == topic_id:
-            # แก้ไข topic
-            tasks_db[index] = updated_topic
-            return JSONResponse(content={"status": "success", "message": f"Topic with id '{topic_id}' updated successfully"})
-    return JSONResponse(status_code=404, content={"error": "Topic not found"})
-
-
-@router.put("/topics/{topic_id}")
-def update_topic(topic_id: str, updated_topic: TopicCreate):
-    for idx, topic in enumerate(tasks_db):
-        if topic.id == topic_id:
-            # อัปเดตชื่อของ topic
-            tasks_db[idx].topic = updated_topic.topic
-            tasks_db[idx].start_date = updated_topic.start_date  # อัปเดต start_date
-            tasks_db[idx].finish_date = updated_topic.finish_date  # อัปเดต finish_date
-            # ถ้ามีการส่ง tasks ใหม่เข้ามา จะอัปเดต tasks ด้วย
-            if updated_topic.tasks:
-                tasks_db[idx].tasks = updated_topic.tasks
-            return JSONResponse(content={"status": "success", "message": "Topic updated successfully"})
-    return JSONResponse(content={"error": "Topic not found"}, status_code=404)
-
-
+app.include_router(router)
