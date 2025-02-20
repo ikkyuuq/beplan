@@ -16,13 +16,13 @@ database = databases.Database(DATABASE_URL)
 
 app = FastAPI()
 
-# การตั้งค่า Router สำหรับการเชื่อมต่อ API
+
 router = APIRouter()
 
 @app.on_event("startup")
 async def startup():
     await database.connect()
-    await database.execute("SET search_path TO mydb")  # กำหนด search_path เป็น mydb
+    await database.execute("SET search_path TO mydb")  
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -39,7 +39,7 @@ async def test_connection():
 
 @app.get("/test")
 async def test():
-    query = "SELECT * from task"  # เปลี่ยนเป็นชื่อของตาราง assigned_goal
+    query = "SELECT * from task"  
     result = await database.fetch_all(query)
     if result:
         return {"data": result}
@@ -47,13 +47,13 @@ async def test():
         return {"message": "No data found"}
 
 
-# ตัวเลือกสำหรับ Repeat Mode
+
 class RepeatMode(str, Enum):
     daily = "daily"
     weekly = "weekly"
     monthly = "monthly"
   
-# ตัวเลือกเมื่อเลือก Monthly    
+    
 class MonthlyOption(str, Enum):
     start = "START"
     mid = "MID"
@@ -102,22 +102,22 @@ async def create_goal(goal: goalCreate):
         goal_id = await database.fetch_one(query_goal, values=goal_values)
 
         if not goal_id:
-            raise ValueError("ไม่สามารถเพิ่ม goal ได้")
+            raise ValueError("Unable to add goal")
 
-        # เพิ่ม Task ลงในตาราง tasks
+        
         query_task = """
         INSERT INTO task (title, description, goal_id, created_at, updated_at, type)
         VALUES (:title, :description, :goal_id, DEFAULT, DEFAULT, :type)
         """
 
         for task in goal.tasks:
-            # กำหนดค่า repeat_type ให้กับ type
-            repeat_type = task.repeat if task.repeat_enabled else None  # กำหนดค่าเริ่มต้น
+            
+            repeat_type = task.repeat if task.repeat_enabled else None 
             task_values = {
                 "title": task.title,
-                "description": "test",  # หรือปรับเป็นค่าที่คุณต้องการ
+                "description": "test",  
                 "goal_id": goal_id["id"],
-                "type": repeat_type  # ใช้ค่า type ที่กำหนด
+                "type": repeat_type  
             }
             await database.execute(query_task, values=task_values)
 
