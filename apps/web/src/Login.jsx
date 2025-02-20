@@ -21,31 +21,34 @@ const Login = () => {
       localStorage.setItem("user", JSON.stringify(userData)); // 👉 เก็บข้อมูล User ลง localStorage
       navigate("/admin"); // ไปที่หน้า Admin Dashboard
     } else {
-      setError("Invalid username or password");
+      setError("❌ Invalid username or password!");
     }
   };
 
   return (
     <div className="login-container">
-      <h2>Admin Login</h2>
-      {error && <p className="error">{error}</p>}
-      <form onSubmit={handleLogin}>
-        <input 
-          type="text" 
-          placeholder="Username" 
-          value={username} 
-          onChange={(e) => setUsername(e.target.value)} 
-          required 
-        />
-        <input 
-          type="password" 
-          placeholder="Password" 
-          value={password} 
-          onChange={(e) => setPassword(e.target.value)} 
-          required 
-        />
-        <button type="submit">Login</button>
-      </form>
+      <div className="login-box">
+        <h2>Admin Login</h2>
+        {error && <p className="error-message">{error}</p>}
+        <form onSubmit={handleLogin}>
+          <input 
+            type="text" 
+            placeholder="Username" 
+            value={username} 
+            onChange={(e) => setUsername(e.target.value)} 
+            required 
+          />
+          <input 
+            type="password" 
+            placeholder="Password" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)} 
+            required 
+          />
+          <button type="submit" className="login-btn">Login</button>
+        </form>
+        <button className="back-btn" onClick={() => navigate("/")}>⬅ Back to Home</button>
+      </div>
     </div>
   );
 };

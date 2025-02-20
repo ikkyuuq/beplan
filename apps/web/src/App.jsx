@@ -21,7 +21,6 @@ const Layout = () => {
             <li><Link to="/aboutme">About Me</Link></li>
             <li><Link to="/donate">Donate</Link></li>
             <li><Link to="/faq">FAQ</Link></li>
-              <button className="start">GET STARTED!</button>
           </ul>
         </nav>
       </header>
@@ -42,7 +41,7 @@ function App() {
           <Route path="donate" element={<Donate />} />
           <Route path="faq" element={<FAQ />} />
         </Route>
-        <Route path="login" element={<Login />} /> {/* เพิ่มหน้า Login */}
+        <Route path="login" element={<Login />} />
         <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
     </Router>
