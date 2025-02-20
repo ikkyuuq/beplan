@@ -1,7 +1,7 @@
 /* Layout หลักของ Admin */
 .admin-container {
     display: flex;
-    height: 100vh;
+    height: 100%;
     background-color: #161616;
   }
   
@@ -11,13 +11,15 @@
     margin-top: 40px;
     background: #333;
     color: white;
-    padding: 20px;
+    padding: 10px;
     height: 100vh;
   }
   
   .sidebar h2 {
     text-align: center;
-  }
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+}
   
   .sidebar ul {
     list-style: none;
@@ -25,14 +27,25 @@
   }
   
   .sidebar li {
-    padding: 10px;
+    padding: 12px;
     cursor: pointer;
-  }
+    border-radius: 5px;
+    transition: 0.3s;
+}
   
   .sidebar li:hover {
     background: #555;
   }
   
+  .admin-navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #222;
+    color: white;
+    padding: 15px 20px;
+    box-shadow: 0px 4px 10px rgba(255, 255, 255, 0.1);
+}
   /* Dashboard Content */
   .dashboard-content {
     margin: 60px auto;
@@ -54,9 +67,9 @@
   
   /* Table */
   .template-table {
-    width: 90%;
+    width: 95%;
     max-width: 1000px;
-    margin: 50px auto;
+    margin: 30px auto;
     border-collapse: collapse;
     border-radius: 10px;
     overflow: hidden;
@@ -121,12 +134,19 @@
   }
   
   .modal-content {
-    background: white;
-    padding: 20px;
-    width: 400px;
+    background: rgb(56, 56, 56);
+    padding: 25px;
+    width: 480px;
     text-align: center;
-    border-radius: 5px;
-  }
+    border-radius: 10px;
+    box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.3);
+    transform: scale(0.9);
+    transition: transform 0.3s ease-in-out;
+}
+
+.modal.active .modal-content {
+  transform: scale(1);
+}
   
   .modal-buttons {
     margin-top: 15px;
@@ -137,16 +157,20 @@
     color: white;
     padding: 10px 15px;
     border: none;
+    border-radius: 5px;
     cursor: pointer;
-  }
+    transition: 0.3s;
+}
   
-  .cancel-btn {
-    background: #6c757d;
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    cursor: pointer;
-  }
+.cancel-btn {
+  background: #6c757d;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.3s;
+}
   
   .admin-navbar {
     display: flex;
@@ -198,4 +222,51 @@
     background: #c0392b;
 }
 
-  
+.custom-textarea {
+  width: 100%;
+  min-height: 120px;
+  max-height: 350px;
+  padding: 12px;
+  border: 2px solid #444;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1e1e1e, #252525);
+  color: #ddd;
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  transition: all 0.3s ease-in-out;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* เอฟเฟกต์เมื่อ hover */
+.custom-textarea:hover {
+  border-color: #007bff;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+/* เอฟเฟกต์เมื่อ focus */
+.custom-textarea:focus {
+  border-color: #00aaff;
+  background: linear-gradient(135deg, #222, #2a2a2a);
+  box-shadow: 0 0 15px rgba(0, 170, 255, 0.5);
+}
+
+.modal-content textarea {
+  width: 90%;
+  min-height: 120px;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #555;
+  background: #ffffff;
+  color: rgb(0, 0, 0);
+  font-size: 1rem;
+  resize: vertical;
+  transition: 0.3s ease-in-out;
+}
+
+.modal-content textarea:focus {
+  border-color: #00aaff;
+  box-shadow: 0 0 8px rgba(0, 170, 255, 0.5);
+}
+
