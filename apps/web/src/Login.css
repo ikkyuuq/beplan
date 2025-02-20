@@ -1,0 +1,28 @@
+/* src/Login.css */
+.login-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+  }
+  
+  input {
+    display: block;
+    width: 250px;
+    margin: 10px 0;
+    padding: 10px;
+  }
+  
+  button {
+    padding: 10px 15px;
+    background: blue;
+    color: white;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .error {
+    color: red;
+  }
+  

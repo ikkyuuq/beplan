@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./AdminDashboard.css";
 
 const AdminDashboard = () => {
@@ -12,10 +12,17 @@ const AdminDashboard = () => {
     const [newDescription, setNewDescription] = useState("");
     const [newImage, setNewImage] = useState(null);
 
-    const userAccount = {
-        name: "John Doe",
-        profilePic: "https://cdn-icons-png.flaticon.com/512/847/847969.png", // ไอคอนรูปคน
-    };
+    const [userAccount, setUserAccount] = useState({
+        name: "Admin",
+        profilePic: "https://cdn-icons-png.flaticon.com/512/847/847969.png",
+    });
+
+    useEffect(() => {
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+        if (storedUser && storedUser.username) {
+            setUserAccount({ ...userAccount, name: storedUser.username }); // 👉 ใช้ชื่อจาก localStorage
+        }
+    }, []);
 
     const handleCreateTemplate = () => {
         const newTemplate = { id: Date.now(), name: "New Template", description: "Edit this template.", image: null };
@@ -59,7 +66,10 @@ const AdminDashboard = () => {
                 <div className="navbar-user">
                     <img src={userAccount.profilePic} alt="User" className="user-icon" />
                     <span className="user-name">{userAccount.name}</span>
-                    <button className="logout-btn">🚪 Logout</button>
+                    <button className="logout-btn" onClick={() => {
+                        localStorage.removeItem("user"); // 👉 ลบข้อมูล User เมื่อ Logout
+                        window.location.href = "/login"; // 👉 Redirect ไปหน้า Login
+                    }}>🚪 Logout</button>
                 </div>
             </nav>
 
