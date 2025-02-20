@@ -37,16 +37,6 @@ async def test_connection():
     else:
         return {"message": "Database connection failed"}
 
-@app.get("/test")
-async def test():
-    query = "SELECT * from task"  
-    result = await database.fetch_all(query)
-    if result:
-        return {"data": result}
-    else:
-        return {"message": "No data found"}
-
-
 
 class RepeatMode(str, Enum):
     daily = "daily"
