@@ -63,7 +63,7 @@ export default function CalendarPicker({
     /* Control Modal Animation */
   }
   useEffect(() => {
-    modalTranslateY.value = visible ? withSpring(0) : withSpring(300);
+    modalTranslateY.value = withSpring(visible ? 0 : 300);
   }, [visible]);
 
   {
@@ -128,10 +128,14 @@ export default function CalendarPicker({
     // Disable dates before minDate
     if (finalMinDate) {
       const tempDate = new Date(currentDate);
-      tempDate.setDate(tempDate.getDate() - 1);
       while (tempDate >= new Date(todayString)) {
         const dateString = tempDate.toISOString().split("T")[0];
-        disabledDates[dateString] = { disabled: true, disableTouchEvent: true };
+        if (tempDate < today) {
+          disabledDates[dateString] = {
+            disabled: true,
+            disableTouchEvent: true,
+          };
+        }
         tempDate.setDate(tempDate.getDate() - 1);
       }
     }
@@ -172,7 +176,7 @@ export default function CalendarPicker({
 
   // ====================== Render ======================
   return (
-    <Modal isVisible={visible} onBackdropPress={onClose}>
+    <Modal isVisible={visible}>
       <Animated.View style={[styles.modalContent, modalAnimatedStyle]}>
         <View style={styles.calendarContainer}>
           {/* หัวข้อ Modal */}
