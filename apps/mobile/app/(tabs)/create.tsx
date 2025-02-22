@@ -25,20 +25,14 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   const [goalTitle, setGoalTitle] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>("");
-  const [isTaskModalVisible, setTaskModalVisible] = useState(false);
   const [isStartDatePickerVisible, setStartDatePickerVisible] = useState(false);
   const [isDueDatePickerVisible, setDueDatePickerVisible] = useState(false);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [taskList, setTaskList] = useState<Task[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [isTaskModalVisible, setTaskModalVisible] = useState(false);
 
   // ====================== Handlers ======================
   const handleDateChange = (newDate: string, type: "start" | "due") => {
-    if (type === "due" && newDate < startDate) {
-      return Alert.alert(
-        "Invalid Date",
-        "Finish date cannot be before the start date."
-      );
-    }
     if (taskList.length > 0) {
       return Alert.alert(
         "Clear Tasks",
@@ -63,7 +57,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   ) => {
     if (type === "start") {
       setStartDate(newDate);
-      if (newDate > dueDate) setDueDate("");
     } else {
       setDueDate(newDate);
     }
@@ -75,7 +68,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
     const newTask = {
       ...task,
       id: uuid.v4() as string,
-      goalId, // เปลี่ยนเป็น `goalId` single value
+      goalId,
     };
 
     setTaskList(
@@ -143,28 +136,26 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   }, [initialGoal]);
 
   {
-    /* Log Goal Data every 5 seconds */
+    /* Log Goal & Task Data  */
   }
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const goalData = {
-        id: goalId,
-        title: goalTitle,
-        startDate: startDate || "Not Set",
-        dueDate: dueDate || "Not Set",
-      };
+  const logGoalData = () => {
+    const goalData = {
+      id: goalId,
+      title: goalTitle,
+      startDate: startDate || "Not Set",
+      dueDate: dueDate || "Not Set",
+    };
 
-      const taskData = taskList.map((task) => ({
-        ...task,
-        description: task.description || "No description",
-        selectedDates: task.selectedDates || [],
-        selectedDaysOfWeek: task.selectedDaysOfWeek || [],
-      }));
-      console.log("📌 Current Goal Data:", JSON.stringify(goalData, null, 2));
-      console.log("📌 Task List:", JSON.stringify(taskData, null, 2));
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [goalTitle, startDate, dueDate, taskList]);
+    const taskData = taskList.map((task) => ({
+      ...task,
+      description: task.description || "No description",
+      selectedDates: task.selectedDates || [],
+      selectedDaysOfWeek: task.selectedDaysOfWeek || [],
+    }));
+
+    console.log("📌 Current Goal Data:", JSON.stringify(goalData, null, 2));
+    console.log("📌 Task List:", JSON.stringify(taskData, null, 2));
+  };
 
   // ====================== Render ======================
   return (
@@ -354,6 +345,11 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
         <Feather name="plus-circle" size={20} color="#fff" />
         <Text style={styles.createButtonText}>Create your path</Text>
       </Pressable>
+
+      {/* Test Button */}
+      <Pressable onPress={logGoalData} style={styles.logButton}>
+        <Text style={styles.logButtonText}>Get Test Log</Text>
+      </Pressable>
     </View>
   );
 }
@@ -439,6 +435,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "center",
+  },
+  logButton: {
+    backgroundColor: "#4CAF50",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    alignSelf: "center",
+    marginTop: 60,
+    width: 150,
+  },
+  logButtonText: {
+    color: "#FFF",
+    fontWeight: "bold",
+    fontSize: 16,
   },
 
   // Task List

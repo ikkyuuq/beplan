@@ -63,7 +63,10 @@ export default function CalendarPicker({
     /* Control Modal Animation */
   }
   useEffect(() => {
-    modalTranslateY.value = withSpring(visible ? 0 : 300);
+    modalTranslateY.value = withSpring(visible ? 0 : 300, {
+      damping: 300, // ค่าหน่วง (ยิ่งมาก ยิ่งช้าลง)
+      stiffness: 110, // ความแข็งของสปริง (ยิ่งมาก ยิ่งเร็ว)
+    });
   }, [visible]);
 
   {

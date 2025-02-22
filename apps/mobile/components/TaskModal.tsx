@@ -109,14 +109,14 @@ export default function TaskModal({
       Alert.alert("Missing Task Name", "Please enter a task name.");
       return;
     }
-  
+
     if (selectedDates.length === 0) {
       Alert.alert("Missing Dates", "Please select a date for the Task.");
       return;
     }
 
     let taskData: Task = {
-      id: initialTask?.id || (uuid.v4() as string), 
+      id: initialTask?.id || (uuid.v4() as string),
       title: taskTitle,
       description: taskDescription,
       type: "normal",
@@ -142,7 +142,7 @@ export default function TaskModal({
     onClose();
   };
 
-  // ====================== Effects ======================  // 
+  // ====================== Effects ======================  //
   {
     /* 
     - Reset State value every time visible or initialTask ​​changes
@@ -173,10 +173,13 @@ export default function TaskModal({
   }, [visible, initialTask]);
 
   {
-    /* Help the Modal render more smoothly. */
+    /* Control Modal Animation */
   }
   useEffect(() => {
-    modalTranslateY.value = visible ? withSpring(0) : withSpring(300);
+    modalTranslateY.value = withSpring(visible ? 0 : 300, {
+      damping: 300, // ค่าหน่วง (ยิ่งมาก ยิ่งช้าลง)
+      stiffness: 110, // ความแข็งของสปริง (ยิ่งมาก ยิ่งเร็ว)
+    });
   }, [visible]);
 
   {
