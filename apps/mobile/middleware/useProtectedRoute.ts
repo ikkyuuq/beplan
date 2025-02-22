@@ -5,10 +5,12 @@ import { routes } from "@/routesConfig";
 
 // ====================== Authentication Route Protection Hook ======================
 export function useProtectedRoute() {
+  // ====================== Hooks ======================
   const segments = useSegments();
   const router = useRouter();
   const { isSignedIn, isLoaded } = useAuth();
 
+  // ====================== Effect for Route Protection ======================
   useEffect(() => {
     if (!isLoaded) return; // Prevent execution if authentication is still loading
 
@@ -17,7 +19,6 @@ export function useProtectedRoute() {
       const currentPath = `/${segments.join("/")}`;
       const isPublicPage = routes.public.includes(currentPath);
       const isPrivatePage = routes.private.includes(currentPath);
-
       const isKnownRoute = isPublicPage || isPrivatePage;
 
       // ====================== Redirect Logic Based on Authentication Status ======================

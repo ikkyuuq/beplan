@@ -14,9 +14,9 @@ import CalendarPicker from "@/components/CalendarPicker";
 import { Task } from "@/types/taskTypes";
 import uuid from "react-native-uuid";
 
-/// ====================== Main Component ======================
+// ====================== Main Component ======================
 export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
-  // ====================== State Hooks ======================
+  // ====================== State Management ======================
   const goalId = useMemo(
     () => initialGoal?.id || (uuid.v4() as string),
     [initialGoal?.id]
@@ -31,7 +31,17 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isTaskModalVisible, setTaskModalVisible] = useState(false);
 
-  // ====================== Handlers ======================
+  // ====================== Utility Functions ======================
+  const taskColors: Record<string, string> = {
+    daily: "#4CAF50",
+    weekly: "#FFC107",
+    monthly: "#FF5733",
+    normal: "#888",
+  };
+
+  const getTaskColor = (type: string) => taskColors[type] || "#888";
+
+  // ====================== Date Handlers ======================
   const handleDateChange = (newDate: string, type: "start" | "due") => {
     if (taskList.length > 0) {
       return Alert.alert(
@@ -64,6 +74,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
     if (clearTasks) setTaskList([]);
   };
 
+  // ====================== Task Handlers ======================
   const addTask = (task: Task) => {
     const newTask = {
       ...task,
@@ -71,24 +82,14 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       goalId,
     };
 
-    setTaskList(
-      (prevTasks) =>
-        editingIndex !== null
-          ? prevTasks.map((t, index) => (index === editingIndex ? newTask : t)) // แก้ไข Task
-          : [...prevTasks, newTask] // เพิ่ม Task ใหม่
+    setTaskList((prevTasks) =>
+      editingIndex !== null
+        ? prevTasks.map((t, index) => (index === editingIndex ? newTask : t))
+        : [...prevTasks, newTask]
     );
 
     setEditingIndex(null);
   };
-
-  const taskColors: Record<string, string> = {
-    daily: "#4CAF50",
-    weekly: "#FFC107",
-    monthly: "#FF5733",
-    normal: "#888",
-  };
-
-  const getTaskColor = (type: string) => taskColors[type] || "#888";
 
   // ====================== Submit Handler ======================
   const handleSubmit = () => {
@@ -114,30 +115,21 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   };
 
   // ====================== Effects ======================
-  {
-    /* Check if initialGoal exists */
-  }
   useEffect(() => {
     if (initialGoal) {
-      // ตั้งค่า Goal Title, Start Date, และ Due Date จาก initialGoal
       setGoalTitle(initialGoal.title);
       setStartDate(initialGoal.startDate);
       setDueDate(initialGoal.dueDate);
 
-      // ป้องกันข้อผิดพลาดที่เกิดจาก `initialGoal.tasks` เป็น undefined
       const updatedTasks = (initialGoal.tasks ?? []).map((task: Task) => ({
         ...task,
-        goalId: initialGoal.id, // เปลี่ยนเป็น single `goalId`
+        goalId: initialGoal.id,
       }));
 
-      // อัปเดต Task List ใน State
       setTaskList(updatedTasks);
     }
   }, [initialGoal]);
 
-  {
-    /* Log Goal & Task Data  */
-  }
   const logGoalData = () => {
     const goalData = {
       id: goalId,
@@ -157,13 +149,13 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
     console.log("📌 Task List:", JSON.stringify(taskData, null, 2));
   };
 
-  // ====================== Render ======================
+  // ====================== Render UI ======================
   return (
     <View style={styles.container}>
-      {/* Header Section */}
+      {/* Header */}
       <Text style={styles.title}>Design Your Path</Text>
 
-      {/* Topic Input */}
+      {/* Goal Input */}
       <Text style={styles.inputLabel}>Topic</Text>
       <TextInput
         value={goalTitle}
@@ -173,17 +165,13 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
         style={styles.input}
       />
 
-      {/* ====================== Task List Section ====================== */}
+      {/* Task List */}
       {taskList.length > 0 && (
         <View style={styles.taskListContainer}>
-          {/* Title */}
           <Text style={styles.sectionTitle}>Tasks</Text>
-
-          {/* Task List */}
           <ScrollView style={styles.taskList} nestedScrollEnabled>
             {taskList.map((task, index) => (
               <View key={index} style={styles.taskItem}>
-                {/* Task Icon (แสดงประเภทของ Task) */}
                 <View
                   style={[
                     styles.taskIcon,
@@ -194,8 +182,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
                     {task.type.charAt(0).toUpperCase()}
                   </Text>
                 </View>
-
-                {/* Task Content (ชื่อและรายละเอียดของ Task) */}
                 <View style={styles.taskContent}>
                   <Text style={styles.taskText}>{task.title}</Text>
                   {task.description && (
@@ -204,10 +190,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
                     </Text>
                   )}
                 </View>
-
-                {/* Task Actions (ปุ่มแก้ไข & ลบ) */}
                 <View style={styles.taskActions}>
-                  {/* Edit Task Btn */}
                   <Pressable
                     onPress={() => {
                       setEditingIndex(index);
@@ -216,8 +199,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
                   >
                     <Text style={styles.editIcon}>✏️</Text>
                   </Pressable>
-
-                  {/* Delete Task Btn */}
                   <Pressable
                     onPress={() =>
                       setTaskList(taskList.filter((_, i) => i !== index))
@@ -232,7 +213,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
         </View>
       )}
 
-      {/* Add Task Section */}
+      {/* Add Task Button */}
       <Pressable
         onPress={() => {
           if (startDate && dueDate) {
@@ -255,8 +236,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
           Add task
         </Text>
       </Pressable>
-
-      {/* Error Message */}
       {(!startDate || !dueDate) && (
         <Text style={styles.errorText}>
           ⚠ Please set Goal Start and Finish Date first.
@@ -265,7 +244,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
 
       {/* Date Pickers */}
       <View style={styles.dateContainer}>
-        {/* Start Date Picker */}
         <View style={styles.dateBox}>
           <Text style={styles.inputLabel}>Start Date</Text>
           <Pressable
@@ -278,7 +256,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
             <Feather name="calendar" size={20} color="#fff" />
           </Pressable>
         </View>
-        {/* Finish Date Picker */}
         <View style={styles.dateBox}>
           <Text style={styles.inputLabel}>Finish Date</Text>
           <Pressable
@@ -293,7 +270,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
         </View>
       </View>
 
-      {/* Modals and Additional Components */}
+      {/* Modals */}
       <TaskModal
         visible={isTaskModalVisible}
         onClose={() => {
@@ -306,7 +283,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
         dueDate={dueDate}
         goalId={goalId}
       />
-
       <CalendarPicker
         visible={isStartDatePickerVisible}
         onClose={() => setStartDatePickerVisible(false)}
@@ -323,7 +299,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
         otherSelectedDate={dueDate}
         otherHighlightColor="#FF5733"
       />
-
       <CalendarPicker
         visible={isDueDatePickerVisible}
         onClose={() => setDueDatePickerVisible(false)}
@@ -340,13 +315,11 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
         otherHighlightColor="#4CAF50"
       />
 
-      {/* Create Button */}
+      {/* Action Buttons */}
       <Pressable style={styles.createButton} onPress={handleSubmit}>
         <Feather name="plus-circle" size={20} color="#fff" />
         <Text style={styles.createButtonText}>Create your path</Text>
       </Pressable>
-
-      {/* Test Button */}
       <Pressable onPress={logGoalData} style={styles.logButton}>
         <Text style={styles.logButtonText}>Get Test Log</Text>
       </Pressable>
@@ -356,6 +329,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
 
 // ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Main Layout
   container: {
     flex: 1,
     backgroundColor: "#16171F",
@@ -364,7 +338,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
 
-  // Typography
+  //  Typography
   title: {
     color: "#fff",
     fontSize: 40,
@@ -377,9 +351,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 6,
   },
-  addTaskButtonText: {
+  sectionTitle: {
     color: "#fff",
     fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 10,
   },
   errorText: {
     color: "#FF5733",
@@ -387,29 +363,8 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     textAlign: "center",
   },
-  taskText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  taskDescription: {
-    color: "#AAA",
-    fontSize: 14,
-    marginTop: 4,
-  },
-  createButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    marginLeft: 10,
-  },
-  sectionTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
 
-  // Input
+  // Input Fields
   input: {
     backgroundColor: "#fff",
     padding: 20,
@@ -428,6 +383,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
+  addTaskButtonText: {
+    color: "#fff",
+    fontSize: 16,
+  },
+  disabledButton: {
+    backgroundColor: "#333",
+  },
+  disabledButtonText: {
+    color: "darkgray",
+  },
   createButton: {
     backgroundColor: "#8D8D8D",
     padding: 14,
@@ -435,6 +400,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "center",
+  },
+  createButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    marginLeft: 10,
   },
   logButton: {
     backgroundColor: "#4CAF50",
@@ -488,6 +458,16 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 10,
   },
+  taskText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  taskDescription: {
+    color: "#AAA",
+    fontSize: 14,
+    marginTop: 4,
+  },
   taskActions: {
     flexDirection: "row",
     gap: 8,
@@ -500,14 +480,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#FF4444",
   },
-  disabledButton: {
-    backgroundColor: "#333",
-  },
-  disabledButtonText: {
-    color: "darkgray",
-  },
 
-  // Date Input
+  // Date Pickers
   dateContainer: {
     flexDirection: "row",
     justifyContent: "space-between",

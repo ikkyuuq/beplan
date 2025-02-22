@@ -1,11 +1,14 @@
+// ====================== Imports ======================
 import { Tabs } from "expo-router";
 import { useUser } from "@clerk/clerk-expo";
 import CustomTabBar from "@/components/CustomTabBar";
 
 // ====================== Main Component ======================
 export default function TabsLayout() {
+  // ====================== User Authentication ======================
   const { isLoaded, isSignedIn, user } = useUser();
 
+  // ====================== Conditional Rendering ======================
   if (!isLoaded || !isSignedIn || !user) {
     return null;
   }

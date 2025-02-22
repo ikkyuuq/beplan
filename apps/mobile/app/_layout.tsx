@@ -6,6 +6,7 @@ import { useProtectedRoute } from "@/middleware/useProtectedRoute";
 
 // ====================== Main Component ======================
 export default function RootLayout() {
+  // ====================== Environment Setup ======================
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
   // ====================== Environment Key Check ======================
@@ -18,7 +19,7 @@ export default function RootLayout() {
   return (
     <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
       <ClerkLoaded>
-        {/* ✅ แก้ไข: เพิ่ม `isLoaded` เพื่อลดปัญหาการ Redirect ผิดพลาด */}
+        {/* แก้ไข: เพิ่ม `isLoaded` เพื่อลดปัญหาการ Redirect ผิดพลาด */}
         <ProtectedRoutes>
           <Stack screenOptions={{ headerShown: false }} />
         </ProtectedRoutes>

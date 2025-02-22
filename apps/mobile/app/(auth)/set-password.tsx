@@ -11,13 +11,14 @@ import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
 import PasswordInput from "@/components/PasswordInput";
 
-// ====================== Authentication & Navigation Hooks ======================
+// ====================== Main Component ======================
 export default function SetPasswordScreen() {
+  // ====================== Authentication & Navigation Hooks ======================
   const { signIn, isLoaded } = useSignIn();
   const { signOut } = useClerk();
   const router = useRouter();
 
-  // ====================== State Hooks ======================
+  // ====================== State Management ======================
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -59,14 +60,16 @@ export default function SetPasswordScreen() {
     }
   };
 
-  // ====================== Render ======================
+  // ====================== Render UI ======================
   return (
     <View style={styles.container}>
+      {/* Title & Subtitle */}
       <Text style={styles.title}>Reset Password</Text>
       <Text style={styles.subtitle}>
         Please enter your new password and confirm.
       </Text>
 
+      {/* Input Fields */}
       <View style={styles.inputWrapper}>
         <PasswordInput
           placeholder="New password"
@@ -81,10 +84,12 @@ export default function SetPasswordScreen() {
         {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
       </View>
 
+      {/* Continue Button */}
       <TouchableOpacity style={styles.button} onPress={onSetPasswordPress}>
         <Text style={styles.buttonText}>Continue</Text>
       </TouchableOpacity>
 
+      {/* Loading Overlay */}
       {isSettingPassword && (
         <View style={styles.overlay}>
           <ActivityIndicator size="large" color="#0000ff" />
@@ -96,6 +101,7 @@ export default function SetPasswordScreen() {
 
 // ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Main Layout
   container: {
     flex: 1,
     justifyContent: "center",
@@ -131,7 +137,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 
-  // Input
+  // Input Fields
   inputWrapper: {
     width: "100%",
     marginBottom: 15,

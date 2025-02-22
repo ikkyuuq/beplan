@@ -48,7 +48,7 @@ export default function CalendarPicker({
   today.setHours(0, 0, 0, 0);
   const todayString = today.toISOString().split("T")[0];
 
-  // ====================== State Hooks ======================
+  // ====================== State Management ======================
   const [selectedDates, setSelectedDates] = useState<string[]>(initialDates);
   const [totalDays, setTotalDays] = useState<number>(initialDates.length);
 
@@ -59,27 +59,17 @@ export default function CalendarPicker({
   }));
 
   // ====================== Effects ======================
-  {
-    /* Control Modal Animation */
-  }
   useEffect(() => {
     modalTranslateY.value = withSpring(visible ? 0 : 300, {
-      damping: 300, // ค่าหน่วง (ยิ่งมาก ยิ่งช้าลง)
-      stiffness: 110, // ความแข็งของสปริง (ยิ่งมาก ยิ่งเร็ว)
+      damping: 300,
+      stiffness: 110,
     });
   }, [visible]);
 
-  {
-    /* Reset date when Modal is opened */
-  }
-  // ป้องกันปัญหาว่า ถ้า Modal ถูกเปิดซ้ำ selectedDates อาจค้างจากค่าครั้งก่อน
   useEffect(() => {
     if (visible) setSelectedDates(initialDates);
   }, [visible]);
 
-  {
-    /* Update totalDays */
-  }
   useEffect(() => {
     setTotalDays(selectedDates.length);
   }, [selectedDates]);
@@ -101,23 +91,19 @@ export default function CalendarPicker({
 
   // ====================== Date Selection Handlers ======================
   const toggleDateSelection = (date: string) => {
-    // ป้องกันการเลือกวันที่ชนกับอีกโหมด
     if (date === otherSelectedDate) {
       return;
     }
 
     setSelectedDates((prev) => {
-      // ถ้าเป็นโหมดเลือกวันเดียว → แทนที่ค่าเดิม
       if (singleSelect) {
         return [date];
       }
 
-      // ถ้ากดเลือกวันที่มีอยู่แล้ว → เอาออกจากลิสต์
       if (prev.includes(date)) {
         return prev.filter((d) => d !== date);
       }
 
-      // ถ้าเป็นวันใหม่ → เพิ่มเข้าไปในลิสต์
       return [...prev, date];
     });
   };
@@ -128,7 +114,6 @@ export default function CalendarPicker({
     const currentDate = new Date(finalMinDate || todayString);
     const endDate = new Date(finalMaxDate || "2099-12-31");
 
-    // Disable dates before minDate
     if (finalMinDate) {
       const tempDate = new Date(currentDate);
       while (tempDate >= new Date(todayString)) {
@@ -143,7 +128,6 @@ export default function CalendarPicker({
       }
     }
 
-    // Disable dates after maxDate
     if (finalMaxDate) {
       const tempDate = new Date(endDate);
       tempDate.setDate(tempDate.getDate() + 1);
@@ -158,18 +142,16 @@ export default function CalendarPicker({
   };
 
   // ====================== Calendar Markings ======================
-  // ใช้ spread operator (...) เเพ้ลดการ แก้ไขค่าของ Object โดยตรง ซึ่งไม่ดีสำหรับ Functional Programming
   const markedDates = {
-    ...createDisabledDates(), // เพิ่มวันที่ที่ถูกปิด (Disabled Dates)
+    ...createDisabledDates(),
     ...selectedDates.reduce(
       (acc, date) => ({
         ...acc,
-        [date]: { selected: true, selectedColor: highlightColor }, // เพิ่มสีไฮไลต์ของวันที่เลือก
+        [date]: { selected: true, selectedColor: highlightColor },
       }),
       {}
     ),
     ...(otherSelectedDate && {
-      // ใช้ `spread` เพื่อรวม `otherSelectedDate` เฉพาะเมื่อมีค่า
       [otherSelectedDate]: {
         selected: true,
         selectedColor: otherHighlightColor,
@@ -177,14 +159,13 @@ export default function CalendarPicker({
     }),
   };
 
-  // ====================== Render ======================
+  // ====================== Render UI ======================
   return (
     <Modal isVisible={visible}>
       <Animated.View style={[styles.modalContent, modalAnimatedStyle]}>
+        {/* Calendar Section */}
         <View style={styles.calendarContainer}>
-          {/* หัวข้อ Modal */}
           <Text style={styles.modalTitle}>{title}</Text>
-          {/* ปฏิทินหลัก */}
           <Calendar
             minDate={finalMinDate}
             maxDate={finalMaxDate}
@@ -196,19 +177,19 @@ export default function CalendarPicker({
             enableSwipeMonths={true}
           />
         </View>
-        {/* แสดงจำนวนวันที่เลือก (เฉพาะโหมดหลายวัน) */}
+
+        {/* Total Days Display */}
         {!singleSelect && (
           <Animated.Text style={styles.selectedDatesText}>
             Total: {totalDays} days
           </Animated.Text>
         )}
 
+        {/* Action Buttons */}
         <View style={styles.buttonContainer}>
-          {/* ปุ่ม Cancel */}
           <Pressable style={styles.cancelButton} onPress={onClose}>
             <Text style={styles.buttonText}>Cancel</Text>
           </Pressable>
-          {/* ปุ่ม Confirm */}
           <Pressable
             style={styles.confirmButton}
             onPress={() => {
@@ -233,7 +214,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
 
-  // Calendar
+  // Calendar Styles
   calendarContainer: {
     backgroundColor: "#fff",
     borderRadius: 10,
@@ -260,7 +241,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Buttons
+  // Button Styles
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",

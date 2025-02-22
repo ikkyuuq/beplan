@@ -16,6 +16,7 @@ import * as Linking from "expo-linking";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
 
+// ====================== Browser Warm-Up Utility ======================
 // Preloads the browser for Android devices to reduce authentication load time
 export const useWarmUpBrowser = () => {
   useEffect(() => {
@@ -30,14 +31,12 @@ export const useWarmUpBrowser = () => {
 
 WebBrowser.maybeCompleteAuthSession(); // Handle any pending authentication sessions
 
-// ====================== Authentication & Navigation Hooks ======================
+// ====================== Main Component ======================
 export default function SignInScreen() {
+  // ====================== Authentication & Navigation Hooks ======================
   useWarmUpBrowser();
-
   const { signIn, isLoaded, setActive } = useSignIn();
   const router = useRouter();
-
-  // OAuth login handlers for Google & GitHub
   const { startOAuthFlow: startGoogleOAuth } = useOAuth({
     strategy: "oauth_google",
   });
@@ -50,7 +49,7 @@ export default function SignInScreen() {
   const onGitHubSignInPress = async () =>
     handleOAuthSignIn(startGitHubOAuth, "GitHub");
 
-  // ====================== State Hooks ======================
+  // ====================== State Management ======================
   const [emailAddress, setEmailAddress] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [errorMessage, setErrorMessage] = React.useState("");
@@ -123,15 +122,15 @@ export default function SignInScreen() {
     }
   };
 
-  // ====================== Render ======================
+  // ====================== Render UI ======================
   return (
     <View style={styles.container}>
+      {/* Logo & Title */}
       <Ionicons name="hammer" size={40} color="#222" style={styles.logo} />
       <Text style={styles.title}>Welcome back!</Text>
 
-      {/* ====================== Input Fields ====================== */}
+      {/* Input Fields */}
       <View style={styles.inputWrapper}>
-        {/* Email Input */}
         <InputField
           iconName="mail-outline"
           placeholder="example@example.com"
@@ -139,9 +138,7 @@ export default function SignInScreen() {
           onChangeText={setEmailAddress}
           marginBottom={15}
         />
-        {/* Display Error Message if Exists */}
         {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
-        {/* Password Input */}
         <InputField
           iconName="lock-closed-outline"
           placeholder="Enter your password"
@@ -150,23 +147,20 @@ export default function SignInScreen() {
           secureTextEntry
           marginBottom={2}
         />
-        {/* Forgot Password Link */}
         <TouchableOpacity onPress={() => router.push(routes.resetPassword)}>
           <Text style={styles.forgotPassword}>Recovery Password</Text>
         </TouchableOpacity>
       </View>
 
-      {/* ====================== Sign In Button ====================== */}
+      {/* Sign In Button */}
       <SignButton onPress={onSignInPress} buttonText="Sign In" />
 
-      {/* ====================== Social Sign-In Section ====================== */}
+      {/* Social Sign-In Section */}
       <View style={styles.separatorContainer}>
         <View style={styles.separatorLine} />
         <Text style={styles.separatorText}>Or continue with</Text>
         <View style={styles.separatorLine} />
       </View>
-
-      {/* Social Sign-In Buttons */}
       <View style={styles.socialButtonsContainer}>
         <TouchableOpacity
           style={styles.socialButton}
@@ -182,7 +176,7 @@ export default function SignInScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ====================== Register Section ====================== */}
+      {/* Register Section */}
       <View style={styles.registerContainer}>
         <Text style={styles.registerText}>Don't have an account? </Text>
         <TouchableOpacity onPress={() => router.push(routes.signUp)}>
@@ -190,6 +184,7 @@ export default function SignInScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Loading Overlay */}
       {isSigningIn && (
         <View style={styles.overlay}>
           <ActivityIndicator size="large" color="#0000ff" />
@@ -201,6 +196,7 @@ export default function SignInScreen() {
 
 // ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Main Layout
   container: {
     flex: 1,
     justifyContent: "center",

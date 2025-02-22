@@ -15,12 +15,13 @@ import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
 import VerificationScreen from "@/components/VerificationScreen";
 
-// ====================== Authentication & Navigation Hooks ======================
+// ====================== Main Component ======================
 export default function SignUpScreen() {
+  // ====================== Authentication & Navigation Hooks ======================
   const { signUp, isLoaded, setActive } = useSignUp();
   const router = useRouter();
 
-  // ====================== State Hooks ======================
+  // ====================== State Management ======================
   const [name, setName] = React.useState("");
   const [emailAddress, setEmailAddress] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -92,7 +93,7 @@ export default function SignUpScreen() {
     }
   };
 
-  // ====================== Verification Screen ======================
+  // ====================== Render Verification Screen ======================
   if (pendingVerification) {
     return (
       <VerificationScreen
@@ -169,6 +170,7 @@ export default function SignUpScreen() {
 
 // ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Main Layout
   container: {
     flex: 1,
     justifyContent: "center",
@@ -211,7 +213,7 @@ const styles = StyleSheet.create({
     marginBottom: 80,
   },
 
-  // Button
+  // Buttons
   backButton: {
     position: "absolute",
     top: 50,

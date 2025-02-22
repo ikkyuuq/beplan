@@ -27,7 +27,7 @@ import Animated, {
 import { Task } from "@/types/taskTypes";
 import uuid from "react-native-uuid";
 
-/// ====================== Type Definitions ======================
+// ====================== Type Definitions ======================
 type TaskModalProps = {
   visible: boolean;
   onClose: () => void;
@@ -48,7 +48,7 @@ export default function TaskModal({
   onClose,
   onSave,
 }: TaskModalProps) {
-  // ====================== State Hooks ======================
+  // ====================== State Management ======================
   const [taskTitle, setTaskTitle] = useState(initialTask?.title || "");
   const [taskDescription, setTaskDescription] = useState(
     initialTask?.description || ""
@@ -74,9 +74,6 @@ export default function TaskModal({
   }));
 
   // ====================== Handlers ======================
-  {
-    /* Select/Cancel days of the week */
-  }
   const toggleDayOfWeek = (dayIndex: number) => {
     setSelectedDaysOfWeek((prev) => {
       if (prev.includes(dayIndex)) {
@@ -87,23 +84,14 @@ export default function TaskModal({
     });
   };
 
-  {
-    /* Change Task Type */
-  }
   const handleSegmentPress = (type: "daily" | "weekly" | "monthly") => {
     if (isRepeat) setTaskType(type);
   };
 
-  {
-    /* Select a day in the calendar */
-  }
   const handleDateConfirm = (dates: string[]) => {
     setSelectedDates(dates);
   };
 
-  {
-    /* Save the Task and close the Modal. */
-  }
   const handleSave = () => {
     if (!taskTitle.trim()) {
       Alert.alert("Missing Task Name", "Please enter a task name.");
@@ -142,14 +130,7 @@ export default function TaskModal({
     onClose();
   };
 
-  // ====================== Effects ======================  //
-  {
-    /* 
-    - Reset State value every time visible or initialTask ​​changes
-    - If it is Edit Task (initialTask ​​has value) → Load old data
-    - If it is Create new Task (initialTask ​​has no value) → Reset default value 
-    */
-  }
+  // ====================== Effects ======================
   useEffect(() => {
     if (!visible) return;
 
@@ -172,19 +153,13 @@ export default function TaskModal({
     }
   }, [visible, initialTask]);
 
-  {
-    /* Control Modal Animation */
-  }
   useEffect(() => {
     modalTranslateY.value = withSpring(visible ? 0 : 300, {
-      damping: 300, // ค่าหน่วง (ยิ่งมาก ยิ่งช้าลง)
-      stiffness: 110, // ความแข็งของสปริง (ยิ่งมาก ยิ่งเร็ว)
+      damping: 300,
+      stiffness: 110,
     });
   }, [visible]);
 
-  {
-    /* Recalculate selectedDates every time the Task Type or time range changes. */
-  }
   useEffect(() => {
     if (!isRepeat || !startDate || !dueDate) return;
 
@@ -203,18 +178,17 @@ export default function TaskModal({
       case "weekly":
         const weeklyDates = eachWeekOfInterval(
           { start, end },
-          { weekStartsOn: 0 } // กำหนดให้เริ่มนับสัปดาห์จากวันอาทิตย์ (index = 0)
+          { weekStartsOn: 0 }
         )
-          .flatMap(
-            (weekStart) =>
-              eachDayOfInterval({
-                start: weekStart,
-                end: new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000), // คำนวณวันสุดท้ายของสัปดาห์
-              })
-                .filter((day) => selectedDaysOfWeek.includes(day.getDay())) // เลือกเฉพาะวันที่ผู้ใช้กำหนด
-                .map((date) => format(date, "yyyy-MM-dd")) // แปลงเป็น string format "yyyy-MM-dd"
+          .flatMap((weekStart) =>
+            eachDayOfInterval({
+              start: weekStart,
+              end: new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000),
+            })
+              .filter((day) => selectedDaysOfWeek.includes(day.getDay()))
+              .map((date) => format(date, "yyyy-MM-dd"))
           )
-          .filter((date) => date >= startDate && date <= dueDate); // กรองเฉพาะวันที่อยู่ในช่วง startDate - dueDate
+          .filter((date) => date >= startDate && date <= dueDate);
         setSelectedDates(weeklyDates);
         break;
 
@@ -311,7 +285,7 @@ export default function TaskModal({
     </View>
   );
 
-  // ====================== Main UI ======================
+  // ====================== Render UI ======================
   return (
     <Modal isVisible={visible} onBackdropPress={onClose}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -372,7 +346,7 @@ export default function TaskModal({
                 </View>
               )}
 
-              {/* Calendar Pick Dates */}
+              {/* Calendar Picker */}
               <CalendarPicker
                 visible={isCalendarVisible}
                 onClose={() => setIsCalendarVisible(false)}
@@ -468,6 +442,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     marginTop: 10,
   },
+
   // Input Styles
   inputContainer: {
     maxHeight: 154,

@@ -70,7 +70,7 @@ export default function ResetPasswordScreen() {
     }
   };
 
-  // ====================== Verification Screen ======================
+  // ====================== Render Verification Screen ======================
   if (pendingVerification) {
     return (
       <VerificationScreen
@@ -127,8 +127,9 @@ export default function ResetPasswordScreen() {
   );
 }
 
-// ====================== Styles ======================
+// Styles
 const styles = StyleSheet.create({
+  // Main Layout
   container: {
     flex: 1,
     justifyContent: "center",
