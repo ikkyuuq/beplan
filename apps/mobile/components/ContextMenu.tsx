@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { BlurView } from "@react-native-community/blur";
+import CalendarPicker from "./CalendarPicker";
+import { SharedValue } from "react-native-reanimated";
 
 type ContextItemProps = {
   title: string;
@@ -21,21 +23,27 @@ type ContextItemProps = {
 
 type ContextMenuProps = {
   visible: boolean;
-  onClose: () => void;
   anchorPosition: {
     bottomLeft: { x: number; y: number };
     topLeft: { x: number; y: number };
   };
   preview: React.ReactElement;
   items: ContextItemProps[];
+  rescheduleVisible?: boolean;
+  onRescheduleConfirm?: (date: string) => void;
+  onClose: () => void;
+  setRescheduleVisible?: (val: boolean) => void;
 };
 
 export default function ContextMenu({
   visible,
-  onClose,
   anchorPosition,
   preview,
   items,
+  rescheduleVisible,
+  onRescheduleConfirm,
+  onClose,
+  setRescheduleVisible,
 }: ContextMenuProps) {
   const { height: screenHeight } = Dimensions.get("window");
   const [menuHeight, setMenuHeight] = useState(0);
@@ -70,6 +78,15 @@ export default function ContextMenu({
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      <CalendarPicker
+        title="Reschedule Task"
+        visible={rescheduleVisible || false}
+        singleSelect={true}
+        onClose={() => setRescheduleVisible?.(false)}
+        onConfirm={(date) => {
+          onRescheduleConfirm?.(date[0]);
+        }}
+      />
       <Modal
         visible={visible}
         transparent

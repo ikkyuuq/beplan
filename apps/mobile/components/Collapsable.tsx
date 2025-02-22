@@ -81,17 +81,13 @@ export default function Collapsable({
     });
   }, []);
 
-  const handleContextMenuOpen = useCallback(() => {
-    setContextMenuVisible(true);
-  }, []);
-
-  const handleContextMenuClose = useCallback(() => {
-    setContextMenuVisible(false);
-  }, []);
-
   const toggleCollapse = () => {
     setCollapsed((prev) => !prev);
   };
+
+  const handleContextMenuOpen = useCallback(() => {
+    setContextMenuVisible(true);
+  }, []);
 
   const {
     composedGesture,
@@ -107,6 +103,11 @@ export default function Collapsable({
     onLongPress: handleContextMenuOpen,
     collapseConfig,
   });
+
+  const handleContextMenuClose = useCallback(() => {
+    setContextMenuVisible(false);
+    scaleValue.value = withSpring(1, { damping: 20, stiffness: 100 });
+  }, [scaleValue]);
 
   useEffect(() => {
     if (contextMenuVisible) {
@@ -168,11 +169,11 @@ export default function Collapsable({
       ? withSpring(10, { damping: 20, stiffness: 100 })
       : withSpring(0);
     return {
-      opacity: withTiming(collapsed ? 1 : 0),
       height: withSpring(innerCollapseHeight.value, {
         damping: 20,
         stiffness: 100,
       }),
+      opacity: withTiming(collapsed ? 1 : 0),
       marginVertical: marginValue,
     };
   });
@@ -328,7 +329,7 @@ export default function Collapsable({
             status: type === "custom" ? "enabled" : "disabled",
             onPress: () => {
               handleContextMenuClose();
-              onCustomize && onCustomize();
+              onCustomize?.();
             },
           },
           {
@@ -338,7 +339,7 @@ export default function Collapsable({
             status: "enabled",
             onPress: () => {
               handleContextMenuClose();
-              onDelete && onDelete();
+              onDelete?.();
             },
           },
         ]}

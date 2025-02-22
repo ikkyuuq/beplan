@@ -21,7 +21,7 @@ type CollapseItemProps = {
   description?: string;
   onComplete?: () => void;
   onFail?: () => void;
-  onReschedule?: () => void;
+  onReschedule?: (date: string) => void;
   onCustomize?: () => void;
 };
 
@@ -88,6 +88,10 @@ export default function CollapseItem({
     }
   }, [collapsed, contentHeight]);
 
+  const handleContextMenuOpen = useCallback(() => {
+    setContextMenuVisible(true);
+  }, []);
+
   const {
     composedGesture,
     translateX,
@@ -97,11 +101,16 @@ export default function CollapseItem({
     runSwipeAnimation,
   } = useCollapsibleGesture({
     onToggleCollapse: toggleCollapse,
-    onLongPress: () => setContextMenuVisible(true),
+    onLongPress: () => handleContextMenuOpen(),
     onComplete: onComplete,
     onFail: onFail,
     collapseConfig,
   });
+
+  const handleContextMenuClose = useCallback(() => {
+    setContextMenuVisible(false);
+    scaleValue.value = withSpring(1, { damping: 20, stiffness: 100 });
+  }, [scaleValue]);
 
   const animatedContainerStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scaleValue.value }, { translateX: translateX.value }],
@@ -142,7 +151,7 @@ export default function CollapseItem({
     if (contextMenuVisible) {
       updateMenuPosition();
     }
-  }, [contextMenuVisible, updateMenuPosition]);
+  }, [contextMenuVisible, updateMenuPosition, onReschedule]);
 
   const collapseContentRef = useRef<Animated.View>(null);
 
@@ -156,12 +165,19 @@ export default function CollapseItem({
     }
   }, [collapsed]);
 
+  const [rescheduleVisible, setRescheduleVisible] = useState(false);
+
   return (
     <>
       <ContextMenu
         visible={contextMenuVisible}
-        onClose={() => setContextMenuVisible(false)}
+        onClose={handleContextMenuClose}
         anchorPosition={anchorPosition}
+        rescheduleVisible={rescheduleVisible}
+        setRescheduleVisible={setRescheduleVisible}
+        onRescheduleConfirm={(date: string) => {
+          onReschedule?.(date);
+        }}
         preview={
           <Animated.View
             style={[
@@ -205,7 +221,7 @@ export default function CollapseItem({
             type: "default",
             status: "enabled",
             onPress: () => {
-              setContextMenuVisible(false);
+              handleContextMenuClose();
               runSwipeAnimation("right", () => onComplete?.(), 600);
             },
           },
@@ -215,7 +231,7 @@ export default function CollapseItem({
             type: "default",
             status: "enabled",
             onPress: () => {
-              setContextMenuVisible(false);
+              handleContextMenuClose();
               runSwipeAnimation("left", () => onFail?.(), 600);
             },
           },
@@ -225,8 +241,8 @@ export default function CollapseItem({
             type: "default",
             status: "enabled",
             onPress: () => {
-              setContextMenuVisible(false);
-              onReschedule?.();
+              handleContextMenuClose();
+              setRescheduleVisible(true);
             },
           },
         ]}
