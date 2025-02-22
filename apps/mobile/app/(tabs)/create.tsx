@@ -263,8 +263,8 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
                 })),
               },
               null,
-              2
-            )
+              2,
+            ),
           )
         }
         style={styles.createButton}

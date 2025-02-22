@@ -1,10 +1,5 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useSignIn } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { useClerk } from "@clerk/clerk-expo";
@@ -45,7 +40,7 @@ export default function SetPasswordScreen() {
       console.error(err);
       setErrorMessage(
         err.errors?.[0]?.message ||
-          "Failed to reset password. Please try again."
+          "Failed to reset password. Please try again.",
       );
     }
   };
