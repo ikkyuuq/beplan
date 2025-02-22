@@ -2,19 +2,15 @@ import os
 from datetime import date, datetime
 from enum import Enum
 from typing import List, Optional
-
 from dotenv import load_dotenv
-from fastapi import APIRouter, Query,FastAPI
+from fastapi import APIRouter, Query,HTTPException
 from pydantic import BaseModel
-
 from database import get_db_pool
 
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 router = APIRouter()
-app = FastAPI()
-
 
 class GoalStatus(str, Enum):
     PENDING = "pending"
@@ -32,7 +28,8 @@ class TaskStatus(str, Enum):
 class Task(BaseModel):
     id: int
     title: str
-    description: str | None
+    description: Optional[str]
+    # description: str | None
     status: TaskStatus
 
 
@@ -48,7 +45,7 @@ class Goal(BaseModel):
 @router.get("/goals")
 async def get_goals_today(
     user_id: int = Query(..., description="User ID"),
-    today: date = Query(..., description="Current date (YYYY-MM-DD)"),
+    today: date = Query(default=date.today(), description="Current date (YYYY-MM-DD)"),
 ):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -115,43 +112,40 @@ async def get_goals_today(
 
         return goals  # Return the list of goals (filtered to include only those with tasks)
 
-# NOTE: Be sure to communicate with Korn and the team to not repeat the same work
-# or same functionality routes
-
 # NOTE: This might be useful for the analysis page to show the user's progress
 # but it's still need more work to be done
 
 # Implement get goals from database
-@router.get("/goal/", response_model=List[Goal])  # Fetch all goals
-async def get_goals():
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        goals = await conn.fetch("SELECT * FROM public.goal")
-        goal_list = []
+# @router.get("/goal", response_model=List[Goal])  # Fetch all goals
+# async def get_goals():
+#     pool = await get_db_pool()
+#     async with pool.acquire() as conn:
+#         goals = await conn.fetch("SELECT * FROM goal")
+#         goal_list = []
 
-        for goal in goals:
-            subtasks = await conn.fetch(
-                "SELECT * FROM public.task WHERE goal_id=$1", goal["id"]
-            )
-            goal_list.append(
-                Goal(
-                    id=goal["id"],
-                    title=goal["title"],
-                    completed=goal["status"],
-                    category=goal["category"],
-                    subtasks=[
-                        Task(
-                            id=subtask["id"],
-                            title=subtask["title"],
-                            completed=subtask["status"],
-                            description=subtask["description"],
-                            due_date=subtask["due_date"],
-                        )
-                        for subtask in subtasks
-                    ],
-                )
-            )
-        return goal_list
+#         for goal in goals:
+#             subtasks = await conn.fetch(
+#                 "SELECT * FROM task WHERE goal_id=$1", goal["id"]
+#             )
+#             goal_list.append(
+#                 Goal(
+#                     id=goal["id"],
+#                     title=goal["title"],
+#                     completed=goal["status"],
+#                     category=goal["category"],
+#                     subtasks=[
+#                         Task(
+#                             id=subtask["id"],
+#                             title=subtask["title"],
+#                             completed=subtask["status"],
+#                             description=subtask["description"],
+#                             due_date=subtask["due_date"],
+#                         )
+#                         for subtask in subtasks
+#                     ],
+#                 )
+#             )
+#         return goal_list
 
 # NOTE: This might be useful for the analysis page to show the user's progress
 
@@ -216,3 +210,39 @@ async def get_goals():
 #         due_date=task["due_date"],
 #         completed=task["completed"],
 #     )
+# 
+# Implement update methods to set goal status to 'delete'
+@router.put("/update_goal/{goal_id}")
+async def update_goal_status(
+    goal_id: int,
+    user_id: int = Query(..., description="User ID"),
+    today: date = Query(default=date.today(), description="Date for which goal should be deleted (YYYY-MM-DD)"),
+):
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if the goal exists for the user on that date
+        assigned_goal = await conn.fetchrow(
+            """
+            SELECT id FROM public.assigned_goal 
+            WHERE goal_id = $1 
+            AND user_id = $2 
+            AND start_date <= $3 
+            AND due_date >= $3
+            """,
+            goal_id, user_id, today
+        )
+
+        if not assigned_goal:
+            raise HTTPException(status_code=404, detail="Goal not found for this user and date")
+
+        # Update goal status to 'delete'
+        await conn.execute(
+            """
+            UPDATE public.assigned_goal
+            SET status = 'deleted'
+            WHERE assigned_goal_id = $1
+            """,
+            assigned_goal["id"]
+        )
+
+        return {"message": "Goal status updated to 'deleted'", "goal_id": goal_id}
