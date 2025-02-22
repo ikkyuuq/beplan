@@ -1,13 +1,19 @@
-import { useProtectedRoute } from "@/middleware/useProtectedRoute";
+// ====================== Imports ======================
 import { Tabs } from "expo-router";
 import { useUser } from "@clerk/clerk-expo";
 import CustomTabBar from "@/components/CustomTabBar";
 
+// ====================== Main Component ======================
 export default function TabsLayout() {
-  useProtectedRoute(); 
+  // ====================== User Authentication ======================
+  const { isLoaded, isSignedIn, user } = useUser();
 
-  const user = useUser();
+  // ====================== Conditional Rendering ======================
+  if (!isLoaded || !isSignedIn || !user) {
+    return null;
+  }
 
+  // ====================== Tab Navigation ======================
   return (
     <Tabs tabBar={(props) => <CustomTabBar {...props} />}>
       <Tabs.Screen name="schedule" options={{ headerShown: false }} />

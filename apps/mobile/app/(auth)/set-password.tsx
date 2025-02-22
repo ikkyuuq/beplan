@@ -1,88 +1,107 @@
 import React, { useState } from "react";
 import {
-  View,
   Text,
-  TouchableOpacity,
+  View,
   StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
-import { useSignIn } from "@clerk/clerk-expo";
+import { useSignIn, useClerk } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { useClerk } from "@clerk/clerk-expo";
 import { routes } from "@/routesConfig";
 import PasswordInput from "@/components/PasswordInput";
 
+// ====================== Main Component ======================
 export default function SetPasswordScreen() {
-  const { isLoaded, signIn } = useSignIn();
+  // ====================== Authentication & Navigation Hooks ======================
+  const { signIn, isLoaded } = useSignIn();
   const { signOut } = useClerk();
   const router = useRouter();
 
+  // ====================== State Management ======================
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isSettingPassword, setIsSettingPassword] = useState(false);
 
+  // ====================== Helper Functions ======================
+  const isValidPassword = (password: string) => password.length >= 8;
+
+  // ====================== Password Reset Handler ======================
   const onSetPasswordPress = async () => {
-    setErrorMessage("");
-
-    if (!isLoaded) return;
-
-    if (!password.trim() || !confirmPassword.trim()) {
-      setErrorMessage("Both fields are required.");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setErrorMessage("Passwords do not match.");
-      return;
-    }
-
     try {
+      if (!isLoaded) return;
+
+      if (!password.trim() || !confirmPassword.trim()) {
+        setErrorMessage("Both fields are required.");
+        return;
+      }
+
+      if (!isValidPassword(password)) {
+        setErrorMessage("Password must be at least 8 characters long.");
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setErrorMessage("Passwords do not match.");
+        return;
+      }
+
+      setIsSettingPassword(true);
       await signOut();
       await new Promise((resolve) => setTimeout(resolve, 1000));
       await signIn.resetPassword({ password });
       await signOut();
       router.replace(routes.signIn);
+      setIsSettingPassword(false);
     } catch (err: any) {
-      console.error(err);
-      setErrorMessage(
-        err.errors?.[0]?.message ||
-          "Failed to reset password. Please try again."
-      );
+      setIsSettingPassword(false);
+      setErrorMessage("Failed to reset password. Please try again.");
     }
   };
 
+  // ====================== Render UI ======================
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Reset</Text>
-      <Text style={styles.title}>Password</Text>
+      {/* Title & Subtitle */}
+      <Text style={styles.title}>Reset Password</Text>
       <Text style={styles.subtitle}>
         Please enter your new password and confirm.
       </Text>
 
-      <Text style={styles.label}>New password</Text>
-      <PasswordInput
-        placeholder="************"
-        value={password}
-        onChangeText={setPassword}
-      />
+      {/* Input Fields */}
+      <View style={styles.inputWrapper}>
+        <PasswordInput
+          placeholder="New password"
+          value={password}
+          onChangeText={setPassword}
+        />
+        <PasswordInput
+          placeholder="Confirm new password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+        />
+        {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+      </View>
 
-      <Text style={styles.label}>Confirm new password</Text>
-      <PasswordInput
-        placeholder="************"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-      />
-
-      {errorMessage ? (
-        <Text style={styles.errorText}>{errorMessage}</Text>
-      ) : null}
+      {/* Continue Button */}
       <TouchableOpacity style={styles.button} onPress={onSetPasswordPress}>
         <Text style={styles.buttonText}>Continue</Text>
       </TouchableOpacity>
+
+      {/* Loading Overlay */}
+      {isSettingPassword && (
+        <View style={styles.overlay}>
+          <ActivityIndicator size="large" color="#0000ff" />
+        </View>
+      )}
     </View>
   );
 }
 
+// ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Main Layout
   container: {
     flex: 1,
     justifyContent: "center",
@@ -90,12 +109,14 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#F5F5F5",
   },
+
+  // Typography
   title: {
-    fontSize: 60,
     fontFamily: "InriaSerif_400Regular",
-    fontWeight: "bold",
+    fontSize: 60,
+    fontWeight: "normal",
     textAlign: "center",
-    color: "#2D4A2E",
+    color: "#000",
   },
   subtitle: {
     fontSize: 16,
@@ -103,21 +124,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 10,
     marginBottom: 30,
-  },
-  label: {
-    fontSize: 18,
-    fontWeight: "bold",
-    alignSelf: "flex-start",
-    marginBottom: 5,
-    color: "#2D4A2E",
-  },
-  button: {
-    backgroundColor: "#2D4A2E",
-    paddingVertical: 16,
-    width: "100%",
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 20,
   },
   buttonText: {
     color: "#FFF",
@@ -127,6 +133,36 @@ const styles = StyleSheet.create({
   errorText: {
     color: "red",
     fontSize: 14,
+    textAlign: "center",
     marginTop: 5,
+  },
+
+  // Input Fields
+  inputWrapper: {
+    width: "100%",
+    marginBottom: 15,
+  },
+
+  // Button
+  button: {
+    backgroundColor: "#000",
+    paddingVertical: 16,
+    width: "100%",
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 10,
+  },
+
+  // Overlay
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    zIndex: 999,
   },
 });
