@@ -12,6 +12,7 @@ import { Template } from "@/types/templateTypes";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
+// ====================== Type Definitions ======================
 type TemplateModalProps = {
   visible: boolean;
   template: Template | null;
@@ -20,6 +21,7 @@ type TemplateModalProps = {
   goals: { id: string; title: string }[];
 };
 
+// ====================== Main Component ======================
 export default function TemplateModal({
   visible,
   template,
@@ -27,15 +29,18 @@ export default function TemplateModal({
   onSelect,
   goals,
 }: TemplateModalProps) {
+  // ====================== State Management ======================
   const [isModalVisible, setIsModalVisible] = useState(visible);
   const [activeTab, setActiveTab] = useState<"description" | "goals">(
     "description"
   );
 
+  // ====================== Effects ======================
   useEffect(() => {
     setIsModalVisible(visible);
   }, [visible]);
 
+  // ====================== Handlers ======================
   const handleClose = () => {
     setIsModalVisible(false);
     setTimeout(onClose, 300);
@@ -46,8 +51,10 @@ export default function TemplateModal({
     setTimeout(onSelect, 300);
   };
 
+  // ====================== Conditional Rendering ======================
   if (!template) return null;
 
+  // ====================== Render UI ======================
   return (
     <View>
       <Modal
@@ -64,7 +71,7 @@ export default function TemplateModal({
         style={{ margin: 0 }}
       >
         <View style={styles.container}>
-          {/* Hero Section with Image Overlay */}
+          {/* Hero Section */}
           <View style={styles.heroContainer}>
             <Image source={{ uri: template.image }} style={styles.heroImage} />
             <LinearGradient
@@ -134,9 +141,7 @@ export default function TemplateModal({
             ) : (
               <View style={styles.goalsContent}>
                 {template.goals_id?.map((goalId, index) => {
-                  // ✅ หา Goal ที่ตรงกับ goalId
                   const goal = goals.find((g) => g.id === goalId);
-
                   return (
                     <View key={goalId} style={styles.goalItem}>
                       <Ionicons
@@ -160,7 +165,6 @@ export default function TemplateModal({
               <Ionicons name="close-circle" size={40} color="red" />
               <Text style={styles.closeText}>Close</Text>
             </Pressable>
-
             <Pressable style={styles.selectButton} onPress={handleSelect}>
               <Ionicons name="checkmark-circle" size={40} color="green" />
               <Text style={styles.selectText}>Select</Text>
@@ -172,7 +176,9 @@ export default function TemplateModal({
   );
 }
 
+// ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Main Layout
   container: {
     flex: 1,
     backgroundColor: "#fff",
@@ -251,6 +257,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     paddingHorizontal: 20,
+    marginBottom: 20,
   },
   descriptionContent: {
     backgroundColor: "rgba(0,0,0,0.03)",
@@ -285,7 +292,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 35,
     gap: 10,
   },
   closeButton: {

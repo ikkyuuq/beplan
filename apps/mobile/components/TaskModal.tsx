@@ -109,14 +109,14 @@ export default function TaskModal({
       Alert.alert("Missing Task Name", "Please enter a task name.");
       return;
     }
-  
+
     if (selectedDates.length === 0) {
       Alert.alert("Missing Dates", "Please select a date for the Task.");
       return;
     }
 
     let taskData: Task = {
-      id: initialTask?.id || (uuid.v4() as string), 
+      id: initialTask?.id || (uuid.v4() as string),
       title: taskTitle,
       description: taskDescription,
       type: "normal",
@@ -142,7 +142,7 @@ export default function TaskModal({
     onClose();
   };
 
-  // ====================== Effects ======================  // 
+  // ====================== Effects ======================  //
   {
     /* 
     - Reset State value every time visible or initialTask ​​changes

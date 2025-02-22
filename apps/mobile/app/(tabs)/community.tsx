@@ -16,7 +16,9 @@ import TemplateCard from "@/components/TemplateCard";
 import { Template } from "@/types/templateTypes";
 import TemplateModal from "@/components/TemplateModal";
 
+// ====================== Main Component ======================
 export default function Community() {
+  // ====================== Hooks & State ======================
   const { signOut } = useClerk();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
@@ -99,12 +101,14 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
     },
   ]);
 
+  // ====================== Mock Data ======================
   const mockGoals = [
     { id: "goal_001", title: "Build Strength" },
     { id: "goal_002", title: "Improve Cardio" },
     { id: "goal_003", title: "Financial Stability" },
   ];
 
+  // ====================== Handlers ======================
   const handleSignOut = async () => {
     await signOut();
     router.replace(routes.signIn);
@@ -139,7 +143,7 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
     );
   };
 
-  // Filter templates by category and Search
+  // ====================== Filtering Logic ======================
   const filteredTemplates = templates.filter((template) => {
     if (selectedFilter === "FAVORITES" && !template.isFavorite) return false;
     if (selectedFilter === "WORKOUT" && template.category !== "Workout")
@@ -147,7 +151,6 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
     if (selectedFilter === "FINANCE" && template.category !== "Finance")
       return false;
 
-    // Filter by Search Query (check both title and description)
     if (
       searchQuery &&
       !template.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
@@ -159,6 +162,7 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
     return true;
   });
 
+  // ====================== Render UI ======================
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -174,9 +178,11 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
           </Pressable>
         </View>
 
+        {/* Title */}
         <View style={styles.titleContainer}>
           <Text style={styles.title}>Community</Text>
         </View>
+
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <Ionicons
@@ -193,8 +199,9 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
             onChangeText={setSearchQuery}
           />
         </View>
+
+        {/* Filter Buttons */}
         <View style={styles.filterContainer}>
-          {/* ALL */}
           <Pressable
             style={[
               styles.filterButton,
@@ -204,8 +211,6 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
           >
             <Text style={styles.filterText}>ALL</Text>
           </Pressable>
-
-          {/* Favorites */}
           <Pressable
             style={[
               styles.filterButton,
@@ -219,8 +224,6 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
               color={selectedFilter === "FAVORITES" ? "#FF0000" : "#fff"}
             />
           </Pressable>
-
-          {/* Workout */}
           <Pressable
             style={[
               styles.filterButton,
@@ -230,8 +233,6 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
           >
             <Ionicons name="barbell" size={20} color="#fff" />
           </Pressable>
-
-          {/* Finance */}
           <Pressable
             style={[
               styles.filterButton,
@@ -244,6 +245,7 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
         </View>
       </View>
 
+      {/* Template List */}
       <View style={styles.templateContainer}>
         <View style={styles.cardContainer}>
           <FlatList
@@ -261,6 +263,7 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
         </View>
       </View>
 
+      {/* Template Modal */}
       <TemplateModal
         visible={isModalVisible}
         template={selectedTemplate}
@@ -272,7 +275,9 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
   );
 }
 
+// ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Main Layout
   container: {
     flex: 1,
   },
@@ -289,7 +294,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
     shadowRadius: 10,
     shadowOpacity: 0.1,
-    elevation: 5, // For Android shadow
+    elevation: 5,
   },
   headerContent: {
     flexDirection: "row",
@@ -326,7 +331,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
     borderRadius: 25,
-    padding: 18,
+    padding: 10,
   },
   searchIcon: {
     marginRight: 10,
@@ -336,7 +341,7 @@ const styles = StyleSheet.create({
     color: "#000000",
   },
 
-  // Template/Card/Overlay Styles
+  // Template/Card Styles
   templateContainer: {
     padding: 5,
     maxHeight: 450,
@@ -358,7 +363,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: 10,
-    marginTop: 10,
+    padding: 10,
   },
   filterButton: {
     backgroundColor: "#181D39",

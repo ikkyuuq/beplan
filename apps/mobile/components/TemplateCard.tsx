@@ -8,17 +8,20 @@ import Animated, {
   useAnimatedStyle,
 } from "react-native-reanimated";
 
+// ====================== Types ======================
 type TemplateCardProps = {
   template: Template;
   onSelect: () => void;
   onToggleFavorite: () => void;
 };
 
+// ====================== Component ======================
 export default function TemplateCard({
   template,
   onSelect,
   onToggleFavorite,
 }: TemplateCardProps) {
+  // ====================== Animation ======================
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -32,18 +35,20 @@ export default function TemplateCard({
     scale.value = withSpring(1);
   };
 
+  // ====================== Render UI ======================
   return (
     <Pressable
       onPress={onSelect}
       onPressIn={handlePressIn}
-      onPressOut={handlePressOut} 
-      delayLongPress={150} 
+      onPressOut={handlePressOut}
+      delayLongPress={150}
     >
       <Animated.View style={[styles.card, animatedStyle]}>
         <Image source={{ uri: template.image }} style={styles.image} />
         <View style={styles.cardContent}>
           <Text style={styles.title}>{template.title}</Text>
           <Text style={styles.category}>{template.category}</Text>
+
           {/* Favorite Button */}
           <Pressable onPress={onToggleFavorite} style={styles.favoriteButton}>
             <Ionicons
@@ -59,6 +64,7 @@ export default function TemplateCard({
 }
 
 const styles = StyleSheet.create({
+  // Card Styles
   card: {
     backgroundColor: "#fff",
     borderRadius: 10,
@@ -74,6 +80,8 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 150,
   },
+
+  // Content Styles
   cardContent: {
     padding: 10,
   },
@@ -87,6 +95,8 @@ const styles = StyleSheet.create({
     color: "#777",
     marginTop: 5,
   },
+
+  // Button Styles
   favoriteButton: {
     position: "absolute",
     right: 10,
