@@ -14,7 +14,6 @@ import { routes } from "@/routesConfig";
 import { useState } from "react";
 import TemplateCard from "@/components/TemplateCard";
 import { Template } from "@/types/templateTypes";
-import { LinearGradient } from "expo-linear-gradient";
 import TemplateModal from "@/components/TemplateModal";
 
 export default function Community() {
@@ -140,11 +139,23 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
     );
   };
 
+  // Filter templates by category and Search
   const filteredTemplates = templates.filter((template) => {
-    if (selectedFilter === "ALL") return true;
-    if (selectedFilter === "FAVORITES") return template.isFavorite;
-    if (selectedFilter === "WORKOUT") return template.category === "Workout";
-    if (selectedFilter === "FINANCE") return template.category === "Finance";
+    if (selectedFilter === "FAVORITES" && !template.isFavorite) return false;
+    if (selectedFilter === "WORKOUT" && template.category !== "Workout")
+      return false;
+    if (selectedFilter === "FINANCE" && template.category !== "Finance")
+      return false;
+
+    // Filter by Search Query (check both title and description)
+    if (
+      searchQuery &&
+      !template.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !template.description.toLowerCase().includes(searchQuery.toLowerCase())
+    ) {
+      return false;
+    }
+
     return true;
   });
 
@@ -257,11 +268,6 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
         onSelect={handleSelectTemplate}
         goals={mockGoals}
       />
-
-      <LinearGradient
-        colors={["transparent", "rgb(255, 255, 255)"]}
-        style={styles.gradientOverlay}
-      />
     </View>
   );
 }
@@ -320,14 +326,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
     borderRadius: 25,
-    padding: 12,
+    padding: 18,
   },
   searchIcon: {
     marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    color: "#fff",
+    color: "#000000",
   },
 
   // Template/Card/Overlay Styles
