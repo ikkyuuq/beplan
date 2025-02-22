@@ -396,7 +396,7 @@ export default function Collapsable({
             </Animated.View>
           </View>
         </GestureDetector>
-        <Animated.View style={[animateCollapse]}>
+        <Animated.View style={[animateCollapse, { overflow: "hidden" }]}>
           <Animated.View
             onLayout={(e) => {
               if (collapsed) {
