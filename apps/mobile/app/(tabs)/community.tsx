@@ -68,7 +68,7 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
       description: "Legendary investor and businessman.",
       category: "Finance",
       image: "https://picsum.photos/200/300",
-      isFavorite: true,
+      isFavorite: false,
       goals_id: ["goal_003"],
     },
     {
@@ -77,7 +77,7 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
       description: "Legendary investor and businessman.",
       category: "Finance",
       image: "https://picsum.photos/200/300",
-      isFavorite: true,
+      isFavorite: false,
       goals_id: ["goal_003"],
     },
     {
@@ -86,7 +86,7 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
       description: "Legendary investor and businessman.",
       category: "Finance",
       image: "https://picsum.photos/200/300",
-      isFavorite: true,
+      isFavorite: false,
       goals_id: ["goal_003"],
     },
     {
@@ -95,10 +95,16 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
       description: "Legendary investor and businessman.",
       category: "Finance",
       image: "https://picsum.photos/200/300",
-      isFavorite: true,
+      isFavorite: false,
       goals_id: ["goal_003"],
     },
   ]);
+
+  const mockGoals = [
+    { id: "goal_001", title: "Build Strength" },
+    { id: "goal_002", title: "Improve Cardio" },
+    { id: "goal_003", title: "Financial Stability" },
+  ];
 
   const handleSignOut = async () => {
     await signOut();
@@ -230,13 +236,12 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
       <View style={styles.templateContainer}>
         <View style={styles.cardContainer}>
           <FlatList
-            data={filteredTemplates} // ✅ แสดงเฉพาะที่ตรงกับ Filter
+            data={filteredTemplates}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <TemplateCard
                 template={item}
                 onSelect={() => openModal(item)}
-                //onSelect={() => console.log("Selected:", item.id)}
                 onToggleFavorite={() => toggleFavorite(item.id)}
               />
             )}
@@ -250,6 +255,7 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
         template={selectedTemplate}
         onClose={closeModal}
         onSelect={handleSelectTemplate}
+        goals={mockGoals}
       />
 
       <LinearGradient
@@ -321,7 +327,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: "#fff", // Consider if you want white text on a white background
+    color: "#fff",
   },
 
   // Template/Card/Overlay Styles
@@ -355,7 +361,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   selected: {
-    backgroundColor: "#8B98D5", // Highlight color when filter is selected
+    backgroundColor: "#8B98D5",
   },
   filterText: {
     color: "#fff",
