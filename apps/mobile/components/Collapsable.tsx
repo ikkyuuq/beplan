@@ -1,16 +1,20 @@
-import { View, Text, LayoutChangeEvent, Dimensions } from "react-native";
-import React, { useRef, useState, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import { View, LayoutChangeEvent } from "react-native";
 import Animated, {
   useAnimatedStyle,
-  withSpring,
   withTiming,
-  runOnJS,
-  useSharedValue,
   interpolateColor,
+  useSharedValue,
+  withSpring,
+  runOnJS,
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { GestureDetector } from "react-native-gesture-handler";
 import ContextMenu from "./ContextMenu";
+import {
+  useCollapsibleGesture,
+  CollapseConfig,
+} from "../hooks/useCollapsibleGesture";
 
 type CollapsableProps = {
   title: string;
@@ -21,7 +25,7 @@ type CollapsableProps = {
   onFail?: () => void;
   onDelete?: () => void;
   onCustomize?: () => void;
-  onReschedule?: () => void;
+  onCollapseFinish?: () => void;
 };
 
 export default function Collapsable({
@@ -33,38 +37,38 @@ export default function Collapsable({
   onFail,
   onDelete,
   onCustomize,
-  onReschedule,
+  onCollapseFinish,
 }: CollapsableProps) {
+  const INITIAL_CONTAINER_HEIGHT = 70;
   const [collapsed, setCollapsed] = useState(false);
-  const innerCollapseHeight = useSharedValue(0);
-  const innerCollapsePaddingBottom = useSharedValue(24);
 
-  const HEADER_HEIGHT = 70;
-  const headerHeight = useSharedValue(HEADER_HEIGHT);
-
-  const [androidMenuVisible, setAndroidMenuVisible] = useState(false);
+  const [contextMenuVisible, setContextMenuVisible] = useState(false);
   const [anchorPosition, setAnchorPosition] = useState({
     bottomLeft: { x: 0, y: 0 },
     topLeft: { x: 0, y: 0 },
   });
   const anchorRef = useRef<Animated.View>(null);
-  const scaleValue = useSharedValue(1);
-  const lastMeasuredPosition = useRef({
-    bottomLeft: { x: 0, y: 0 },
-    topLeft: { x: 0, y: 0 },
-  });
-
-  const collapseMarginBottom = useSharedValue(10);
+  const containerWidth = useRef(0);
   const collapseContentRef = useRef<Animated.View>(null);
+
+  const containerHeight = useSharedValue(INITIAL_CONTAINER_HEIGHT);
+  const collapseMarginBottom = useSharedValue(10);
+  const innerCollapseHeight = useSharedValue(0);
+  const innerCollapsePaddingBottom = useSharedValue(24);
+
+  const collapseConfig: CollapseConfig = {
+    collapsed,
+    setCollapsed,
+    containerHeight,
+    collapseMarginBottom,
+    innerCollapseHeight,
+    innerCollapsePaddingBottom,
+  };
 
   const updateMenuPosition = useCallback(() => {
     return new Promise<void>((resolve) => {
       if (anchorRef.current) {
         anchorRef.current.measure((x, y, width, height, pageX, pageY) => {
-          lastMeasuredPosition.current = {
-            bottomLeft: { x: pageX, y: pageY + height },
-            topLeft: { x: pageX, y: pageY },
-          };
           setAnchorPosition({
             bottomLeft: { x: pageX, y: pageY + height },
             topLeft: { x: pageX, y: pageY },
@@ -77,180 +81,79 @@ export default function Collapsable({
     });
   }, []);
 
-  const handleAndroidPress = useCallback(async () => {
-    setAndroidMenuVisible(true);
-  }, [updateMenuPosition]);
+  const handleContextMenuOpen = useCallback(() => {
+    setContextMenuVisible(true);
+  }, []);
 
-  const gestureTapCollapse = Gesture.Tap().onEnd((_, success) => {
-    if (success) {
-      runOnJS(setCollapsed)(!collapsed);
-    }
+  const handleContextMenuClose = useCallback(() => {
+    setContextMenuVisible(false);
+  }, []);
+
+  const toggleCollapse = () => {
+    setCollapsed((prev) => !prev);
+  };
+
+  const {
+    composedGesture,
+    translateX,
+    opacity,
+    scaleValue,
+    onLayout,
+    runSwipeAnimation,
+  } = useCollapsibleGesture({
+    onComplete: () => onComplete && onComplete(),
+    onFail: () => onFail && onFail(),
+    onToggleCollapse: toggleCollapse,
+    onLongPress: handleContextMenuOpen,
+    collapseConfig,
   });
 
-  const handleLongPressStart = () => {
-    scaleValue.value = withSpring(1.1, { damping: 10, stiffness: 100 });
-  };
-
-  const handleModalClose = useCallback(() => {
-    scaleValue.value = withSpring(1, { damping: 10, stiffness: 100 });
-    setAndroidMenuVisible(false);
-  }, [scaleValue]);
-
-  const screenWidth = Dimensions.get("window").width;
-  const translateX = useSharedValue(0);
-  const opacity = useSharedValue(1);
-  const collapseWidth = useRef(0);
-
-  const SWIPE_THRESHOLD = 0.4;
-  const VELOCITY_THRESHOLD = 800;
-  const MIN_SWIPE_DISTANCE = 60;
-
-  const closeCollapse = (callback?: () => void) => {
-    if (collapsed) {
-      runOnJS(setCollapsed)(false);
-      innerCollapsePaddingBottom.value = withTiming(
-        0,
-        { duration: 200 },
-        () => {
-          innerCollapseHeight.value = withTiming(
-            0,
-            { duration: 200 },
-            (finished) => {
-              if (finished && callback) {
-                runOnJS(callback)();
-              }
-            },
-          );
-        },
-      );
-    } else {
-      callback && callback();
-    }
-  };
-
-  // Animate swipe only after collapse is closed
-  const runSwipeAnimation = (
-    direction: "left" | "right",
-    callback?: () => void,
-    durationOverride?: number,
-  ) => {
-    const animDuration = durationOverride ?? 300;
-    const fadeDuration = 200;
-    const currentX = translateX.value;
-    const targetX =
-      direction === "left"
-        ? -screenWidth - Math.abs(currentX)
-        : screenWidth + Math.abs(currentX);
-    translateX.value = withTiming(targetX, { duration: animDuration }, () => {
-      opacity.value = withTiming(0, { duration: fadeDuration }, () => {
-        collapseMarginBottom.value = withTiming(0, { duration: 200 }, () => {
-          headerHeight.value = withTiming(0, { duration: 200 }, () => {
-            callback && runOnJS(callback)();
-          });
-        });
-      });
-    });
-  };
-
-  const handleFail = () => {
-    closeCollapse(() => {
-      runSwipeAnimation("left", () => {
-        if (onFail) runOnJS(onFail)();
-      });
-    });
-  };
-
-  const handleComplete = () => {
-    closeCollapse(() => {
-      runSwipeAnimation("right", () => {
-        if (onComplete) runOnJS(onComplete)();
-      });
-    });
-  };
-
-  const handleFailContextMenu = () => {
-    closeCollapse(() => {
-      runSwipeAnimation(
-        "left",
-        () => {
-          if (onFail) runOnJS(onFail)();
-        },
-        600,
-      );
-    });
-  };
-
-  const handleCompleteContextMenu = () => {
-    closeCollapse(() => {
-      runSwipeAnimation(
-        "right",
-        () => {
-          if (onComplete) runOnJS(onComplete)();
-        },
-        600,
-      );
-    });
-  };
-
-  const gesturePan = Gesture.Pan()
-    .activeOffsetX([-10, 10])
-    .onUpdate(({ translationX }) => {
-      const resistance = 0.3;
-      translateX.value = translationX * resistance;
-    })
-    .onEnd((e) => {
-      const normalizedDrag = translateX.value / collapseWidth.current;
-      const absTranslation = Math.abs(translateX.value);
-      const absVelocity = Math.abs(e.velocityX);
-
-      const shouldDismissed =
-        absTranslation > MIN_SWIPE_DISTANCE &&
-        (Math.abs(normalizedDrag) > SWIPE_THRESHOLD ||
-          absVelocity > VELOCITY_THRESHOLD);
-
-      if (shouldDismissed) {
-        if (translateX.value > 0) {
-          runOnJS(handleComplete)();
-        } else {
-          runOnJS(handleFail)();
-        }
-      } else {
-        console.log("Cancel");
-        translateX.value = withSpring(0, {
-          damping: 12,
-          stiffness: 400,
-          velocity: e.velocityX,
-        });
-      }
-    });
-
-  const gestureLongPressCollapse = Gesture.LongPress()
-    .minDuration(600)
-    .onStart(() => {
-      runOnJS(handleLongPressStart)();
-      runOnJS(handleAndroidPress)();
-    })
-    .onEnd((_, success) => {
-      if (!success) {
-        runOnJS(handleModalClose)();
-      }
-    });
-
-  const raceGesture = Gesture.Race(gesturePan, gestureLongPressCollapse);
-  const composedGesture = Gesture.Exclusive(raceGesture, gestureTapCollapse);
-
   useEffect(() => {
-    if (androidMenuVisible) {
+    if (contextMenuVisible) {
       updateMenuPosition();
     }
-  }, [androidMenuVisible, updateMenuPosition]);
+  }, [contextMenuVisible, updateMenuPosition]);
+
+  useEffect(() => {
+    if (collapsed) {
+      collapseContentRef.current?.measure((_x, _y, _width, height) => {
+        innerCollapseHeight.value = withTiming(height, { duration: 200 });
+      });
+    } else {
+      innerCollapseHeight.value = withTiming(0, { duration: 200 });
+    }
+  }, [collapsed]);
+
+  useEffect(() => {
+    if (React.Children.count(children) === 0) {
+      setCollapsed(false);
+      containerHeight.value = withSpring(
+        0,
+        { damping: 20, stiffness: 100 },
+        (finished) => {
+          if (finished) {
+            collapseMarginBottom.value = withSpring(
+              0,
+              {
+                damping: 20,
+                stiffness: 100,
+              },
+              (finished) => {
+                if (finished && onCollapseFinish) {
+                  runOnJS(onCollapseFinish)();
+                }
+              },
+            );
+          }
+        },
+      );
+    }
+  }, [children]);
 
   const animateArrow = useAnimatedStyle(() => ({
     transform: [
       {
-        rotate: withSpring(collapsed ? "180deg" : "0deg", {
-          duration: 2500,
-        }),
+        rotate: withSpring(collapsed ? "180deg" : "0deg", { duration: 2500 }),
       },
     ],
     color: interpolateColor(
@@ -260,20 +163,8 @@ export default function Collapsable({
     ),
   }));
 
-  useEffect(() => {
-    if (collapsed) {
-      if (collapseContentRef.current) {
-        collapseContentRef.current.measure((_x, _y, _width, height) => {
-          innerCollapseHeight.value = withTiming(height, { duration: 200 });
-        });
-      }
-    } else {
-      innerCollapseHeight.value = withTiming(0, { duration: 200 });
-    }
-  }, [collapsed]);
-
   const animateCollapse = useAnimatedStyle(() => {
-    const animateMargin = collapsed
+    const marginValue = collapsed
       ? withSpring(10, { damping: 20, stiffness: 100 })
       : withSpring(0);
     return {
@@ -282,86 +173,104 @@ export default function Collapsable({
         damping: 20,
         stiffness: 100,
       }),
-      marginVertical: animateMargin,
+      marginVertical: marginValue,
     };
   });
 
-  const animatedContainerStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { scale: scaleValue.value },
-        { translateX: translateX.value },
-      ],
-      opacity: opacity.value,
-      backgroundColor: interpolateColor(
-        translateX.value,
-        [-65, -20, 0, 20, 65],
-        ["#F05353", "#fff", "#fff", "#fff", "#53F07D"],
-      ),
-      height: withSpring(headerHeight.value + innerCollapseHeight.value, {
-        damping: 20,
-        stiffness: 100,
-      }),
-      marginBottom: withSpring(collapseMarginBottom.value, {
-        damping: 20,
-        stiffness: 100,
-      }),
-    };
-  });
+  const animateInnerCollapseStyle = useAnimatedStyle(() => ({
+    paddingBottom: withSpring(innerCollapsePaddingBottom.value, {
+      damping: 20,
+      stiffness: 100,
+    }),
+  }));
 
-  const animatedContainerPreviewStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { scale: scaleValue.value },
-        { translateX: translateX.value },
-      ],
-    };
-  });
+  const animatedContainerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scaleValue.value }, { translateX: translateX.value }],
+    opacity: opacity.value,
+    backgroundColor: interpolateColor(
+      translateX.value,
+      [-65, -20, 0, 20, 65],
+      ["#F05353", "#fff", "#fff", "#fff", "#53F07D"],
+    ),
+    height: withSpring(containerHeight.value + innerCollapseHeight.value, {
+      damping: 20,
+      stiffness: 100,
+    }),
+    marginBottom: withSpring(collapseMarginBottom.value, {
+      damping: 20,
+      stiffness: 100,
+    }),
+  }));
 
-  const animatedTextStyle = useAnimatedStyle(() => {
-    return {
-      color: interpolateColor(
-        translateX.value,
-        [-65, -20, 0, 20, 65],
-        ["#fff", "#000", "#000", "#000", "#fff"],
-      ),
-    };
-  });
+  const animatedContainerPreviewStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scaleValue.value }, { translateX: translateX.value }],
+  }));
 
-  const animatedCaptionStyle = useAnimatedStyle(() => {
-    return {
-      color: interpolateColor(
-        translateX.value,
-        [-65, -20, 0, 20, 65],
-        ["#fff", "#8d8d8d", "#8d8d8d", "#8d8d8d", "#fff"],
-      ),
-    };
-  });
+  const animatedTextStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      translateX.value,
+      [-65, -20, 0, 20, 65],
+      ["#fff", "#000", "#000", "#000", "#fff"],
+    ),
+  }));
 
-  const animatedInnerCollapseStyle = useAnimatedStyle(() => {
-    return {
-      paddingBottom: innerCollapsePaddingBottom.value,
-    };
+  const animatedCaptionStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      translateX.value,
+      [-65, -20, 0, 20, 65],
+      ["#fff", "#8d8d8d", "#8d8d8d", "#8d8d8d", "#fff"],
+    ),
+  }));
+
+  const [containerLayout, setContainerLayout] = useState({
+    width: 0,
+    height: 0,
   });
+  const onContainerLayout = (e: LayoutChangeEvent) => {
+    setContainerLayout({
+      width: e.nativeEvent.layout.width,
+      height: e.nativeEvent.layout.height,
+    });
+    onLayout(e);
+  };
+
+  const handleCompleteContextMenu = () => {
+    runSwipeAnimation(
+      "right",
+      () => {
+        onComplete?.();
+      },
+      600,
+    );
+  };
+  const handleFailContextMenu = () => {
+    runSwipeAnimation(
+      "left",
+      () => {
+        onFail?.();
+      },
+      600,
+    );
+  };
 
   return (
     <>
       <ContextMenu
-        visible={androidMenuVisible}
-        onClose={handleModalClose}
+        visible={contextMenuVisible}
+        onClose={handleContextMenuClose}
         anchorPosition={anchorPosition}
         preview={
           <Animated.View
             style={[
               animatedContainerPreviewStyle,
               {
+                width: containerLayout.width,
                 position: "absolute",
                 top: anchorPosition.topLeft.y,
                 left: anchorPosition.bottomLeft.x,
                 backgroundColor: "#fff",
                 borderRadius: 10,
                 padding: 16,
-                width: "80%",
                 alignSelf: "center",
               },
             ]}
@@ -392,11 +301,8 @@ export default function Collapsable({
             type: "default",
             status: "enabled",
             onPress: () => {
-              handleModalClose();
-              handleCompleteContextMenu
-                ? handleCompleteContextMenu()
-                : handleComplete();
-              console.log("Completed");
+              handleContextMenuClose();
+              handleCompleteContextMenu();
             },
           },
           {
@@ -405,9 +311,8 @@ export default function Collapsable({
             type: "default",
             status: "enabled",
             onPress: () => {
-              handleModalClose();
-              handleFailContextMenu ? handleFailContextMenu() : handleFail();
-              console.log("Failed");
+              handleContextMenuClose();
+              handleFailContextMenu();
             },
           },
           {
@@ -422,9 +327,8 @@ export default function Collapsable({
             type: "default",
             status: type === "custom" ? "enabled" : "disabled",
             onPress: () => {
-              handleModalClose();
-              onCustomize?.();
-              console.log("Customize");
+              handleContextMenuClose();
+              onCustomize && onCustomize();
             },
           },
           {
@@ -433,9 +337,8 @@ export default function Collapsable({
             type: "destructive",
             status: "enabled",
             onPress: () => {
-              handleModalClose();
-              onDelete?.();
-              console.log("Delete");
+              handleContextMenuClose();
+              onDelete && onDelete();
             },
           },
         ]}
@@ -443,6 +346,7 @@ export default function Collapsable({
 
       <Animated.View
         collapsable={false}
+        onLayout={onContainerLayout}
         style={[
           animatedContainerStyle,
           {
@@ -459,9 +363,9 @@ export default function Collapsable({
         <GestureDetector gesture={composedGesture}>
           <View
             ref={anchorRef}
-            onLayout={(e) =>
-              (collapseWidth.current = e.nativeEvent.layout.width)
-            }
+            onLayout={(e) => {
+              containerWidth.current = e.nativeEvent.layout.width;
+            }}
             style={{
               flexDirection: "row",
               justifyContent: "space-between",
@@ -486,16 +390,21 @@ export default function Collapsable({
                 {title}
               </Animated.Text>
             </View>
-            <Animated.View style={[animateArrow]}>
+            <Animated.View style={animateArrow}>
               <Feather name="chevron-down" size={24} color="black" />
             </Animated.View>
           </View>
         </GestureDetector>
-        <Animated.View style={[animateCollapse, { overflow: "hidden" }]}>
+        <Animated.View style={[animateCollapse]}>
           <Animated.View
+            onLayout={(e) => {
+              if (collapsed) {
+                innerCollapseHeight.value = e.nativeEvent.layout.height;
+              }
+            }}
             ref={collapseContentRef}
             style={[
-              animatedInnerCollapseStyle,
+              animateInnerCollapseStyle,
               {
                 position: "absolute",
                 paddingHorizontal: 16,

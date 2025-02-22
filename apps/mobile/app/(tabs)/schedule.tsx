@@ -7,6 +7,9 @@ import {
   LayoutChangeEvent,
   ScrollView,
   FlatList,
+  Platform,
+  UIManager,
+  LayoutAnimation,
 } from "react-native";
 import {
   addDays,
@@ -28,8 +31,9 @@ import Animated, {
 import CollapseItem from "@/components/CollapseItem";
 import Collapsable from "@/components/Collapsable";
 import { useClerk } from "@clerk/clerk-expo";
-import { useRouter } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
+import CalendarPicker from "@/components/CalendarPicker";
 
 export default function schedule() {
   const { signOut } = useClerk();
@@ -126,31 +130,32 @@ export default function schedule() {
       id: 1,
       title: "I want to save $5000 by the end of the months",
       type: "SMART GOALS",
+      status: "pending",
       startDate: new Date(),
       dueDate: new Date(startDate.getDate() + 30),
       tasks: [
         {
           id: 1,
           title: "Morning Routine",
-          status: "inProgress",
+          status: "pending",
           description:
             "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
           repeat: {
-            id: 1,
             type: "daily",
-            interval: null,
+            interval: [],
+            interval_date: ["2025-02-01", "2025-02-02", "2025-02-03"],
           },
         },
         {
           id: 2,
           title: "Morning Routine",
-          status: "inProgress",
+          status: "pending",
           description:
             "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
           repeat: {
-            id: 2,
             type: "weekly",
             interval: [1, 3, 5], // Monday, Wednesday, Friday
+            interval_date: ["2025-02-01", "2025-02-02", "2025-02-03"],
           },
         },
       ],
@@ -159,31 +164,42 @@ export default function schedule() {
       id: 2,
       title: "I want to save $5000 by the end of the months",
       type: "SMART GOALS",
+      status: "pending",
       startDate: new Date(),
       dueDate: new Date(startDate.getDate() + 30),
       tasks: [
         {
-          id: 1,
+          id: 3,
           title: "Morning Routine",
-          status: "inProgress",
+          status: "pending",
           description:
             "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
           repeat: {
-            id: 1,
             type: "daily",
-            interval: null,
+            interval: [],
+            interval_date: [
+              "2025-02-01",
+              "2025-02-02",
+              "2025-02-03",
+              "2025-02-04",
+            ],
           },
         },
         {
-          id: 2,
+          id: 4,
           title: "Morning Routine",
-          status: "inProgress",
+          status: "pending",
           description:
             "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
           repeat: {
-            id: 2,
             type: "weekly",
-            interval: [1, 3, 5], // Monday, Wednesday, Friday
+            interval: [1, 3, 5],
+            interval_date: [
+              "2025-02-01",
+              "2025-02-02",
+              "2025-02-03",
+              "2025-02-04",
+            ],
           },
         },
       ],
@@ -191,33 +207,65 @@ export default function schedule() {
   ]);
 
   const handleFailAllTasks = (goalId: number) => {
-    setData((prev) =>
-      prev.map((goal) =>
-        goal.id === goalId
-          ? {
-              ...goal,
-              tasks: goal.tasks.map((task) => ({
-                ...task,
-                status: "failed",
-              })),
-            }
-          : goal,
-      ),
-    );
-    console.log(data);
-    setData((prev) => prev.filter((goal) => goal.id !== goalId));
-  };
-
-  const handleCompleteAllTasks = (goalId: number) => {
-    console.log(data.filter((goal) => goal.id !== goalId));
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setTimeout(
       () => setData((prev) => prev.filter((goal) => goal.id !== goalId)),
       300,
     );
   };
 
+  const handleCompleteAllTasks = (goalId: number) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setTimeout(
+      () => setData((prev) => prev.filter((goal) => goal.id !== goalId)),
+      300,
+    );
+  };
+
+  const handleCompleteTask = (goalId: number, taskId: number) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setData((prev) =>
+      prev.map((goal) =>
+        goal.id === goalId
+          ? {
+              ...goal,
+              tasks: goal.tasks.filter((t) => t.id !== taskId),
+            }
+          : goal,
+      ),
+    );
+  };
+
+  const handleFailTask = (goalId: number, taskId: number) => {
+    setData((prev) =>
+      prev.map((goal) =>
+        goal.id === goalId
+          ? {
+              ...goal,
+              tasks: goal.tasks.filter((t) => t.id !== taskId),
+            }
+          : goal,
+      ),
+    );
+  };
+
+  const [rescheduleModal, setRescheduleModal] = useState(false);
+
+  const handleReschedule = (goalId: number, taskId: number) => {
+    setRescheduleModal(true);
+  };
+
   return (
     <View style={{ flex: 1 }}>
+      <CalendarPicker
+        title="Reschedule Task"
+        visible={rescheduleModal}
+        singleSelect={true}
+        onClose={() => setRescheduleModal(false)}
+        onConfirm={(date) => {
+          console.log(date);
+        }}
+      />
       <View
         style={{
           height: 320,
@@ -379,12 +427,18 @@ export default function schedule() {
               type={goal.type}
               onComplete={() => handleCompleteAllTasks(goal.id)}
               onFail={() => handleFailAllTasks(goal.id)}
+              onCollapseFinish={() => {
+                setData((prev) => prev.filter((g) => g.id !== goal.id));
+              }}
             >
               {goal.tasks.map((task) => (
                 <CollapseItem
                   key={task.id}
                   title={task.title}
                   description={task.description}
+                  onComplete={() => handleCompleteTask(goal.id, task.id)}
+                  onFail={() => handleFailTask(goal.id, task.id)}
+                  onReschedule={() => handleReschedule(goal.id, task.id)}
                 />
               ))}
             </Collapsable>

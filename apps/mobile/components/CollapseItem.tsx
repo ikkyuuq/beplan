@@ -1,61 +1,51 @@
-import { View, Text, LayoutChangeEvent, Dimensions } from "react-native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Feather } from "@expo/vector-icons";
+// CollapseItem.tsx
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import { View, Text, LayoutChangeEvent } from "react-native";
 import Animated, {
-  interpolateColor,
-  runOnJS,
   useAnimatedStyle,
-  useSharedValue,
   withSpring,
   withTiming,
+  interpolateColor,
+  useSharedValue,
 } from "react-native-reanimated";
+import { Feather } from "@expo/vector-icons";
+import { GestureDetector } from "react-native-gesture-handler";
 import ContextMenu from "./ContextMenu";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import {
+  useCollapsibleGesture,
+  CollapseConfig,
+} from "../hooks/useCollapsibleGesture";
+
+type CollapseItemProps = {
+  title: string;
+  description?: string;
+  onComplete?: () => void;
+  onFail?: () => void;
+  onReschedule?: () => void;
+  onCustomize?: () => void;
+};
 
 export default function CollapseItem({
   title,
   description,
-}: {
-  title: string;
-  description?: string;
-}) {
+  onComplete,
+  onFail,
+  onReschedule,
+  onCustomize,
+}: CollapseItemProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
-
-  const onLayout = (event: LayoutChangeEvent) => {
-    const layoutHeight = event.nativeEvent.layout.height;
-    setContentHeight(layoutHeight);
-  };
-
-  const animatedCollapseStyle = useAnimatedStyle(() => ({
-    height: withSpring(collapsed ? contentHeight : 0, {
-      damping: 20,
-      stiffness: 100,
-    }),
-    opacity: withSpring(collapsed ? 1 : 0),
-    overflow: "hidden",
-  }));
-
-  const [androidMenuVisible, setAndroidMenuVisible] = useState(false);
-  const scaleValue = useSharedValue(1);
-  const lastMeasuredPosition = useRef({
-    bottomLeft: { x: 0, y: 0 },
-    topLeft: { x: 0, y: 0 },
-  });
-  const anchorRef = useRef<Animated.View>(null);
+  const [contextMenuVisible, setContextMenuVisible] = useState(false);
   const [anchorPosition, setAnchorPosition] = useState({
     bottomLeft: { x: 0, y: 0 },
     topLeft: { x: 0, y: 0 },
   });
+  const anchorRef = useRef<Animated.View>(null);
 
   const updateMenuPosition = useCallback(() => {
     return new Promise<void>((resolve) => {
       if (anchorRef.current) {
         anchorRef.current.measure((x, y, width, height, pageX, pageY) => {
-          lastMeasuredPosition.current = {
-            bottomLeft: { x: pageX, y: pageY + height },
-            topLeft: { x: pageX, y: pageY },
-          };
           setAnchorPosition({
             bottomLeft: { x: pageX, y: pageY + height },
             topLeft: { x: pageX, y: pageY },
@@ -68,178 +58,116 @@ export default function CollapseItem({
     });
   }, []);
 
-  const handleAndroidPress = useCallback(async () => {
-    await updateMenuPosition();
-    setAndroidMenuVisible(true);
-  }, [updateMenuPosition]);
-
-  const gestureTapCollapse = Gesture.Tap().onEnd((_, success) => {
-    if (success) {
-      description && runOnJS(setCollapsed)(!collapsed);
-    }
-  });
-
-  const handleLongPressStart = () => {
-    scaleValue.value = withSpring(1.1, { damping: 10, stiffness: 100 });
+  const toggleCollapse = () => {
+    setCollapsed((prev) => !prev);
   };
 
-  const handleLongPressEnd = () => {
-    setAndroidMenuVisible(true);
+  const containerHeight = useSharedValue(45);
+  const collapseMarginBottom = useSharedValue(10);
+  const innerCollapseHeight = useSharedValue(0);
+  const innerCollapsePaddingBottom = useSharedValue(12);
+
+  const collapseConfig: CollapseConfig = {
+    collapsed,
+    setCollapsed,
+    containerHeight,
+    collapseMarginBottom,
+    innerCollapseHeight,
+    innerCollapsePaddingBottom,
   };
 
-  const handleModalClose = useCallback(() => {
-    scaleValue.value = withSpring(1, { damping: 10, stiffness: 100 });
-    setAndroidMenuVisible(false);
-  }, [scaleValue]);
-
-  const gestureLongPressCollapse = Gesture.LongPress()
-    .minDuration(600)
-    .onStart(() => {
-      runOnJS(handleLongPressStart)();
-      runOnJS(handleAndroidPress)();
-    })
-    .onEnd((_, success) => {
-      if (success) {
-        runOnJS(handleLongPressEnd)();
-      }
-    });
-
-  const screenWidth = Dimensions.get("window").width;
-  const translateX = useSharedValue(0);
-  const opacity = useSharedValue(1);
-  const collapseWidth = useRef(0);
-
-  const SWIPE_THRESHOLD = 0.6;
-  const VELOCITY_THRESHOLD = 800;
-  const MIN_SWIPE_DISTANCE = 60;
-
-  const handleSwipeAnimation = (
-    direction: "left" | "right",
-    callback?: () => void,
-  ) => {
-    // Calculate the target position based on current position and screen width
-    const currentX = translateX.value;
-    const targetX =
-      direction === "left"
-        ? -screenWidth - Math.abs(currentX)
-        : screenWidth + Math.abs(currentX);
-
-    // Animate directly to the target position with fade
-    translateX.value = withTiming(
-      targetX,
-      {
-        duration: 300,
-      },
-      () => {
-        opacity.value = withTiming(
-          0,
-          {
-            duration: 200,
-          },
-          () => {
-            callback && runOnJS(callback)();
-          },
-        );
-      },
-    );
+  const onLayoutContent = (event: LayoutChangeEvent) => {
+    setContentHeight(event.nativeEvent.layout.height);
   };
-
-  const onSwipeLeft = () => {
-    console.log("Swiped Left");
-  };
-
-  const onSwipeRight = () => {
-    console.log("Swiped Right");
-  };
-
-  const handleSwipeLeft = () => {
-    handleSwipeAnimation("left", onSwipeLeft);
-  };
-
-  const handleSwipeRight = () => {
-    handleSwipeAnimation("right", onSwipeRight);
-  };
-
-  const gesturePan = Gesture.Pan()
-    .activeOffsetX([-10, 10])
-    .onUpdate(({ translationX }) => {
-      const resistance = 0.3;
-      translateX.value = translationX * resistance;
-    })
-    .onEnd((e) => {
-      const normalizedDrag = translateX.value / collapseWidth.current;
-      const absTranslation = Math.abs(translateX.value);
-      const absVelocity = Math.abs(e.velocityX);
-
-      const isSignificantSwipe =
-        absTranslation > MIN_SWIPE_DISTANCE &&
-        (Math.abs(normalizedDrag) > SWIPE_THRESHOLD ||
-          absVelocity > VELOCITY_THRESHOLD);
-
-      if (isSignificantSwipe) {
-        if (translateX.value > 0) {
-          runOnJS(handleSwipeRight)();
-        } else {
-          runOnJS(handleSwipeLeft)();
-        }
-      } else {
-        // Enhanced cancel animation with bounce effect
-        console.log("Cancel");
-        translateX.value = withSpring(0, {
-          damping: 12,
-          stiffness: 400,
-          velocity: e.velocityX,
-        });
-      }
-    });
-
-  const composedGesture = Gesture.Exclusive(
-    gesturePan,
-    gestureTapCollapse,
-    gestureLongPressCollapse,
-  );
-
-  const animatedContainerStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { scale: scaleValue.value },
-        { translateX: translateX.value },
-      ],
-      opacity: opacity.value,
-      backgroundColor: interpolateColor(
-        translateX.value,
-        [-65, -20, 0, 20, 65],
-        ["#F05353", "#1E1F29", "#1E1F29", "#53F07D"],
-      ),
-    };
-  });
 
   useEffect(() => {
-    if (androidMenuVisible) {
-      updateMenuPosition();
+    if (collapsed) {
+      innerCollapseHeight.value = withTiming(contentHeight, { duration: 200 });
+    } else {
+      innerCollapseHeight.value = withTiming(0, { duration: 200 });
     }
-  }, [androidMenuVisible, updateMenuPosition]);
+  }, [collapsed, contentHeight]);
 
-  const [taskLayout, setTaskLayout] = useState({ width: 0, height: 0 });
-  const onTaskLayout = (e: LayoutChangeEvent) => {
-    setTaskLayout({
+  const {
+    composedGesture,
+    translateX,
+    opacity,
+    scaleValue,
+    onLayout,
+    runSwipeAnimation,
+  } = useCollapsibleGesture({
+    onToggleCollapse: toggleCollapse,
+    onLongPress: () => setContextMenuVisible(true),
+    onComplete: onComplete,
+    onFail: onFail,
+    collapseConfig,
+  });
+
+  const animatedContainerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scaleValue.value }, { translateX: translateX.value }],
+    opacity: opacity.value,
+    backgroundColor: interpolateColor(
+      translateX.value,
+      [-65, -20, 0, 20, 65],
+      ["#F05353", "#1E1F29", "#1E1F29", "#53F07D", "#53F07D"],
+    ),
+    height: withSpring(containerHeight.value + innerCollapseHeight.value, {
+      damping: 20,
+      stiffness: 100,
+    }),
+  }));
+
+  const animatedCollapseStyle = useAnimatedStyle(() => ({
+    height: withSpring(containerHeight.value + innerCollapseHeight.value, {
+      damping: 20,
+      stiffness: 100,
+    }),
+    opacity: withSpring(collapsed ? 1 : 0),
+    overflow: "hidden",
+  }));
+
+  const [containerLayout, setContainerLayout] = useState({
+    width: 0,
+    height: 0,
+  });
+  const onContainerLayout = (e: LayoutChangeEvent) => {
+    setContainerLayout({
       width: e.nativeEvent.layout.width,
       height: e.nativeEvent.layout.height,
     });
+    onLayout(e);
   };
+
+  useEffect(() => {
+    if (contextMenuVisible) {
+      updateMenuPosition();
+    }
+  }, [contextMenuVisible, updateMenuPosition]);
+
+  const collapseContentRef = useRef<Animated.View>(null);
+
+  useEffect(() => {
+    if (collapsed) {
+      collapseContentRef.current?.measure((_x, _y, _width, height) => {
+        innerCollapseHeight.value = withTiming(height, { duration: 200 });
+      });
+    } else {
+      innerCollapseHeight.value = withTiming(0, { duration: 200 });
+    }
+  }, [collapsed]);
 
   return (
     <>
       <ContextMenu
-        visible={androidMenuVisible}
-        onClose={handleModalClose}
+        visible={contextMenuVisible}
+        onClose={() => setContextMenuVisible(false)}
         anchorPosition={anchorPosition}
         preview={
           <Animated.View
             style={[
               animatedContainerStyle,
               {
-                width: taskLayout.width,
+                width: containerLayout.width,
                 position: "absolute",
                 top: anchorPosition.topLeft.y,
                 left: anchorPosition.bottomLeft.x,
@@ -277,7 +205,8 @@ export default function CollapseItem({
             type: "default",
             status: "enabled",
             onPress: () => {
-              console.log("Completed");
+              setContextMenuVisible(false);
+              runSwipeAnimation("right", () => onComplete?.(), 600);
             },
           },
           {
@@ -286,7 +215,8 @@ export default function CollapseItem({
             type: "default",
             status: "enabled",
             onPress: () => {
-              console.log("Failed");
+              setContextMenuVisible(false);
+              runSwipeAnimation("left", () => onFail?.(), 600);
             },
           },
           {
@@ -295,14 +225,14 @@ export default function CollapseItem({
             type: "default",
             status: "enabled",
             onPress: () => {
-              console.log("Reschedule");
+              setContextMenuVisible(false);
+              onReschedule?.();
             },
           },
         ]}
       />
-
       <Animated.View
-        onLayout={onTaskLayout}
+        onLayout={onContainerLayout}
         collapsable={false}
         style={[
           animatedContainerStyle,
@@ -316,9 +246,6 @@ export default function CollapseItem({
         <GestureDetector gesture={composedGesture}>
           <Animated.View
             ref={anchorRef}
-            onLayout={(e) =>
-              (collapseWidth.current = e.nativeEvent.layout.width)
-            }
             style={{
               flexDirection: "row",
               paddingHorizontal: 16,
@@ -339,26 +266,21 @@ export default function CollapseItem({
             </View>
           </Animated.View>
         </GestureDetector>
-
         <Animated.View style={[animatedCollapseStyle]}>
           {description && (
-            <View
+            <Animated.View
+              ref={collapseContentRef}
               style={{
                 position: "absolute",
                 paddingHorizontal: 16,
                 paddingBottom: 12,
               }}
-              onLayout={onLayout}
+              onLayout={onLayoutContent}
             >
-              <Text
-                style={{
-                  color: "#B0B0B0",
-                  fontSize: 12,
-                }}
-              >
+              <Text style={{ color: "#B0B0B0", fontSize: 12 }}>
                 {description}
               </Text>
-            </View>
+            </Animated.View>
           )}
         </Animated.View>
       </Animated.View>
