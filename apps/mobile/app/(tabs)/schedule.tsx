@@ -428,7 +428,7 @@ export default function schedule() {
               return task.repeat.interval_date.includes(selectedDateString);
             });
 
-            return filteredTasks.length > 0 ? (
+            return (
               <Collapsable
                 key={goal.id}
                 title={goal.title}
@@ -436,7 +436,11 @@ export default function schedule() {
                 onComplete={() => handleCompleteAllTasks(goal.id)}
                 onFail={() => handleFailAllTasks(goal.id)}
                 onCollapseFinish={() => {
-                  setData((prev) => prev.filter((g) => g.id !== goal.id));
+                  setTimeout(
+                    () =>
+                      setData((prev) => prev.filter((g) => g.id !== goal.id)),
+                    300,
+                  );
                 }}
               >
                 {filteredTasks.map((task) => (
@@ -452,7 +456,7 @@ export default function schedule() {
                   />
                 ))}
               </Collapsable>
-            ) : null;
+            );
           })}
         </Animated.View>
       </ScrollView>
