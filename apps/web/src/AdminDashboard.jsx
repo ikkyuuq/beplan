@@ -242,27 +242,30 @@ const AdminDashboard = () => {
                     <div className="modal">
                         <div className="modal-content">
                             <h2>Edit Template</h2>
-                            {/* Edit Template Fields */}
-                            <label>Template Name:</label>
-                            <input
-                                type="text"
-                                value={newName}
-                                onChange={(e) => setNewName(e.target.value)}
-                            />
-                            <label>Description:</label>
-                            <textarea
-                                value={newDescription}
-                                onChange={(e) => setNewDescription(e.target.value)}
-                            />
-                            <label>Category:</label>
-                            <select
-                                value={newCategory}
-                                onChange={(e) => setNewCategory(e.target.value)}
-                            >
-                                {categories.map((category, index) => (
-                                    <option key={index} value={category}>{category}</option>
-                                ))}
-                            </select>
+                            {!goalEditingMode && (
+                                <>
+                                    <label>Template Name:</label>
+                                    <input
+                                        type="text"
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                    />
+                                    <label>Description:</label>
+                                    <textarea
+                                        value={newDescription}
+                                        onChange={(e) => setNewDescription(e.target.value)}
+                                    />
+                                    <label>Category:</label>
+                                    <select
+                                        value={newCategory}
+                                        onChange={(e) => setNewCategory(e.target.value)}
+                                    >
+                                        {categories.map((category, index) => (
+                                            <option key={index} value={category}>{category}</option>
+                                        ))}
+                                    </select>
+                                </>
+                            )}
 
                             {/* Goals Editing Section */}
                             <button onClick={() => setGoalEditingMode(!goalEditingMode)}>
