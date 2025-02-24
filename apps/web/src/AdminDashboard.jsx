@@ -332,7 +332,10 @@ const AdminDashboard = () => {
                                         {editingTemplate.goals.map((goal) => (
                                             <div key={goal.id}>
                                                 <h3>{goal.text}</h3>
-                                                <button onClick={() => handleRemoveGoal(goal.id)}>🗑 Remove Goal</button>
+                                                <button onClick={() => handleRemoveGoal(goal.id)} className="remove-goal-btn">
+                                                    <span>🗑 Remove Goal</span>
+                                                </button>
+
                                                 <p>Start Date: {goal.start_date}</p>
                                                 <p>Due Date: {goal.due_date}</p>
                                                 <div>
@@ -351,7 +354,7 @@ const AdminDashboard = () => {
                                                         <li key={task.id}>{task.text}</li>
                                                     ))}
                                                 </ul>
-                                                
+
                                             </div>
                                         ))}
                                     </div>

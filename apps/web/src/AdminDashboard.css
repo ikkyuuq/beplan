@@ -376,3 +376,43 @@ body {
   align-items: center;
   gap: 5px;
 }
+
+/* ปุ่ม Remove Goal */
+.remove-goal-btn {
+  background-color: #dc3545;  /* สีแดงสำหรับปุ่มลบ */
+  color: white;
+  padding: 8px 16px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: bold;
+}
+
+/* สีเมื่อ hover */
+.remove-goal-btn:hover {
+  background-color: #c82333;  /* สีแดงเข้มเมื่อ hover */
+  transform: scale(1.05);  /* ขยายปุ่มเล็กน้อยเมื่อ hover */
+}
+
+/* ใช้สำหรับแสดงไอคอนในปุ่ม */
+.remove-goal-btn svg {
+  font-size: 1.5rem;
+  transition: transform 0.3s ease;
+}
+
+/* หมุนไอคอนเล็กน้อยเมื่อ hover */
+.remove-goal-btn:hover svg {
+  transform: rotate(10deg);  
+}
+
+/* เพิ่มการเน้นข้อความให้ปุ่ม */
+.remove-goal-btn span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
