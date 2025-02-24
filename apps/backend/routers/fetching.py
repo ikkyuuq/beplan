@@ -2,15 +2,18 @@ import os
 from datetime import date, datetime
 from enum import Enum
 from typing import List, Optional
+
 from dotenv import load_dotenv
-from fastapi import APIRouter, Query,HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+
 from database import get_db_pool
 
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 router = APIRouter()
+
 
 class GoalStatus(str, Enum):
     PENDING = "pending"
@@ -42,9 +45,10 @@ class Goal(BaseModel):
     due_date: date
     tasks: List[Task] = []
 
+
 @router.get("/goals")
 async def get_goals_today(
-    user_id: int = Query(..., description="User ID"),
+    user_id: str = Query(..., description="User ID"),
     today: date = Query(default=date.today(), description="Current date (YYYY-MM-DD)"),
 ):
     pool = await get_db_pool()
@@ -55,12 +59,12 @@ async def get_goals_today(
             SELECT ag.*, g.*
             FROM public.assigned_goal ag
             JOIN public.goal g ON ag.goal_id = g.id
-            WHERE ag.user_id = $1 
+            WHERE ag.user_id = $1
             AND ag.status = 'pending'
-            AND ag.start_date <= $2 
+            AND ag.start_date <= $2
             AND ag.due_date >= $2
             """,
-            str(user_id),
+            user_id,
             today,
         )
 
@@ -112,6 +116,7 @@ async def get_goals_today(
 
         return goals  # Return the list of goals (filtered to include only those with tasks)
 
+
 # NOTE: This might be useful for the analysis page to show the user's progress
 # but it's still need more work to be done
 
@@ -148,6 +153,7 @@ async def get_goals_today(
 #         return goal_list
 
 # NOTE: This might be useful for the analysis page to show the user's progress
+
 
 # @router.get("/goals/{goal_id}", response_model=Goal)  # Fetch single goal
 # async def get_goal(goal_id: int):
@@ -210,39 +216,69 @@ async def get_goals_today(
 #         due_date=task["due_date"],
 #         completed=task["completed"],
 #     )
-# 
+#
+
+
+class Status(str, Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    DELETED = "deleted"
+
+
 # Implement update methods to set goal status to 'delete'
-@router.put("/update_goal/{goal_id}")
+@router.put("/update_goal_status")
 async def update_goal_status(
-    goal_id: int,
-    user_id: int = Query(..., description="User ID"),
-    today: date = Query(default=date.today(), description="Date for which goal should be deleted (YYYY-MM-DD)"),
+    to: Status,
+    assigned_goal_id: int,
+    user_id: str = Query(..., description="User ID"),
+    today: date = Query(
+        default=date.today(),
+        description="Date for which goal should be deleted (YYYY-MM-DD)",
+    ),
 ):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         # Check if the goal exists for the user on that date
         assigned_goal = await conn.fetchrow(
             """
-            SELECT id FROM public.assigned_goal 
-            WHERE goal_id = $1 
-            AND user_id = $2 
-            AND start_date <= $3 
+            SELECT * FROM public.assigned_goal
+            WHERE id = $1
+            AND user_id = $2
+            AND start_date <= $3
             AND due_date >= $3
             """,
-            goal_id, user_id, today
+            assigned_goal_id,
+            user_id,
+            today,
         )
 
         if not assigned_goal:
-            raise HTTPException(status_code=404, detail="Goal not found for this user and date")
+            raise HTTPException(
+                status_code=404, detail="Goal not found for this user and date"
+            )
 
         # Update goal status to 'delete'
-        await conn.execute(
+        res = await conn.execute(
             """
             UPDATE public.assigned_goal
-            SET status = 'deleted'
-            WHERE assigned_goal_id = $1
+            SET status = $1::goal_status
+            WHERE id = $2
+            AND user_id = $3
+            AND due_date >= $4
             """,
-            assigned_goal["id"]
+            to,
+            assigned_goal_id,
+            user_id,
+            today,
         )
 
-        return {"message": "Goal status updated to 'deleted'", "goal_id": goal_id}
+        if not res == "UPDATE 1":
+            raise HTTPException(
+                status_code=500, detail="Error updating goal status to 'deleted'"
+            )
+
+        return {
+            "message": "Goal status updated to 'deleted'",
+            "assigned_goal_id": assigned_goal_id,
+        }
