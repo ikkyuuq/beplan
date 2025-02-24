@@ -11,31 +11,32 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Picker } from "@react-native-picker/picker";
-import * as ImagePicker from "expo-image-picker";
-import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
 } from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
+import { LinearGradient } from "expo-linear-gradient";
+import * as ImagePicker from "expo-image-picker";
 
+// ====================== Main Component ======================
 export default function CreateTemplate() {
   // ====================== State Management ======================
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("Workout");
+  const [category, setCategory] = useState("All");
   const [image, setImage] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
-  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
   const [isFormValid, setIsFormValid] = useState(false);
   const [isScrollEnabled, setIsScrollEnabled] = useState(true);
 
-  // Ref for the main ScrollView
+  // Ref for ScrollView
   const mainScrollViewRef = React.useRef<ScrollView>(null);
 
-  // Mock Data of Goals with IDs
+  // Mock Data
   const mockGoals = [
     { id: "1", title: "Build Strength" },
     { id: "2", title: "Improve Cardio" },
@@ -51,12 +52,13 @@ export default function CreateTemplate() {
     { id: "12", title: "Travel Planning" },
   ];
 
-  // ====================== Animations ======================
+  // ====================== Animation Setup ======================
   const createButtonScale = useSharedValue(1);
   const animatedButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: createButtonScale.value }],
   }));
 
+  // Animation Handlers
   const handlePressIn = () => {
     createButtonScale.value = withSpring(0.95);
   };
@@ -67,25 +69,25 @@ export default function CreateTemplate() {
 
   // ====================== Effects ======================
   useEffect(() => {
-    // Validate form - title, image, and at least one goal required
     setIsFormValid(
-      title.trim() !== "" && 
-      image !== "" && 
-      selectedGoals.length > 0
+      title.trim() !== "" && image !== "" && selectedGoalIds.length > 0
     );
-  }, [title, image, selectedGoals]);
+  }, [title, image, selectedGoalIds]);
 
   // ====================== Handlers ======================
   const pickImage = async () => {
     try {
-      // Request permission first
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'We need access to your photos to upload an image.');
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "We need access to your photos to upload an image."
+        );
         return;
       }
-      
+
       let result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: "images",
         allowsEditing: true,
@@ -97,21 +99,24 @@ export default function CreateTemplate() {
         setImage(result.assets[0].uri);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick image');
+      Alert.alert("Error", "Failed to pick image");
     }
   };
 
-  const toggleGoalSelection = (goalId: string, goalTitle: string) => {
-    setSelectedGoals((prev) =>
-      prev.includes(goalTitle)
-        ? prev.filter((g) => g !== goalTitle)
-        : [...prev, goalTitle]
+  const toggleGoalSelection = (goalId: string) => {
+    setSelectedGoalIds((prev) =>
+      prev.includes(goalId)
+        ? prev.filter((id) => id !== goalId)
+        : [...prev, goalId]
     );
   };
 
   const handleCreateTemplate = () => {
     if (!isFormValid) {
-      Alert.alert("Missing Information", "Please provide a title, cover image, and select at least one goal.");
+      Alert.alert(
+        "Missing Information",
+        "Please provide a title, cover image, and select at least one goal."
+      );
       return;
     }
 
@@ -121,24 +126,27 @@ export default function CreateTemplate() {
       category,
       image,
       isFavorite,
-      goals_titles: selectedGoals,
+      goals_id: selectedGoalIds,
     };
 
     console.log("📌 New Template:", JSON.stringify(newTemplate, null, 2));
-    Alert.alert(
-      "Success",
-      "Template created successfully!",
-      [{ text: "OK", onPress: () => resetForm() }]
-    );
+    Alert.alert("Success", "Template created successfully!", [
+      { text: "OK", onPress: () => resetForm() },
+    ]);
   };
 
   const resetForm = () => {
     setTitle("");
     setDescription("");
-    setCategory("Workout");
+    setCategory("All");
     setImage("");
     setIsFavorite(false);
-    setSelectedGoals([]);
+    setSelectedGoalIds([]);
+  };
+
+  // Function to check if a goal is selected
+  const isGoalSelected = (goalId: string) => {
+    return selectedGoalIds.includes(goalId);
   };
 
   // ====================== Render UI ======================
@@ -147,13 +155,13 @@ export default function CreateTemplate() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      <ScrollView 
+      <ScrollView
         ref={mainScrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         scrollEnabled={isScrollEnabled}
       >
-        {/* Header and Preview Section */}
+        {/* Preview Section */}
         <View style={styles.previewContainer}>
           {image ? (
             <View style={styles.heroContainer}>
@@ -185,7 +193,9 @@ export default function CreateTemplate() {
         <View style={styles.formSection}>
           {/* Title Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Template Title <Text style={styles.required}>*</Text></Text>
+            <Text style={styles.label}>
+              Template Title <Text style={styles.required}>*</Text>
+            </Text>
             <TextInput
               style={styles.input}
               placeholder="Enter a descriptive title"
@@ -218,6 +228,7 @@ export default function CreateTemplate() {
                 onValueChange={(itemValue) => setCategory(itemValue)}
                 style={styles.picker}
               >
+                <Picker.Item label="All" value="All" />
                 <Picker.Item label="Workout" value="Workout" />
                 <Picker.Item label="Finance" value="Finance" />
                 <Picker.Item label="Productivity" value="Productivity" />
@@ -229,11 +240,13 @@ export default function CreateTemplate() {
 
           {/* Image Upload */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Cover Image <Text style={styles.required}>*</Text></Text>
-            <Pressable 
-              style={styles.imagePicker} 
+            <Text style={styles.label}>
+              Cover Image <Text style={styles.required}>*</Text>
+            </Text>
+            <Pressable
+              style={styles.imagePicker}
               onPress={pickImage}
-              android_ripple={{ color: 'rgba(0,0,0,0.1)' }}
+              android_ripple={{ color: "rgba(0,0,0,0.1)" }}
             >
               {image ? (
                 <>
@@ -243,10 +256,16 @@ export default function CreateTemplate() {
               ) : (
                 <>
                   <View style={styles.uploadIconContainer}>
-                    <Ionicons name="cloud-upload-outline" size={40} color="#555" />
+                    <Ionicons
+                      name="cloud-upload-outline"
+                      size={40}
+                      color="#555"
+                    />
                   </View>
                   <Text style={styles.imageText}>Upload Cover Image</Text>
-                  <Text style={styles.imageSubText}>Recommended ratio: 16:9</Text>
+                  <Text style={styles.imageSubText}>
+                    Recommended ratio: 16:9
+                  </Text>
                 </>
               )}
             </Pressable>
@@ -254,26 +273,22 @@ export default function CreateTemplate() {
 
           {/* Goals Selection */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Template Goals <Text style={styles.required}>*</Text></Text>
+            <Text style={styles.label}>
+              Template Goals <Text style={styles.required}>*</Text>
+            </Text>
             <Text style={styles.helpText}>
               Select goals that this template will help achieve
             </Text>
             <View style={styles.goalsScrollOuterContainer}>
-              <ScrollView 
-                horizontal={false} 
+              <ScrollView
+                horizontal={false}
                 style={styles.goalsScrollContainer}
                 contentContainerStyle={styles.goalsContentContainer}
                 showsVerticalScrollIndicator={true}
                 nestedScrollEnabled={true}
-                onTouchStart={() => {
-                  setIsScrollEnabled(false);
-                }}
-                onTouchEnd={() => {
-                  setIsScrollEnabled(true);
-                }}
-                onScrollEndDrag={() => {
-                  setIsScrollEnabled(true);
-                }}
+                onTouchStart={() => setIsScrollEnabled(false)}
+                onTouchEnd={() => setIsScrollEnabled(true)}
+                onScrollEndDrag={() => setIsScrollEnabled(true)}
               >
                 <View style={styles.goalsContainer}>
                   {mockGoals.map((goal) => (
@@ -281,20 +296,24 @@ export default function CreateTemplate() {
                       key={goal.id}
                       style={[
                         styles.goalItem,
-                        selectedGoals.includes(goal.title) && styles.goalSelected,
+                        isGoalSelected(goal.id) && styles.goalSelected,
                       ]}
-                      onPress={() => toggleGoalSelection(goal.id, goal.title)}
-                      android_ripple={{ color: 'rgba(0,0,0,0.1)' }}
+                      onPress={() => toggleGoalSelection(goal.id)}
+                      android_ripple={{ color: "rgba(0,0,0,0.1)" }}
                     >
                       <Ionicons
-                        name={selectedGoals.includes(goal.title) ? "checkmark-circle" : "ellipse-outline"}
+                        name={
+                          isGoalSelected(goal.id)
+                            ? "checkmark-circle"
+                            : "ellipse-outline"
+                        }
                         size={22}
-                        color={selectedGoals.includes(goal.title) ? "#32CD32" : "#888"}
+                        color={isGoalSelected(goal.id) ? "#32CD32" : "#888"}
                       />
-                      <Text 
+                      <Text
                         style={[
                           styles.goalText,
-                          selectedGoals.includes(goal.title) && styles.goalTextSelected
+                          isGoalSelected(goal.id) && styles.goalTextSelected,
                         ]}
                       >
                         {goal.title}
@@ -309,8 +328,10 @@ export default function CreateTemplate() {
               <Text style={styles.scrollText}>Scroll for more goals</Text>
             </View>
             <Text style={styles.goalsSelectionInfo}>
-              {selectedGoals.length > 0 
-                ? `${selectedGoals.length} goal${selectedGoals.length > 1 ? 's' : ''} selected` 
+              {selectedGoalIds.length > 0
+                ? `${selectedGoalIds.length} goal${
+                    selectedGoalIds.length > 1 ? "s" : ""
+                  } selected`
                 : "No goals selected"}
             </Text>
           </View>
@@ -319,7 +340,7 @@ export default function CreateTemplate() {
           <Pressable
             style={styles.favoriteButton}
             onPress={() => setIsFavorite(!isFavorite)}
-            android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
+            android_ripple={{ color: "rgba(0,0,0,0.05)" }}
           >
             <Ionicons
               name={isFavorite ? "heart" : "heart-outline"}
@@ -341,14 +362,11 @@ export default function CreateTemplate() {
             onPressIn={isFormValid ? handlePressIn : undefined}
             onPressOut={isFormValid ? handlePressOut : undefined}
             disabled={!isFormValid}
-            android_ripple={isFormValid ? { color: 'rgba(255,255,255,0.2)' } : undefined}
+            android_ripple={
+              isFormValid ? { color: "rgba(255,255,255,0.2)" } : undefined
+            }
           >
-            <Animated.View 
-              style={[
-                styles.buttonContent,
-                animatedButtonStyle
-              ]}
-            >
+            <Animated.View style={[styles.buttonContent, animatedButtonStyle]}>
               <Ionicons name="add-circle-outline" size={24} color="#fff" />
               <Text style={styles.createButtonText}>Create Template</Text>
             </Animated.View>
@@ -361,6 +379,7 @@ export default function CreateTemplate() {
 
 // ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Main Layout
   container: {
     flex: 1,
     backgroundColor: "#fff",
@@ -368,6 +387,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
+
+  // Preview Section
   previewContainer: {
     backgroundColor: "#f9f9f9",
   },
@@ -429,6 +450,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+
+  // Form Section
   formSection: {
     padding: 20,
   },
@@ -467,6 +490,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 5,
   },
+
+  // Picker Styles
   pickerContainer: {
     backgroundColor: "#f5f5f5",
     borderRadius: 12,
@@ -477,6 +502,8 @@ const styles = StyleSheet.create({
   picker: {
     height: 50,
   },
+
+  // Image Upload Styles
   imagePicker: {
     backgroundColor: "#f5f5f5",
     borderRadius: 12,
@@ -518,11 +545,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontWeight: "500",
   },
+
+  // Goals Selection Styles
   goalsScrollOuterContainer: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     borderRadius: 12,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: "#f9f9f9",
     marginVertical: 5,
   },
   goalsScrollContainer: {
@@ -549,9 +578,9 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   goalsSelectionInfo: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginTop: 5,
   },
   goalItem: {
@@ -577,6 +606,8 @@ const styles = StyleSheet.create({
     color: "#228B22",
     fontWeight: "500",
   },
+
+  // Favorite Button Styles
   favoriteButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -591,6 +622,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#555",
   },
+
+  // Create Button Styles
   createButton: {
     backgroundColor: "#4CAF50",
     borderRadius: 12,
