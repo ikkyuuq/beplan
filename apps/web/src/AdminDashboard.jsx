@@ -35,6 +35,8 @@ const AdminDashboard = () => {
         name: "Admin",
         profilePic: "https://cdn-icons-png.flaticon.com/512/847/847969.png",
     });
+    const [newTaskType, setNewTaskType] = useState(null);  // for Daily or Weekly
+    const [selectedDays, setSelectedDays] = useState([]);   // for weekly days selection
 
     const [goalEditingMode, setGoalEditingMode] = useState(false);
     const [showDescription, setShowDescription] = useState(null); // สถานะใหม่สำหรับแสดงคำอธิบาย
@@ -172,13 +174,35 @@ const AdminDashboard = () => {
                 ...editingTemplate,
                 goals: editingTemplate.goals.map(goal =>
                     goal.id === goalId
-                        ? { ...goal, tasks: [...goal.tasks, { id: Date.now(), text: newTask }] }
+                        ? {
+                            ...goal,
+                            tasks: [
+                                ...goal.tasks,
+                                {
+                                    id: Date.now(),
+                                    text: newTask,
+                                    type: newTaskType, // Add the type of the task (Daily or Weekly)
+                                    selectedDays: newTaskType === "Weekly" ? selectedDays : null, // Only set selectedDays if Weekly
+                                }
+                            ]
+                        }
                         : goal
                 )
             };
             setEditingTemplate(updatedTemplate);
             setNewTask("");
+            setNewTaskType(null); // Reset task type after adding
+            setSelectedDays([]);  // Reset selected days after adding
         }
+    };
+
+    const handleDaySelect = (day) => {
+        setSelectedDays(prev => {
+            if (prev.includes(day)) {
+                return prev.filter(d => d !== day); // Remove the day if already selected
+            }
+            return [...prev, day]; // Add the day if not already selected
+        });
     };
 
     const handleRemoveTask = (goalId, taskId) => {
@@ -365,6 +389,47 @@ const AdminDashboard = () => {
                                                         onChange={(e) => setNewTask(e.target.value)}
                                                         placeholder="Add task"
                                                     />
+
+                                                    <div className="task-type-container">
+                                                        <label className="task-type-label">
+                                                            <input
+                                                                type="radio"
+                                                                name="taskType"
+                                                                value="Daily"
+                                                                checked={newTaskType === "Daily"}
+                                                                onChange={() => setNewTaskType("Daily")}
+                                                            />
+                                                            Daily
+                                                        </label>
+                                                        <label className="task-type-label">
+                                                            <input
+                                                                type="radio"
+                                                                name="taskType"
+                                                                value="Weekly"
+                                                                checked={newTaskType === "Weekly"}
+                                                                onChange={() => setNewTaskType("Weekly")}
+                                                            />
+                                                            Weekly
+                                                        </label>
+                                                    </div>
+
+                                                    {newTaskType === "Weekly" && (
+                                                        <div className="weekly-days-container">
+                                                            <label>Select Days of the Week:</label>
+                                                            <div className="days-checkbox-container">
+                                                                {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(day => (
+                                                                    <label key={day} className="day-checkbox">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={selectedDays.includes(day)}
+                                                                            onChange={() => handleDaySelect(day)}
+                                                                        />
+                                                                        {day}
+                                                                    </label>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                     <button onClick={() => handleAddTask(goal.id)} className="add-task-btn">
                                                         <span>+ Add Task</span>
                                                     </button>
