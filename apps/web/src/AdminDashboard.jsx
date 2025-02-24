@@ -3,21 +3,21 @@ import "./AdminDashboard.css";
 
 const AdminDashboard = () => {
     const [templates, setTemplates] = useState([
-        { 
-            id: 1, 
-            name: "Health Goal", 
-            description: "Track your daily habits for better health.", 
-            image: null, 
-            category: "Workout Routine", 
-            goals: [], 
+        {
+            id: 1,
+            name: "Health Goal",
+            description: "Track your daily habits for better health.",
+            image: null,
+            category: "Workout Routine",
+            goals: [],
         },
-        { 
-            id: 2, 
-            name: "Career Planning", 
-            description: "Set milestones for your career growth.", 
-            image: null, 
-            category: "Personal Budgeting", 
-            goals: [], 
+        {
+            id: 2,
+            name: "Career Planning",
+            description: "Set milestones for your career growth.",
+            image: null,
+            category: "Personal Budgeting",
+            goals: [],
         },
     ]);
 
@@ -46,13 +46,13 @@ const AdminDashboard = () => {
     }, []);
 
     const handleCreateTemplate = () => {
-        const newTemplate = { 
-            id: Date.now(), 
-            name: "New Template", 
-            description: "Edit this template.", 
-            image: null, 
-            category: "Workout Routine", 
-            goals: [], 
+        const newTemplate = {
+            id: Date.now(),
+            name: "New Template",
+            description: "Edit this template.",
+            image: null,
+            category: "Workout Routine",
+            goals: [],
         };
         setTemplates([...templates, newTemplate]);
     };
@@ -70,7 +70,39 @@ const AdminDashboard = () => {
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                setNewImage(reader.result);
+                const img = new Image();
+                img.src = reader.result;
+
+                img.onload = () => {
+                    const MAX_WIDTH = 200; // ความกว้างสูงสุดที่ต้องการ
+                    const MAX_HEIGHT = 200; // ความสูงสูงสุดที่ต้องการ
+                    let width = img.width;
+                    let height = img.height;
+
+                    // ปรับขนาดรูปภาพให้พอดีกับขนาดสูงสุด
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    // สร้าง canvas เพื่อปรับขนาดรูปภาพ
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // แปลง canvas เป็น data URL และตั้งค่าเป็นรูปภาพใหม่
+                    const resizedImage = canvas.toDataURL("image/jpeg", 0.8);
+                    setNewImage(resizedImage);
+                };
             };
             reader.readAsDataURL(file);
         }
@@ -78,12 +110,12 @@ const AdminDashboard = () => {
 
     const handleSaveEdit = () => {
         setTemplates(templates.map((t) =>
-            t.id === editingTemplate.id ? { 
-                ...t, 
-                name: newName, 
-                description: newDescription, 
-                image: newImage, 
-                category: newCategory, 
+            t.id === editingTemplate.id ? {
+                ...t,
+                name: newName,
+                description: newDescription,
+                image: newImage,
+                category: newCategory,
                 goals: editingTemplate.goals,
             } : t
         ));
@@ -105,9 +137,9 @@ const AdminDashboard = () => {
         if (newGoal.trim()) {
             const updatedTemplate = {
                 ...editingTemplate,
-                goals: [...editingTemplate.goals, { 
-                    id: Date.now(), 
-                    text: newGoal, 
+                goals: [...editingTemplate.goals, {
+                    id: Date.now(),
+                    text: newGoal,
                     tasks: [],
                     start_date: newGoalStartDate,
                     due_date: newGoalDueDate
@@ -132,10 +164,10 @@ const AdminDashboard = () => {
         if (newTask.trim()) {
             const updatedTemplate = {
                 ...editingTemplate,
-                goals: editingTemplate.goals.map(goal => 
-                    goal.id === goalId 
-                    ? { ...goal, tasks: [...goal.tasks, { id: Date.now(), text: newTask }] }
-                    : goal
+                goals: editingTemplate.goals.map(goal =>
+                    goal.id === goalId
+                        ? { ...goal, tasks: [...goal.tasks, { id: Date.now(), text: newTask }] }
+                        : goal
                 )
             };
             setEditingTemplate(updatedTemplate);
@@ -146,10 +178,10 @@ const AdminDashboard = () => {
     const handleRemoveTask = (goalId, taskId) => {
         const updatedTemplate = {
             ...editingTemplate,
-            goals: editingTemplate.goals.map(goal => 
-                goal.id === goalId 
-                ? { ...goal, tasks: goal.tasks.filter(task => task.id !== taskId) }
-                : goal
+            goals: editingTemplate.goals.map(goal =>
+                goal.id === goalId
+                    ? { ...goal, tasks: goal.tasks.filter(task => task.id !== taskId) }
+                    : goal
             )
         };
         setEditingTemplate(updatedTemplate);
@@ -238,9 +270,13 @@ const AdminDashboard = () => {
                     <div className="modal">
                         <div className="modal-content">
                             <h2>Edit Template</h2>
-                            <button onClick={() => setGoalEditingMode(!goalEditingMode)}>
-                                {goalEditingMode ? "❌ Close Goal Editing" : "✏ Edit Goals"}
+                            <button
+                                onClick={() => setGoalEditingMode(!goalEditingMode)}
+                                className={`goal-edit-btn ${goalEditingMode ? "close" : ""}`}
+                            >
+                                <span>{goalEditingMode ? "❌ Close Goal Editing" : "✏ Edit Goals"}</span>
                             </button>
+
                             {!goalEditingMode && (
                                 <>
                                     <label>Template Name:</label>
@@ -288,12 +324,15 @@ const AdminDashboard = () => {
                                             value={newGoalDueDate}
                                             onChange={(e) => setNewGoalDueDate(e.target.value)}
                                         />
-                                        <button onClick={handleAddGoal}>+ Add Goal</button>
+                                        <button onClick={handleAddGoal} className="add-goal-btn">
+                                            <span>+ Add Goal</span>
+                                        </button>
                                     </div>
                                     <div className="goals-list">
                                         {editingTemplate.goals.map((goal) => (
                                             <div key={goal.id}>
                                                 <h3>{goal.text}</h3>
+                                                <button onClick={() => handleRemoveGoal(goal.id)}>🗑 Remove Goal</button>
                                                 <p>Start Date: {goal.start_date}</p>
                                                 <p>Due Date: {goal.due_date}</p>
                                                 <div>
@@ -303,14 +342,16 @@ const AdminDashboard = () => {
                                                         onChange={(e) => setNewTask(e.target.value)}
                                                         placeholder="Add task"
                                                     />
-                                                    <button onClick={() => handleAddTask(goal.id)}>+ Add Task</button>
+                                                    <button onClick={() => handleAddTask(goal.id)} className="add-task-btn">
+                                                        <span>+ Add Task</span>
+                                                    </button>
                                                 </div>
                                                 <ul>
                                                     {goal.tasks.map((task) => (
                                                         <li key={task.id}>{task.text}</li>
                                                     ))}
                                                 </ul>
-                                                <button onClick={() => handleRemoveGoal(goal.id)}>🗑 Remove Goal</button>
+                                                
                                             </div>
                                         ))}
                                     </div>
