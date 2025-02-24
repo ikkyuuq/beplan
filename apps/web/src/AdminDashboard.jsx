@@ -134,6 +134,11 @@ const AdminDashboard = () => {
     };
 
     const handleAddGoal = () => {
+        if (!newGoalStartDate || !newGoalDueDate) {
+            alert("กรุณากรอก Start Date และ Due Date ก่อนที่จะเพิ่ม Goal.");
+            return;
+        }
+
         if (newGoal.trim()) {
             const updatedTemplate = {
                 ...editingTemplate,
@@ -151,6 +156,7 @@ const AdminDashboard = () => {
             setNewGoalDueDate("");
         }
     };
+
 
     const handleRemoveGoal = (goalId) => {
         const updatedTemplate = {
@@ -245,14 +251,8 @@ const AdminDashboard = () => {
                                         {template.goals.map((goal) => (
                                             <li key={goal.id}>
                                                 <strong>{goal.text}</strong>
-                                                <ul>
-                                                    {goal.tasks.map((task) => (
-                                                        <li key={task.id}>{task.text}</li>
-                                                    ))}
-                                                </ul>
                                                 <p>Start Date: {goal.start_date}</p>
                                                 <p>Due Date: {goal.due_date}</p>
-                                                <button onClick={() => handleRemoveGoal(goal.id)}>🗑 Remove Goal</button>
                                             </li>
                                         ))}
                                     </ul>
@@ -274,7 +274,7 @@ const AdminDashboard = () => {
                                 onClick={() => setGoalEditingMode(!goalEditingMode)}
                                 className={`goal-edit-btn ${goalEditingMode ? "close" : ""}`}
                             >
-                                <span>{goalEditingMode ? "❌ Close Goal Editing" : "✏ Edit Goals"}</span>
+                                <span>{goalEditingMode ? "Edit Template" : "✏ Edit Goals"}</span>
                             </button>
 
                             {!goalEditingMode && (
@@ -338,9 +338,13 @@ const AdminDashboard = () => {
                                                 <button onClick={() => handleRemoveGoal(goal.id)} className="remove-goal-btn">
                                                     <span>🗑 Remove Goal</span>
                                                 </button>
-
+                                                <ul>
                                                 <p>Start Date: {goal.start_date}</p>
                                                 <p>Due Date: {goal.due_date}</p>
+                                                {goal.tasks.map((task) => (
+                                                        <li key={task.id}>{task.text}</li>
+                                                    ))}
+                                                </ul>
                                                 <div>
                                                     <input
                                                         type="text"
@@ -352,11 +356,7 @@ const AdminDashboard = () => {
                                                         <span>+ Add Task</span>
                                                     </button>
                                                 </div>
-                                                <ul>
-                                                    {goal.tasks.map((task) => (
-                                                        <li key={task.id}>{task.text}</li>
-                                                    ))}
-                                                </ul>
+
 
                                             </div>
                                         ))}
