@@ -29,7 +29,6 @@ export default function Community() {
   const [isModalVisible, setModalVisible] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([
     {
-      id: "1",
       title: "Arnold Schwarzenegger",
       description: `1. Workout Routine
 Do daily exercises like morning cardio (running, cycling) and strength training 3 times a week.
@@ -64,8 +63,7 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
       goals_id: ["goal_001", "goal_002"],
     },
     {
-      id: "2",
-      title: "Warren Buffett",
+      title: "Warren Buffett 1",
       description: "Legendary investor and businessman.",
       category: "Finance",
       image: "https://picsum.photos/200/300",
@@ -73,8 +71,7 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
       goals_id: ["goal_003"],
     },
     {
-      id: "3",
-      title: "Warren Buffett",
+      title: "Warren Buffett 2",
       description: "Legendary investor and businessman.",
       category: "Finance",
       image: "https://picsum.photos/200/300",
@@ -82,8 +79,7 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
       goals_id: ["goal_003"],
     },
     {
-      id: "4",
-      title: "Warren Buffett",
+      title: "Warren Buffett 3",
       description: "Legendary investor and businessman.",
       category: "Finance",
       image: "https://picsum.photos/200/300",
@@ -91,8 +87,7 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
       goals_id: ["goal_003"],
     },
     {
-      id: "5",
-      title: "Warren Buffett",
+      title: "Warren Buffett 4",
       description: "Legendary investor and businessman.",
       category: "Finance",
       image: "https://picsum.photos/200/300",
@@ -133,10 +128,10 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
     setSelectedFilter(filter);
   };
 
-  const toggleFavorite = (id: string) => {
+  const toggleFavorite = (title: string) => {
     setTemplates((prev) =>
       prev.map((template) =>
-        template.id === id
+        template.title === title
           ? { ...template, isFavorite: !template.isFavorite }
           : template
       )
@@ -250,12 +245,12 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
         <View style={styles.cardContainer}>
           <FlatList
             data={filteredTemplates}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.title}
             renderItem={({ item }) => (
               <TemplateCard
                 template={item}
                 onSelect={() => openModal(item)}
-                onToggleFavorite={() => toggleFavorite(item.id)}
+                onToggleFavorite={() => toggleFavorite(item.title)}
               />
             )}
             showsVerticalScrollIndicator={false}
