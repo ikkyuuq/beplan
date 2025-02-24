@@ -1,19 +1,27 @@
-import * as React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import React from "react";
+import {
+  Text,
+  View,
+  Alert,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useSignUp } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { useFonts } from "expo-font";
 import { routes } from "@/routesConfig";
-import { InriaSerif_400Regular } from "@expo-google-fonts/inria-serif";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
 import VerificationScreen from "@/components/VerificationScreen";
 
+// ====================== Main Component ======================
 export default function SignUpScreen() {
-  const { isLoaded, signUp, setActive } = useSignUp();
+  // ====================== Authentication & Navigation Hooks ======================
+  const { signUp, isLoaded, setActive } = useSignUp();
   const router = useRouter();
 
+  // ====================== State Management ======================
   const [name, setName] = React.useState("");
   const [emailAddress, setEmailAddress] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -21,60 +29,71 @@ export default function SignUpScreen() {
   const [pendingVerification, setPendingVerification] = React.useState(false);
   const [code, setCode] = React.useState("");
   const [errorMessage, setErrorMessage] = React.useState("");
+  const [isSigningUp, setIsSigningUp] = React.useState(false);
 
-  const [fontsLoaded, loadError] = useFonts({
-    InriaSerif_400Regular,
-  });
+  // ====================== Helper Functions ======================
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
-  const isValidEmail = (email: string): boolean =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
+  // ====================== Sign-Up Handler ======================
   const onSignUpPress = async () => {
-    setErrorMessage("");
-    if (!isLoaded) return;
-    if (!name.trim() || !emailAddress.trim() || !password.trim()) {
-      setErrorMessage("All fields are required.");
-      return;
-    }
-    if (!isValidEmail(emailAddress)) {
-      setErrorMessage("Invalid email format.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setErrorMessage("Passwords do not match.");
-      return;
-    }
-
     try {
+      if (!isLoaded) return;
+
+      if (!name.trim() || !emailAddress.trim() || !password.trim()) {
+        setErrorMessage("All fields are required.");
+        return;
+      }
+
+      if (!isValidEmail(emailAddress)) {
+        setErrorMessage("Invalid email format.");
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setErrorMessage("Passwords do not match.");
+        return;
+      }
+
+      setIsSigningUp(true);
+
       await signUp.create({ emailAddress, password });
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+
       setPendingVerification(true);
+      setIsSigningUp(false);
     } catch (err: any) {
-      console.error(err);
-      setErrorMessage(
-        err.errors?.[0]?.message || "Sign-up failed. Please try again."
-      );
+      setIsSigningUp(false);
+      if (err.code == "clerk_identifier_taken") {
+        setErrorMessage("An account with this email already exists.");
+      } else {
+        setErrorMessage("Sign-up failed. Please try again.");
+      }
     }
   };
 
+  // ====================== Verification Handler ======================
   const onVerifyPress = async () => {
-    if (!isLoaded) return;
     try {
+      if (!isLoaded) return;
+
       const signUpAttempt = await signUp.attemptEmailAddressVerification({
         code,
       });
+
       if (signUpAttempt.status === "complete") {
         await setActive({ session: signUpAttempt.createdSessionId });
         router.replace(routes.loggedInRedirect);
+        setIsSigningUp(false);
       }
     } catch (err: any) {
-      console.error(err);
-      setErrorMessage(
-        err.errors?.[0]?.message || "Verification failed. Please try again."
-      );
+      setErrorMessage("Verification failed. Please try again.");
     }
   };
 
+  // ====================== Render Verification Screen ======================
   if (pendingVerification) {
     return (
       <VerificationScreen
@@ -85,7 +104,6 @@ export default function SignUpScreen() {
         onVerifyPress={onVerifyPress}
         errorMessage={errorMessage}
         onResendPress={() => {
-          console.log("Resend Code");
           Alert.alert(
             "Verification Code",
             "We have resent the verification code to your email.",
@@ -96,11 +114,15 @@ export default function SignUpScreen() {
     );
   }
 
+  // ====================== Render Sign-Up Form ======================
   return (
     <View style={styles.container}>
+      {/* Back Button */}
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <Ionicons name="arrow-back" size={24} color="black" />
       </TouchableOpacity>
+
+      {/* Title and Input Fields */}
       <Text style={styles.title}>Register</Text>
       <View style={styles.divider} />
       <InputField
@@ -129,13 +151,26 @@ export default function SignUpScreen() {
         onChangeText={setConfirmPassword}
         secureTextEntry
       />
+
+      {/* Error Message */}
       {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+
+      {/* Sign-Up Button */}
       <SignButton onPress={onSignUpPress} buttonText="Sign Up" />
+
+      {/* Loading Indicator */}
+      {isSigningUp && (
+        <View style={styles.overlay}>
+          <ActivityIndicator size="large" color="#0000ff" />
+        </View>
+      )}
     </View>
   );
 }
 
+// ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Main Layout
   container: {
     flex: 1,
     justifyContent: "center",
@@ -143,36 +178,42 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#F8F8F8",
   },
+
+  // Overlay
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    zIndex: 999,
+  },
+
+  // Typography
   title: {
-    fontSize: 60,
     fontFamily: "InriaSerif_400Regular",
+    fontSize: 60,
     fontWeight: "bold",
     marginBottom: 20,
   },
-  title1: {
-    fontSize: 65,
-    fontFamily: "InriaSerif_400Regular",
-    fontWeight: "bold",
+  errorText: {
+    color: "red",
+    fontSize: 14,
+    marginTop: 5,
   },
-  errorText: { color: "red", fontSize: 14, marginTop: 5 },
+
+  // Separator/Divider
   divider: {
     width: "80%",
     height: 2,
     backgroundColor: "#000",
     marginBottom: 80,
   },
-  resendText: {
-    marginTop: 15,
-    textDecorationLine: "underline",
-    color: "#333",
-  },
-  description: {
-    fontSize: 16,
-    color: "#333",
-    textAlign: "center",
-    marginTop: 20,
-    marginBottom: 20,
-  },
+
+  // Buttons
   backButton: {
     position: "absolute",
     top: 50,
