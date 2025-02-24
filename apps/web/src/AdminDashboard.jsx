@@ -417,7 +417,7 @@ const AdminDashboard = () => {
                                                         <div className="weekly-days-container">
                                                             <label>Select Days of the Week:</label>
                                                             <div className="days-checkbox-container">
-                                                                {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(day => (
+                                                                {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => (
                                                                     <label key={day} className="day-checkbox">
                                                                         <input
                                                                             type="checkbox"
@@ -434,8 +434,6 @@ const AdminDashboard = () => {
                                                         <span>+ Add Task</span>
                                                     </button>
                                                 </div>
-
-
                                             </div>
                                         ))}
                                     </div>
