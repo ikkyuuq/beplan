@@ -37,6 +37,7 @@ const AdminDashboard = () => {
     });
 
     const [goalEditingMode, setGoalEditingMode] = useState(false);
+    const [showDescription, setShowDescription] = useState(null); // สถานะใหม่สำหรับแสดงคำอธิบาย
 
     useEffect(() => {
         const storedUser = JSON.parse(localStorage.getItem("user"));
@@ -157,7 +158,6 @@ const AdminDashboard = () => {
         }
     };
 
-
     const handleRemoveGoal = (goalId) => {
         const updatedTemplate = {
             ...editingTemplate,
@@ -191,6 +191,10 @@ const AdminDashboard = () => {
             )
         };
         setEditingTemplate(updatedTemplate);
+    };
+
+    const toggleDescription = (templateId) => {
+        setShowDescription(showDescription === templateId ? null : templateId);
     };
 
     return (
@@ -229,7 +233,6 @@ const AdminDashboard = () => {
                         <tr>
                             <th>#</th>
                             <th>Template Name</th>
-                            <th>Description</th>
                             <th>Image</th>
                             <th>Category</th>
                             <th>Goals</th>
@@ -241,7 +244,6 @@ const AdminDashboard = () => {
                             <tr key={template.id}>
                                 <td>{index + 1}</td>
                                 <td>{template.name}</td>
-                                <td>{template.description}</td>
                                 <td>
                                     {template.image ? <img src={template.image} alt="Template" className="template-img" /> : "No Image"}
                                 </td>
@@ -258,6 +260,7 @@ const AdminDashboard = () => {
                                     </ul>
                                 </td>
                                 <td>
+                                    <button className="description-btn" onClick={() => toggleDescription(template.id)}>📜 Description</button>
                                     <button className="edit-btn" onClick={() => handleEditTemplate(template)}>✏ Edit</button>
                                     <button className="delete-btn" onClick={() => handleDeleteTemplate(template.id)}>🗑 Delete</button>
                                 </td>
@@ -265,6 +268,16 @@ const AdminDashboard = () => {
                         ))}
                     </tbody>
                 </table>
+
+                {showDescription && (
+                    <div className="description-modal">
+                        <div className="modal-content">
+                            <h3>Description</h3>
+                            <p>{templates.find(template => template.id === showDescription).description}</p>
+                            <button onClick={() => setShowDescription(null)}>❌ Close</button>
+                        </div>
+                    </div>
+                )}
 
                 {editingTemplate && (
                     <div className="modal">
@@ -339,9 +352,9 @@ const AdminDashboard = () => {
                                                     <span>🗑 Remove Goal</span>
                                                 </button>
                                                 <ul>
-                                                <p>Start Date: {goal.start_date}</p>
-                                                <p>Due Date: {goal.due_date}</p>
-                                                {goal.tasks.map((task) => (
+                                                    <p>Start Date: {goal.start_date}</p>
+                                                    <p>Due Date: {goal.due_date}</p>
+                                                    {goal.tasks.map((task) => (
                                                         <li key={task.id}>{task.text}</li>
                                                     ))}
                                                 </ul>

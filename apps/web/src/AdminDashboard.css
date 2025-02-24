@@ -400,8 +400,8 @@ body {
 
 /* สีเมื่อ hover */
 .remove-goal-btn:hover {
-  background-color: #c82333;  /* สีแดงเข้มเมื่อ hover */
-  transform: scale(1.05);  /* ขยายปุ่มเล็กน้อยเมื่อ hover */
+  background-color: #c82333;  
+  transform: scale(1.05); 
 }
 
 /* ใช้สำหรับแสดงไอคอนในปุ่ม */
@@ -420,4 +420,63 @@ body {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.description-modal {
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  width: 100%; 
+  height: 100%; 
+  background-color: rgba(0, 0, 0, 0.5); 
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  z-index: 9999; 
+}
+
+.description-btn {
+  background-color: #4CAF50; 
+  color: white; 
+  border: none; 
+  border-radius: 5px; 
+  padding: 8px 16px; 
+  cursor: pointer; 
+  font-size: 16px; 
+  transition: background-color 0.3s ease; 
+}
+
+.description-btn:hover {
+  background-color: #45a049; 
+}
+
+.description-btn:focus {
+  outline: none; 
+  box-shadow: 0 0 10px rgba(0, 128, 0, 0.5); 
+}
+
+.description-modal button {
+  background-color: #ff4d4d; 
+  color: white; 
+  border: none; 
+  border-radius: 8px; 
+  padding: 10px 15px; 
+  cursor: pointer; 
+  font-size: 18px; 
+  transition: background-color 0.3s ease, transform 0.2s ease; 
+}
+
+.description-modal button:hover {
+  background-color: #e60000; 
+  transform: scale(1.1);
+}
+
+.description-modal button:active {
+  transform: scale(0.95);
+}
+
+.description-modal .modal-content p {
+  white-space: pre-line; 
+  word-wrap: break-word; 
+  line-height: 1.6; 
 }
