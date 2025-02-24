@@ -3,29 +3,63 @@ import "./AdminDashboard.css";
 
 const AdminDashboard = () => {
     const [templates, setTemplates] = useState([
-        { id: 1, name: "Health Goal", description: "Track your daily habits for better health.", image: null },
-        { id: 2, name: "Career Planning", description: "Set milestones for your career growth.", image: null },
+        { 
+            id: 1, 
+            name: "Health Goal", 
+            description: "Track your daily habits for better health.", 
+            image: null, 
+            category: "Workout Routine", 
+            goals: [], 
+            start_date: "", 
+            due_date: "" 
+        },
+        { 
+            id: 2, 
+            name: "Career Planning", 
+            description: "Set milestones for your career growth.", 
+            image: null, 
+            category: "Personal Budgeting", 
+            goals: [], 
+            start_date: "", 
+            due_date: "" 
+        },
     ]);
 
     const [editingTemplate, setEditingTemplate] = useState(null);
     const [newName, setNewName] = useState("");
     const [newDescription, setNewDescription] = useState("");
     const [newImage, setNewImage] = useState(null);
-
+    const [newCategory, setNewCategory] = useState("");
+    const [newGoal, setNewGoal] = useState("");
+    const [newTask, setNewTask] = useState("");
+    const [newStartDate, setNewStartDate] = useState("");
+    const [newDueDate, setNewDueDate] = useState("");
+    const [categories, setCategories] = useState(["Workout Routine", "Personal Budgeting", "Healthy Eating"]);
     const [userAccount, setUserAccount] = useState({
         name: "Admin",
         profilePic: "https://cdn-icons-png.flaticon.com/512/847/847969.png",
     });
 
+    const [goalEditingMode, setGoalEditingMode] = useState(false);
+
     useEffect(() => {
         const storedUser = JSON.parse(localStorage.getItem("user"));
         if (storedUser && storedUser.username) {
-            setUserAccount({ ...userAccount, name: storedUser.username }); // 👉 ใช้ชื่อจาก localStorage
+            setUserAccount({ ...userAccount, name: storedUser.username });
         }
     }, []);
 
     const handleCreateTemplate = () => {
-        const newTemplate = { id: Date.now(), name: "New Template", description: "Edit this template.", image: null };
+        const newTemplate = { 
+            id: Date.now(), 
+            name: "New Template", 
+            description: "Edit this template.", 
+            image: null, 
+            category: "Workout Routine", 
+            goals: [], 
+            start_date: "", 
+            due_date: "" 
+        };
         setTemplates([...templates, newTemplate]);
     };
 
@@ -34,6 +68,9 @@ const AdminDashboard = () => {
         setNewName(template.name);
         setNewDescription(template.description);
         setNewImage(template.image);
+        setNewCategory(template.category);
+        setNewStartDate(template.start_date);
+        setNewDueDate(template.due_date);
     };
 
     const handleImageUpload = (e) => {
@@ -49,13 +86,75 @@ const AdminDashboard = () => {
 
     const handleSaveEdit = () => {
         setTemplates(templates.map((t) =>
-            t.id === editingTemplate.id ? { ...t, name: newName, description: newDescription, image: newImage } : t
+            t.id === editingTemplate.id ? { 
+                ...t, 
+                name: newName, 
+                description: newDescription, 
+                image: newImage, 
+                category: newCategory, 
+                goals: editingTemplate.goals,
+                start_date: newStartDate, 
+                due_date: newDueDate 
+            } : t
         ));
         setEditingTemplate(null);
     };
 
     const handleDeleteTemplate = (id) => {
         setTemplates(templates.filter((template) => template.id !== id));
+    };
+
+    const handleAddCategory = () => {
+        if (newCategory && !categories.includes(newCategory)) {
+            setCategories([...categories, newCategory]);
+            setNewCategory("");
+        }
+    };
+
+    const handleAddGoal = () => {
+        if (newGoal.trim()) {
+            const updatedTemplate = {
+                ...editingTemplate,
+                goals: [...editingTemplate.goals, { id: Date.now(), text: newGoal, tasks: [] }]
+            };
+            setEditingTemplate(updatedTemplate);
+            setNewGoal("");
+        }
+    };
+
+    const handleRemoveGoal = (goalId) => {
+        const updatedTemplate = {
+            ...editingTemplate,
+            goals: editingTemplate.goals.filter((goal) => goal.id !== goalId)
+        };
+        setEditingTemplate(updatedTemplate);
+    };
+
+    const handleAddTask = (goalId) => {
+        if (newTask.trim()) {
+            const updatedTemplate = {
+                ...editingTemplate,
+                goals: editingTemplate.goals.map(goal => 
+                    goal.id === goalId 
+                    ? { ...goal, tasks: [...goal.tasks, { id: Date.now(), text: newTask }] }
+                    : goal
+                )
+            };
+            setEditingTemplate(updatedTemplate);
+            setNewTask("");
+        }
+    };
+
+    const handleRemoveTask = (goalId, taskId) => {
+        const updatedTemplate = {
+            ...editingTemplate,
+            goals: editingTemplate.goals.map(goal => 
+                goal.id === goalId 
+                ? { ...goal, tasks: goal.tasks.filter(task => task.id !== taskId) }
+                : goal
+            )
+        };
+        setEditingTemplate(updatedTemplate);
     };
 
     return (
@@ -67,8 +166,8 @@ const AdminDashboard = () => {
                     <img src={userAccount.profilePic} alt="User" className="user-icon" />
                     <span className="user-name">{userAccount.name}</span>
                     <button className="logout-btn" onClick={() => {
-                        localStorage.removeItem("user"); // 👉 ลบข้อมูล User เมื่อ Logout
-                        window.location.href = "/login"; // 👉 Redirect ไปหน้า Login
+                        localStorage.removeItem("user");
+                        window.location.href = "/login";
                     }}>🚪 Logout</button>
                 </div>
             </nav>
@@ -96,6 +195,10 @@ const AdminDashboard = () => {
                             <th>Template Name</th>
                             <th>Description</th>
                             <th>Image</th>
+                            <th>Category</th>
+                            <th>Goals</th>
+                            <th>Start Date</th>
+                            <th>Due Date</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -108,6 +211,24 @@ const AdminDashboard = () => {
                                 <td>
                                     {template.image ? <img src={template.image} alt="Template" className="template-img" /> : "No Image"}
                                 </td>
+                                <td>{template.category}</td>
+                                <td>
+                                    <ul>
+                                        {template.goals.map((goal) => (
+                                            <li key={goal.id}>
+                                                <strong>{goal.text}</strong>
+                                                <ul>
+                                                    {goal.tasks.map((task) => (
+                                                        <li key={task.id}>{task.text}</li>
+                                                    ))}
+                                                </ul>
+                                                <button onClick={() => handleRemoveGoal(goal.id)}>🗑 Remove Goal</button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </td>
+                                <td>{template.start_date}</td>
+                                <td>{template.due_date}</td>
                                 <td>
                                     <button className="edit-btn" onClick={() => handleEditTemplate(template)}>✏ Edit</button>
                                     <button className="delete-btn" onClick={() => handleDeleteTemplate(template.id)}>🗑 Delete</button>
@@ -121,6 +242,7 @@ const AdminDashboard = () => {
                     <div className="modal">
                         <div className="modal-content">
                             <h2>Edit Template</h2>
+                            {/* Edit Template Fields */}
                             <label>Template Name:</label>
                             <input
                                 type="text"
@@ -132,14 +254,75 @@ const AdminDashboard = () => {
                                 value={newDescription}
                                 onChange={(e) => setNewDescription(e.target.value)}
                             />
+                            <label>Category:</label>
+                            <select
+                                value={newCategory}
+                                onChange={(e) => setNewCategory(e.target.value)}
+                            >
+                                {categories.map((category, index) => (
+                                    <option key={index} value={category}>{category}</option>
+                                ))}
+                            </select>
 
-                            
-                            <div className="modal-buttons">
+                            {/* Goals Editing Section */}
+                            <button onClick={() => setGoalEditingMode(!goalEditingMode)}>
+                                {goalEditingMode ? "❌ Close Goal Editing" : "✏ Edit Goals"}
+                            </button>
+
+                            {goalEditingMode && (
+                                <div>
+                                    {/* Goal Editing */}
+                                    <h3>Editing Goals for Template: {editingTemplate.name}</h3>
+                                    <div>
+                                        <input
+                                            type="text"
+                                            value={newGoal}
+                                            onChange={(e) => setNewGoal(e.target.value)}
+                                            placeholder="Add a new goal"
+                                        />
+                                        <button onClick={handleAddGoal}>+ Add Goal</button>
+                                    </div>
+                                    <div className="goals-list">
+                                        {editingTemplate.goals.map((goal) => (
+                                            <div key={goal.id}>
+                                                <h3>{goal.text}</h3>
+                                                <div>
+                                                    <input
+                                                        type="text"
+                                                        value={newTask}
+                                                        onChange={(e) => setNewTask(e.target.value)}
+                                                        placeholder="Add task"
+                                                    />
+                                                    <button onClick={() => handleAddTask(goal.id)}>+ Add Task</button>
+                                                </div>
+                                                <ul>
+                                                    {goal.tasks.map((task) => (
+                                                        <li key={task.id}>{task.text}</li>
+                                                    ))}
+                                                </ul>
+                                                <button onClick={() => handleRemoveGoal(goal.id)}>🗑 Remove Goal</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <label>Start Date:</label>
+                            <input
+                                type="date"
+                                value={newStartDate}
+                                onChange={(e) => setNewStartDate(e.target.value)}
+                            />
+                            <label>Due Date:</label>
+                            <input
+                                type="date"
+                                value={newDueDate}
+                                onChange={(e) => setNewDueDate(e.target.value)}
+                            />
                             <label>Upload Image:</label>
                             <input type="file" accept="image/*" onChange={handleImageUpload} />
-
                             {newImage && <img src={newImage} alt="Preview" className="preview-img" />}
-
+                            <div className="modal-buttons">
                                 <button className="save-btn" onClick={handleSaveEdit}>💾 Save</button>
                                 <button className="cancel-btn" onClick={() => setEditingTemplate(null)}>❌ Cancel</button>
                             </div>
