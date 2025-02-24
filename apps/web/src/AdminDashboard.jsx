@@ -10,8 +10,6 @@ const AdminDashboard = () => {
             image: null, 
             category: "Workout Routine", 
             goals: [], 
-            start_date: "", 
-            due_date: "" 
         },
         { 
             id: 2, 
@@ -20,8 +18,6 @@ const AdminDashboard = () => {
             image: null, 
             category: "Personal Budgeting", 
             goals: [], 
-            start_date: "", 
-            due_date: "" 
         },
     ]);
 
@@ -32,8 +28,8 @@ const AdminDashboard = () => {
     const [newCategory, setNewCategory] = useState("");
     const [newGoal, setNewGoal] = useState("");
     const [newTask, setNewTask] = useState("");
-    const [newStartDate, setNewStartDate] = useState("");
-    const [newDueDate, setNewDueDate] = useState("");
+    const [newGoalStartDate, setNewGoalStartDate] = useState("");
+    const [newGoalDueDate, setNewGoalDueDate] = useState("");
     const [categories, setCategories] = useState(["Workout Routine", "Personal Budgeting", "Healthy Eating"]);
     const [userAccount, setUserAccount] = useState({
         name: "Admin",
@@ -57,8 +53,6 @@ const AdminDashboard = () => {
             image: null, 
             category: "Workout Routine", 
             goals: [], 
-            start_date: "", 
-            due_date: "" 
         };
         setTemplates([...templates, newTemplate]);
     };
@@ -69,8 +63,6 @@ const AdminDashboard = () => {
         setNewDescription(template.description);
         setNewImage(template.image);
         setNewCategory(template.category);
-        setNewStartDate(template.start_date);
-        setNewDueDate(template.due_date);
     };
 
     const handleImageUpload = (e) => {
@@ -93,8 +85,6 @@ const AdminDashboard = () => {
                 image: newImage, 
                 category: newCategory, 
                 goals: editingTemplate.goals,
-                start_date: newStartDate, 
-                due_date: newDueDate 
             } : t
         ));
         setEditingTemplate(null);
@@ -115,10 +105,18 @@ const AdminDashboard = () => {
         if (newGoal.trim()) {
             const updatedTemplate = {
                 ...editingTemplate,
-                goals: [...editingTemplate.goals, { id: Date.now(), text: newGoal, tasks: [] }]
+                goals: [...editingTemplate.goals, { 
+                    id: Date.now(), 
+                    text: newGoal, 
+                    tasks: [],
+                    start_date: newGoalStartDate,
+                    due_date: newGoalDueDate
+                }]
             };
             setEditingTemplate(updatedTemplate);
             setNewGoal("");
+            setNewGoalStartDate("");
+            setNewGoalDueDate("");
         }
     };
 
@@ -197,8 +195,6 @@ const AdminDashboard = () => {
                             <th>Image</th>
                             <th>Category</th>
                             <th>Goals</th>
-                            <th>Start Date</th>
-                            <th>Due Date</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -222,13 +218,13 @@ const AdminDashboard = () => {
                                                         <li key={task.id}>{task.text}</li>
                                                     ))}
                                                 </ul>
+                                                <p>Start Date: {goal.start_date}</p>
+                                                <p>Due Date: {goal.due_date}</p>
                                                 <button onClick={() => handleRemoveGoal(goal.id)}>🗑 Remove Goal</button>
                                             </li>
                                         ))}
                                     </ul>
                                 </td>
-                                <td>{template.start_date}</td>
-                                <td>{template.due_date}</td>
                                 <td>
                                     <button className="edit-btn" onClick={() => handleEditTemplate(template)}>✏ Edit</button>
                                     <button className="delete-btn" onClick={() => handleDeleteTemplate(template.id)}>🗑 Delete</button>
@@ -242,6 +238,9 @@ const AdminDashboard = () => {
                     <div className="modal">
                         <div className="modal-content">
                             <h2>Edit Template</h2>
+                            <button onClick={() => setGoalEditingMode(!goalEditingMode)}>
+                                {goalEditingMode ? "❌ Close Goal Editing" : "✏ Edit Goals"}
+                            </button>
                             {!goalEditingMode && (
                                 <>
                                     <label>Template Name:</label>
@@ -267,14 +266,8 @@ const AdminDashboard = () => {
                                 </>
                             )}
 
-                            {/* Goals Editing Section */}
-                            <button onClick={() => setGoalEditingMode(!goalEditingMode)}>
-                                {goalEditingMode ? "❌ Close Goal Editing" : "✏ Edit Goals"}
-                            </button>
-
                             {goalEditingMode && (
                                 <div>
-                                    {/* Goal Editing */}
                                     <h3>Editing Goals for Template: {editingTemplate.name}</h3>
                                     <div>
                                         <input
@@ -283,12 +276,26 @@ const AdminDashboard = () => {
                                             onChange={(e) => setNewGoal(e.target.value)}
                                             placeholder="Add a new goal"
                                         />
+                                        <label>Start Date:</label>
+                                        <input
+                                            type="date"
+                                            value={newGoalStartDate}
+                                            onChange={(e) => setNewGoalStartDate(e.target.value)}
+                                        />
+                                        <label>Due Date:</label>
+                                        <input
+                                            type="date"
+                                            value={newGoalDueDate}
+                                            onChange={(e) => setNewGoalDueDate(e.target.value)}
+                                        />
                                         <button onClick={handleAddGoal}>+ Add Goal</button>
                                     </div>
                                     <div className="goals-list">
                                         {editingTemplate.goals.map((goal) => (
                                             <div key={goal.id}>
                                                 <h3>{goal.text}</h3>
+                                                <p>Start Date: {goal.start_date}</p>
+                                                <p>Due Date: {goal.due_date}</p>
                                                 <div>
                                                     <input
                                                         type="text"
@@ -310,18 +317,6 @@ const AdminDashboard = () => {
                                 </div>
                             )}
 
-                            <label>Start Date:</label>
-                            <input
-                                type="date"
-                                value={newStartDate}
-                                onChange={(e) => setNewStartDate(e.target.value)}
-                            />
-                            <label>Due Date:</label>
-                            <input
-                                type="date"
-                                value={newDueDate}
-                                onChange={(e) => setNewDueDate(e.target.value)}
-                            />
                             <label>Upload Image:</label>
                             <input type="file" accept="image/*" onChange={handleImageUpload} />
                             {newImage && <img src={newImage} alt="Preview" className="preview-img" />}
