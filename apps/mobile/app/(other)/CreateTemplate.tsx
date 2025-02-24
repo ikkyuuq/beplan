@@ -19,6 +19,7 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 
 // ====================== Main Component ======================
@@ -32,6 +33,7 @@ export default function CreateTemplate() {
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
   const [isFormValid, setIsFormValid] = useState(false);
   const [isScrollEnabled, setIsScrollEnabled] = useState(true);
+  const router = useRouter();
 
   // Ref for ScrollView
   const mainScrollViewRef = React.useRef<ScrollView>(null);
@@ -150,11 +152,27 @@ export default function CreateTemplate() {
   };
 
   // ====================== Render UI ======================
+  // Back button handler
+  const handleGoBack = () => {
+    router.replace("/(tabs)/community");
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
+      {/* Back Button Header */}
+      <View style={styles.header}>
+        <Pressable
+          style={styles.backButton}
+          onPress={handleGoBack}
+          android_ripple={{ color: "rgba(0,0,0,0.1)", radius: 20 }}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Text style={styles.backText}>Back</Text>
+        </Pressable>
+      </View>
       <ScrollView
         ref={mainScrollViewRef}
         showsVerticalScrollIndicator={false}
@@ -386,6 +404,27 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === "ios" ? 50 : 16,
+    paddingBottom: 10,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    zIndex: 10,
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    width: 100,
+  },
+  backText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "500",
   },
 
   // Preview Section
