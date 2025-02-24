@@ -299,6 +299,9 @@ const AdminDashboard = () => {
                                             <option key={index} value={category}>{category}</option>
                                         ))}
                                     </select>
+                                    <label>Upload Image:</label>
+                                    <input type="file" accept="image/*" onChange={handleImageUpload} />
+                                    {newImage && <img src={newImage} alt="Preview" className="preview-img" />}
                                 </>
                             )}
 
@@ -361,9 +364,6 @@ const AdminDashboard = () => {
                                 </div>
                             )}
 
-                            <label>Upload Image:</label>
-                            <input type="file" accept="image/*" onChange={handleImageUpload} />
-                            {newImage && <img src={newImage} alt="Preview" className="preview-img" />}
                             <div className="modal-buttons">
                                 <button className="save-btn" onClick={handleSaveEdit}>💾 Save</button>
                                 <button className="cancel-btn" onClick={() => setEditingTemplate(null)}>❌ Cancel</button>
