@@ -318,11 +318,11 @@ body {
 }
 
 .goal-edit-btn.close {
-  background-color: #dc3545;  
+  background-color: #6ca71f;  
 }
 
 .goal-edit-btn.close:hover {
-  background-color: #c82333;  
+  background-color: #25a720;  
 }
 .goal-edit-btn svg {
   font-size: 1.5rem;
