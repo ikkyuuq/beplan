@@ -1,5 +1,12 @@
 import { Feather } from "@expo/vector-icons";
-import { View, Text, Image, Pressable, LayoutChangeEvent } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  Pressable,
+  LayoutChangeEvent,
+  ScrollView,
+} from "react-native";
 import {
   addDays,
   eachDayOfInterval,
@@ -23,7 +30,7 @@ import { useClerk } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
 
-function schedule() {
+export default function schedule() {
   const { signOut } = useClerk();
   const router = useRouter();
 
@@ -113,8 +120,154 @@ function schedule() {
     };
   });
 
+  const [data, setData] = useState([
+    {
+      id: "1",
+      title: "I want to save $5000 by the end of the months",
+      type: "SMART GOALS",
+      status: "pending",
+      startDate: new Date(),
+      dueDate: new Date(startDate.getDate() + 30),
+      tasks: [
+        {
+          id: "1",
+          title: "Save $100",
+          status: "pending",
+          description:
+            "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
+          repeat: {
+            type: "daily",
+            interval: [],
+            interval_date: ["2025-02-23", "2025-02-24", "2025-02-25"],
+          },
+        },
+        {
+          id: "2",
+          title: "Save $200",
+          status: "pending",
+          description:
+            "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
+          repeat: {
+            type: "weekly",
+            interval: [1, 3, 5], // Monday, Wednesday, Friday
+            interval_date: ["2025-02-23", "2025-02-25", "2025-02-27"],
+          },
+        },
+      ],
+    },
+    {
+      id: "2",
+      title: "I want to save $5000 by the end of the months",
+      type: "SMART GOALS",
+      status: "pending",
+      startDate: new Date(),
+      dueDate: new Date(startDate.getDate() + 30),
+      tasks: [
+        {
+          id: "3",
+          title: "Save $1000",
+          status: "pending",
+          description:
+            "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
+          repeat: {
+            type: "daily",
+            interval: [],
+            interval_date: [
+              "2025-02-23",
+              "2025-02-24",
+              "2025-02-25",
+              "2025-02-26",
+            ],
+          },
+        },
+        {
+          id: "4",
+          title: "Save $2000",
+          status: "pending",
+          description:
+            "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
+          repeat: {
+            type: "weekly",
+            interval: [1, 3, 5],
+            interval_date: [
+              "2025-02-23",
+              "2025-02-25",
+              "2025-02-27",
+              "2025-03-01",
+            ],
+          },
+        },
+      ],
+    },
+  ]);
+
+  const handleFailAllTasks = (goalId: string) => {
+    setTimeout(
+      () => setData((prev) => prev.filter((goal) => goal.id !== goalId)),
+      300,
+    );
+  };
+
+  const handleCompleteAllTasks = (goalId: string) => {
+    setTimeout(
+      () => setData((prev) => prev.filter((goal) => goal.id !== goalId)),
+      300,
+    );
+  };
+
+  const handleCompleteTask = (goalId: string, taskId: string) => {
+    setData((prev) =>
+      prev.map((goal) =>
+        goal.id === goalId
+          ? {
+              ...goal,
+              tasks: goal.tasks.filter((t) => t.id !== taskId),
+            }
+          : goal,
+      ),
+    );
+  };
+
+  const handleFailTask = (goalId: string, taskId: string) => {
+    setData((prev) =>
+      prev.map((goal) =>
+        goal.id === goalId
+          ? {
+              ...goal,
+              tasks: goal.tasks.filter((t) => t.id !== taskId),
+            }
+          : goal,
+      ),
+    );
+  };
+
+  const handleReschedule = (goalId: string, taskId: string, date: string) => {
+    setData((prev) =>
+      prev.map((goal) =>
+        goal.id === goalId
+          ? {
+              ...goal,
+              tasks: goal.tasks.map((task) =>
+                task.id === taskId
+                  ? {
+                      ...task,
+                      repeat: {
+                        ...task.repeat,
+                        interval_date: [...task.repeat.interval_date, date],
+                      },
+                    }
+                  : task,
+              ),
+            }
+          : goal,
+      ),
+    );
+    console.log("Reschedule", goalId, taskId, date);
+    // Re-fetch data from the server using react query
+  };
+
   return (
-    <View style={{ flex: 1, gap: 24 }}>
+    <View style={{ flex: 1 }}>
       <View
         style={{
           height: 320,
@@ -267,15 +420,46 @@ function schedule() {
         </View>
       </View>
 
-      <View style={{ gap: 16 }}>
-        <Collapsable>
-          <CollapseItem title="Morning Routine" />
-          <CollapseItem title="Morning Routine 2" />
-          <CollapseItem title="Morning Routine 3" />
-        </Collapsable>
-      </View>
+      <ScrollView>
+        <Animated.View style={{ marginTop: 20, marginBottom: 120 }}>
+          {data.map((goal) => {
+            const filteredTasks = goal.tasks.filter((task) => {
+              const selectedDateString = format(selectedDate, "yyyy-MM-dd");
+              return task.repeat.interval_date.includes(selectedDateString);
+            });
+
+            return (
+              <Collapsable
+                key={goal.id}
+                title={goal.title}
+                type={goal.type}
+                onComplete={() => handleCompleteAllTasks(goal.id)}
+                onFail={() => handleFailAllTasks(goal.id)}
+                onCollapseFinish={() => {
+                  setTimeout(
+                    () =>
+                      setData((prev) => prev.filter((g) => g.id !== goal.id)),
+                    300,
+                  );
+                }}
+              >
+                {filteredTasks.map((task) => (
+                  <CollapseItem
+                    key={task.id}
+                    title={task.title}
+                    description={task.description}
+                    onComplete={() => handleCompleteTask(goal.id, task.id)}
+                    onFail={() => handleFailTask(goal.id, task.id)}
+                    onReschedule={(date) =>
+                      handleReschedule(goal.id, task.id, date)
+                    }
+                  />
+                ))}
+              </Collapsable>
+            );
+          })}
+        </Animated.View>
+      </ScrollView>
     </View>
   );
 }
-
-export default schedule;
