@@ -249,13 +249,13 @@ const AdminDashboard = () => {
             <div className="dashboard-content">
                 <header>
                     <h1>Admin Template</h1>
-                    <button className="create-btn" onClick={handleCreateTemplate}>➕ Create Template</button>
+                    <button className="create-btn" onClick={handleCreateTemplate}>Create Template</button>
                 </header>
 
                 <table className="template-table">
                     <thead>
                         <tr>
-                            <th>No.</th>
+                            <th>ID</th>
                             <th>Template Name</th>
                             <th>Image</th>
                             <th>Category</th>
@@ -284,9 +284,9 @@ const AdminDashboard = () => {
                                     </ul>
                                 </td>
                                 <td>
-                                    <button className="description-btn" onClick={() => toggleDescription(template.id)}>📜 Description</button>
-                                    <button className="edit-btn" onClick={() => handleEditTemplate(template)}>✏ Edit</button>
-                                    <button className="delete-btn" onClick={() => handleDeleteTemplate(template.id)}>🗑 Delete</button>
+                                    <button className="description-btn" onClick={() => toggleDescription(template.id)}>Description</button>
+                                    <button className="edit-btn" onClick={() => handleEditTemplate(template)}>Edit</button>
+                                    <button className="delete-btn" onClick={() => handleDeleteTemplate(template.id)}>Delete</button>
                                 </td>
                             </tr>
                         ))}
