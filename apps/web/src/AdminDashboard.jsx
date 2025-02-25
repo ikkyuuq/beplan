@@ -255,7 +255,7 @@ const AdminDashboard = () => {
                 <table className="template-table">
                     <thead>
                         <tr>
-                            <th>#</th>
+                            <th>No.</th>
                             <th>Template Name</th>
                             <th>Image</th>
                             <th>Category</th>
