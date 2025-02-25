@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Text, View, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSignIn } from "@clerk/clerk-expo";
@@ -7,9 +7,70 @@ import { routes } from "@/routesConfig";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
 import VerificationScreen from "@/components/VerificationScreen";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  Easing,
+  FadeIn,
+} from "react-native-reanimated";
 
 // ====================== Main Component ======================
 export default function ResetPasswordScreen() {
+  // ====================== Animation Values ======================
+  const titleOpacity = useSharedValue(0);
+  const titleTranslateY = useSharedValue(20);
+  const descriptionOpacity = useSharedValue(0);
+  const formOpacity = useSharedValue(0);
+  const buttonOpacity = useSharedValue(0);
+  const buttonTranslateY = useSharedValue(15);
+
+  // ====================== Animation Setup ======================
+  useEffect(() => {
+    // Title animation
+    titleOpacity.value = withTiming(1, { duration: 600 });
+    titleTranslateY.value = withTiming(0, {
+      duration: 600,
+      easing: Easing.out(Easing.cubic),
+    });
+
+    // Description animation
+    descriptionOpacity.value = withDelay(300, withTiming(1, { duration: 600 }));
+
+    // Form animation
+    formOpacity.value = withDelay(600, withTiming(1, { duration: 400 }));
+
+    // Button animation
+    buttonOpacity.value = withDelay(800, withTiming(1, { duration: 400 }));
+    buttonTranslateY.value = withDelay(
+      800,
+      withTiming(0, {
+        duration: 400,
+        easing: Easing.out(Easing.cubic),
+      })
+    );
+  }, []);
+
+  // ====================== Animated Styles ======================
+  const titleAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: titleOpacity.value,
+    transform: [{ translateY: titleTranslateY.value }],
+  }));
+
+  const descriptionAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: descriptionOpacity.value,
+  }));
+
+  const formAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: formOpacity.value,
+  }));
+
+  const buttonAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: buttonOpacity.value,
+    transform: [{ translateY: buttonTranslateY.value }],
+  }));
+
   // ====================== Hooks & State ======================
   const { isLoaded, signIn } = useSignIn();
   const router = useRouter();
@@ -101,28 +162,40 @@ export default function ResetPasswordScreen() {
       </TouchableOpacity>
 
       {/* Title & Description */}
-      <Text style={styles.title}>Forgot your password?</Text>
-      <Text style={styles.description}>
-        Don’t worry. Just fill in your email and we’ll send you a link to reset
+      <Animated.Text style={[styles.title, titleAnimatedStyle]}>
+        Forgot your password?
+      </Animated.Text>
+
+      <Animated.Text style={[styles.description, descriptionAnimatedStyle]}>
+        Don't worry. Just fill in your email and we'll send you a link to reset
         your password.
-      </Text>
+      </Animated.Text>
 
       {/* Email Input */}
-      <Text style={styles.label}>Recovery Email Address</Text>
-      <InputField
-        iconName="mail-outline"
-        placeholder="example@example.com"
-        value={emailAddress}
-        onChangeText={setEmailAddress}
-      />
+      <Animated.View style={[formAnimatedStyle, { width: "100%" }]}>
+        <Text style={styles.label}>Recovery Email Address</Text>
+        <InputField
+          iconName="mail-outline"
+          placeholder="example@example.com"
+          value={emailAddress}
+          onChangeText={setEmailAddress}
+        />
 
-      {/* Error Message */}
-      {errorMessage ? (
-        <Text style={styles.errorText}>{errorMessage}</Text>
-      ) : null}
+        {/* Error Message */}
+        {errorMessage ? (
+          <Animated.Text
+            entering={FadeIn.duration(300)}
+            style={styles.errorText}
+          >
+            {errorMessage}
+          </Animated.Text>
+        ) : null}
+      </Animated.View>
 
       {/* Send Reset Link Button */}
-      <SignButton onPress={onResetPress} buttonText="Send Reset Link" />
+      <Animated.View style={[buttonAnimatedStyle, { width: "100%" }]}>
+        <SignButton onPress={onResetPress} buttonText="Send Reset Link" />
+      </Animated.View>
     </View>
   );
 }
