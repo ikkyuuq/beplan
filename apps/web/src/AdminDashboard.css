@@ -75,7 +75,7 @@ body .admin-container  {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #772020;
+  background: #272525;
   padding: 15px 20px;
   position: fixed;
   top: 0;
@@ -101,6 +101,8 @@ body .admin-container  {
   border: none;
   border-radius: 5px;
   cursor: pointer;
+  position: fixed;
+  right: 20px;
   font-size: 1rem;
   transition: background 0.3s ease;
 }
@@ -127,9 +129,10 @@ body .admin-container  {
 }
 
 .template-table th {
-  background: #4743b3;
+  background: #252525;
   color: white;
   font-size: 1rem;
+  
 }
 
 /* ปุ่ม Edit และ Delete */
@@ -436,11 +439,11 @@ body .admin-container  {
 }
 
 .description-btn {
-  background-color: #4CAF50; 
+  background-color: #3c6cf1; 
   color: white; 
   border: none; 
-  border-radius: 5px; 
-  padding: 8px 16px; 
+  padding: 8px 12px;
+  border-radius: 5px;
   cursor: pointer; 
   font-size: 16px; 
   transition: background-color 0.3s ease; 
