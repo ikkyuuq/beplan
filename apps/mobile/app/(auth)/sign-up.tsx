@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Text,
   View,
@@ -14,9 +14,71 @@ import { routes } from "@/routesConfig";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
 import VerificationScreen from "@/components/VerificationScreen";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  Easing,
+  FadeInDown,
+  SlideInDown,
+} from "react-native-reanimated";
 
 // ====================== Main Component ======================
 export default function SignUpScreen() {
+  // ====================== Animation Values ======================
+  const titleOpacity = useSharedValue(0);
+  const dividerWidth = useSharedValue(0);
+  const formOpacity = useSharedValue(0);
+  const buttonTranslateY = useSharedValue(20);
+  const buttonOpacity = useSharedValue(0);
+
+  // ====================== Animation Setup ======================
+  useEffect(() => {
+    // Title animation
+    titleOpacity.value = withTiming(1, { duration: 500 });
+
+    // Divider animation
+    dividerWidth.value = withDelay(
+      300,
+      withTiming(1, {
+        duration: 600,
+        easing: Easing.out(Easing.cubic),
+      })
+    );
+
+    // Form animation
+    formOpacity.value = withDelay(600, withTiming(1, { duration: 500 }));
+
+    // Button animation
+    buttonOpacity.value = withDelay(800, withTiming(1, { duration: 300 }));
+    buttonTranslateY.value = withDelay(
+      800,
+      withTiming(0, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      })
+    );
+  }, []);
+
+  // ====================== Animated Styles ======================
+  const titleAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: titleOpacity.value,
+  }));
+
+  const dividerAnimatedStyle = useAnimatedStyle(() => ({
+    width: `${80 * dividerWidth.value}%`,
+  }));
+
+  const formAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: formOpacity.value,
+  }));
+
+  const buttonAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: buttonOpacity.value,
+    transform: [{ translateY: buttonTranslateY.value }],
+  }));
+
   // ====================== Authentication & Navigation Hooks ======================
   const { signUp, isLoaded, setActive } = useSignUp();
   const router = useRouter();
@@ -122,41 +184,59 @@ export default function SignUpScreen() {
         <Ionicons name="arrow-back" size={24} color="black" />
       </TouchableOpacity>
 
-      {/* Title and Input Fields */}
-      <Text style={styles.title}>Register</Text>
-      <View style={styles.divider} />
-      <InputField
-        iconName="person-outline"
-        placeholder="Enter your name"
-        value={name}
-        onChangeText={setName}
-      />
-      <InputField
-        iconName="mail-outline"
-        placeholder="example@example.com"
-        value={emailAddress}
-        onChangeText={setEmailAddress}
-      />
-      <InputField
-        iconName="lock-closed-outline"
-        placeholder="Enter your password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <InputField
-        iconName="lock-closed-outline"
-        placeholder="Confirm your password"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry
-      />
+      {/* Title and Divider */}
+      <Animated.Text style={[styles.title, titleAnimatedStyle]}>
+        Register
+      </Animated.Text>
+      <Animated.View style={[styles.divider, dividerAnimatedStyle]} />
 
-      {/* Error Message */}
-      {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+      {/* Input Fields with Animation */}
+      <Animated.View style={[formAnimatedStyle, { width: "100%" }]}>
+        <InputField
+          iconName="person-outline"
+          placeholder="Enter your name"
+          value={name}
+          onChangeText={setName}
+        />
+
+        <InputField
+          iconName="mail-outline"
+          placeholder="example@example.com"
+          value={emailAddress}
+          onChangeText={setEmailAddress}
+        />
+
+        <InputField
+          iconName="lock-closed-outline"
+          placeholder="Enter your password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+
+        <InputField
+          iconName="lock-closed-outline"
+          placeholder="Confirm your password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+        />
+
+        {/* Error Message */}
+        {errorMessage && (
+          <Animated.Text
+            entering={FadeInDown.duration(300)}
+            style={styles.errorText}
+          >
+            {errorMessage}
+          </Animated.Text>
+        )}
+      </Animated.View>
 
       {/* Sign-Up Button */}
-      <SignButton onPress={onSignUpPress} buttonText="Sign Up" />
+      <Animated.View style={[{ width: "100%" }, buttonAnimatedStyle]}>
+        <SignButton onPress={onSignUpPress} buttonText="Sign Up" />
+      </Animated.View>
 
       {/* Loading Indicator */}
       {isSigningUp && (
@@ -203,11 +283,12 @@ const styles = StyleSheet.create({
     color: "red",
     fontSize: 14,
     marginTop: 5,
+    marginBottom: 10,
+    alignSelf: "center",
   },
 
   // Separator/Divider
   divider: {
-    width: "80%",
     height: 2,
     backgroundColor: "#000",
     marginBottom: 80,

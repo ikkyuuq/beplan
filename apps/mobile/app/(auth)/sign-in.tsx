@@ -15,6 +15,16 @@ import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  Easing,
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+} from "react-native-reanimated";
 
 // ====================== Browser Warm-Up Utility ======================
 // Preloads the browser for Android devices to reduce authentication load time
@@ -33,6 +43,87 @@ WebBrowser.maybeCompleteAuthSession(); // Handle any pending authentication sess
 
 // ====================== Main Component ======================
 export default function SignInScreen() {
+  // ====================== Animation Values ======================
+  const logoOpacity = useSharedValue(0);
+  const titleTranslateY = useSharedValue(30);
+  const formOpacity = useSharedValue(0);
+
+  // ใช้ translateY สำหรับปุ่มแทนการย่อขยาย
+  const buttonTranslateY = useSharedValue(20);
+  const buttonOpacity = useSharedValue(0);
+
+  const socialButtonsOpacity = useSharedValue(0);
+
+  // ====================== Animation Effects ======================
+  useEffect(() => {
+    // Logo animation - simplified
+    logoOpacity.value = withTiming(1, { duration: 400 });
+
+    // Title animation
+    titleTranslateY.value = withDelay(
+      200,
+      withTiming(0, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      })
+    );
+
+    // Form animation
+    formOpacity.value = withDelay(400, withTiming(1, { duration: 400 }));
+
+    // Button animation - now uses translateY instead of scale
+    buttonOpacity.value = withDelay(500, withTiming(1, { duration: 300 }));
+    buttonTranslateY.value = withDelay(
+      500,
+      withTiming(0, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      })
+    );
+
+    // Social buttons animation - now uses opacity instead of translateX
+    socialButtonsOpacity.value = withDelay(
+      600,
+      withTiming(1, { duration: 300 })
+    );
+  }, []);
+
+  // ====================== Animated Styles ======================
+  const logoAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: logoOpacity.value,
+  }));
+
+  const titleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: titleTranslateY.value }],
+  }));
+
+  const formAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: formOpacity.value,
+  }));
+
+  const buttonAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: buttonOpacity.value,
+    transform: [{ translateY: buttonTranslateY.value }],
+  }));
+
+  const socialButtonsAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: socialButtonsOpacity.value,
+  }));
+
+  const handleEmailChange = (text: string) => {
+    setEmailAddress(text);
+    if (errorMessage.toLowerCase().includes("email")) {
+      setErrorMessage("");
+    }
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (errorMessage.toLowerCase().includes("password")) {
+      setErrorMessage("");
+    }
+  };
+
   // ====================== Authentication & Navigation Hooks ======================
   useWarmUpBrowser();
   const { signIn, isLoaded, setActive } = useSignIn();
@@ -126,42 +217,73 @@ export default function SignInScreen() {
   return (
     <View style={styles.container}>
       {/* Logo & Title */}
-      <Ionicons name="hammer" size={40} color="#222" style={styles.logo} />
-      <Text style={styles.title}>Welcome back!</Text>
+      <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
+        <Ionicons name="hammer" size={40} color="#222" />
+      </Animated.View>
+
+      <Animated.Text style={[styles.title, titleAnimatedStyle]}>
+        Welcome back!
+      </Animated.Text>
 
       {/* Input Fields */}
-      <View style={styles.inputWrapper}>
-        <InputField
-          iconName="mail-outline"
-          placeholder="example@example.com"
-          value={emailAddress}
-          onChangeText={setEmailAddress}
-          marginBottom={15}
-        />
-        {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
-        <InputField
-          iconName="lock-closed-outline"
-          placeholder="Enter your password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          marginBottom={2}
-        />
-        <TouchableOpacity onPress={() => router.push(routes.resetPassword)}>
-          <Text style={styles.forgotPassword}>Recovery Password</Text>
-        </TouchableOpacity>
-      </View>
+      <Animated.View style={[styles.inputWrapper, formAnimatedStyle]}>
+        <Animated.View entering={FadeInDown.delay(450).duration(300)}>
+          <InputField
+            iconName="mail-outline"
+            placeholder="example@example.com"
+            value={emailAddress}
+            onChangeText={handleEmailChange}
+            marginBottom={15}
+          />
+        </Animated.View>
+
+        {errorMessage && (
+          <Animated.Text
+            entering={FadeIn.duration(200)}
+            style={styles.errorText}
+          >
+            {errorMessage}
+          </Animated.Text>
+        )}
+
+        <Animated.View entering={FadeInDown.delay(550).duration(300)}>
+          <InputField
+            iconName="lock-closed-outline"
+            placeholder="Enter your password"
+            value={password}
+            onChangeText={handlePasswordChange}
+            secureTextEntry
+            marginBottom={2}
+          />
+        </Animated.View>
+
+        <Animated.View entering={FadeInUp.delay(650).duration(250)}>
+          <TouchableOpacity onPress={() => router.push(routes.resetPassword)}>
+            <Text style={styles.forgotPassword}>Recovery Password</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
 
       {/* Sign In Button */}
-      <SignButton onPress={onSignInPress} buttonText="Sign In" />
+      <Animated.View style={[buttonAnimatedStyle, { width: "100%" }]}>
+        <SignButton onPress={onSignInPress} buttonText="Sign In" />
+      </Animated.View>
 
       {/* Social Sign-In Section */}
       <View style={styles.separatorContainer}>
         <View style={styles.separatorLine} />
-        <Text style={styles.separatorText}>Or continue with</Text>
+        <Animated.Text
+          entering={FadeIn.delay(750).duration(250)}
+          style={styles.separatorText}
+        >
+          Or continue with
+        </Animated.Text>
         <View style={styles.separatorLine} />
       </View>
-      <View style={styles.socialButtonsContainer}>
+
+      <Animated.View
+        style={[styles.socialButtonsContainer, socialButtonsAnimatedStyle]}
+      >
         <TouchableOpacity
           style={styles.socialButton}
           onPress={onGoogleSignInPress}
@@ -174,15 +296,18 @@ export default function SignInScreen() {
         >
           <Ionicons name="logo-github" size={40} color="#fff" />
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       {/* Register Section */}
-      <View style={styles.registerContainer}>
+      <Animated.View
+        entering={FadeInUp.delay(850).duration(300)}
+        style={styles.registerContainer}
+      >
         <Text style={styles.registerText}>Don't have an account? </Text>
         <TouchableOpacity onPress={() => router.push(routes.signUp)}>
           <Text style={styles.registerLink}>Register now</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       {/* Loading Overlay */}
       {isSigningIn && (
@@ -214,6 +339,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.9)",
     zIndex: 999,
+  },
+
+  // Logo
+  logoContainer: {
+    alignSelf: "flex-start",
+    marginBottom: 10,
   },
 
   // Typography
@@ -270,6 +401,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginVertical: 15,
+    width: "100%",
   },
   separatorLine: {
     flex: 1,
@@ -298,10 +430,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "center",
     marginTop: 15,
-  },
-
-  // Logo
-  logo: {
-    marginBottom: 10,
   },
 });
