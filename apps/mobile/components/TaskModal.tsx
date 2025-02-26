@@ -21,8 +21,8 @@ import {
 } from "date-fns";
 import Animated, {
   useSharedValue,
-  withSpring,
   useAnimatedStyle,
+  withSpring,
 } from "react-native-reanimated";
 import { Task } from "@/types/taskTypes";
 import uuid from "react-native-uuid";
@@ -67,11 +67,19 @@ export default function TaskModal({
     initialTask?.selectedDaysOfWeek ?? []
   );
 
-  // ====================== Animation Hooks ======================
+  // ====================== Animation Values ======================
   const modalTranslateY = useSharedValue(300);
   const modalAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: modalTranslateY.value }],
   }));
+
+  // ====================== Animation Effect ======================
+  useEffect(() => {
+    modalTranslateY.value = withSpring(visible ? 0 : 300, {
+      damping: 300,
+      stiffness: 110,
+    });
+  }, [visible]);
 
   // ====================== Handlers ======================
   const toggleDayOfWeek = (dayIndex: number) => {
@@ -130,7 +138,7 @@ export default function TaskModal({
     onClose();
   };
 
-  // ====================== Effects ======================
+  // ====================== Task Data Reset Effect ======================
   useEffect(() => {
     if (!visible) return;
 
@@ -153,13 +161,7 @@ export default function TaskModal({
     }
   }, [visible, initialTask]);
 
-  useEffect(() => {
-    modalTranslateY.value = withSpring(visible ? 0 : 300, {
-      damping: 300,
-      stiffness: 110,
-    });
-  }, [visible]);
-
+  // ====================== Task Dates Calculation Effect ======================
   useEffect(() => {
     if (!isRepeat || !startDate || !dueDate) return;
 
@@ -226,7 +228,7 @@ export default function TaskModal({
       .filter((date) => date >= startDate && date <= dueDate);
   };
 
-  // ====================== Render Functions ======================
+  // ====================== Render Helper Functions ======================
   const renderWeeklySelector = () => (
     <View style={styles.weeklyContainer}>
       {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => (
@@ -287,124 +289,122 @@ export default function TaskModal({
 
   // ====================== Render UI ======================
   return (
-    <Modal isVisible={visible} onBackdropPress={onClose}>
+    <Modal isVisible={visible}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.overlay}>
-          <Animated.View style={[modalAnimatedStyle]}>
-            <View style={styles.container}>
-              {/* Form Inputs */}
-              <Text style={styles.title}>Title of Task</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  value={taskTitle}
-                  onChangeText={setTaskTitle}
-                  placeholder="Enter task name"
-                  placeholderTextColor="#AAA"
-                  style={styles.input}
-                  multiline={true}
-                />
-                <Text style={styles.title}>Description</Text>
-                <TextInput
-                  value={taskDescription}
-                  onChangeText={setTaskDescription}
-                  placeholder="Enter task description"
-                  placeholderTextColor="#AAA"
-                  style={styles.description}
-                  multiline={true}
-                />
-              </View>
-
-              {/* Repeat Settings */}
-              <View style={styles.switchContainer}>
-                <Text style={styles.title_repeat}>Repeat</Text>
-                <Switch
-                  value={isRepeat}
-                  onValueChange={(value) => {
-                    setIsRepeat(value);
-                    if (!value) {
-                      setTaskType("normal");
-                      setSelectedDates([]);
-                    }
-                  }}
-                  trackColor={{ false: "#767577", true: "#4F46E5" }}
-                  thumbColor={isRepeat ? "#fff" : "#ccc"}
-                />
-              </View>
-
-              {/* Date Picker */}
-              {!isRepeat && (
-                <View style={styles.datePickerContainer}>
-                  <Pressable
-                    style={styles.datePickerButton}
-                    onPress={() => setIsCalendarVisible(true)}
-                  >
-                    <Text style={styles.datePickerButtonText}>Pick Dates</Text>
-                  </Pressable>
-                  <Text style={styles.selectedDatesText}>
-                    Selected: {selectedDates.length} days
-                  </Text>
-                </View>
-              )}
-
-              {/* Calendar Picker */}
-              <CalendarPicker
-                visible={isCalendarVisible}
-                onClose={() => setIsCalendarVisible(false)}
-                onConfirm={handleDateConfirm}
-                title="Select Task Dates"
-                initialDates={selectedDates}
-                highlightColor="#4F46E5"
-                singleSelect={false}
-                minDate={startDate}
-                maxDate={dueDate}
+          <Animated.View style={[styles.container, modalAnimatedStyle]}>
+            {/* Form Inputs */}
+            <Text style={styles.title}>Title of Task</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                value={taskTitle}
+                onChangeText={setTaskTitle}
+                placeholder="Enter task name"
+                placeholderTextColor="#AAA"
+                style={styles.input}
+                multiline={true}
               />
+              <Text style={styles.title}>Description</Text>
+              <TextInput
+                value={taskDescription}
+                onChangeText={setTaskDescription}
+                placeholder="Enter task description"
+                placeholderTextColor="#AAA"
+                style={styles.description}
+                multiline={true}
+              />
+            </View>
 
-              {/* Task Type Segments */}
-              <View
-                style={[styles.segmentContainer, !isRepeat && styles.disabled]}
-              >
-                {["Daily", "Weekly", "Monthly"].map((label) => {
-                  const type = label.toLowerCase() as
-                    | "daily"
-                    | "weekly"
-                    | "monthly";
-                  return (
-                    <Pressable
-                      key={type}
-                      onPress={() => handleSegmentPress(type)}
+            {/* Repeat Settings */}
+            <View style={styles.switchContainer}>
+              <Text style={styles.title_repeat}>Repeat</Text>
+              <Switch
+                value={isRepeat}
+                onValueChange={(value) => {
+                  setIsRepeat(value);
+                  if (!value) {
+                    setTaskType("normal");
+                    setSelectedDates([]);
+                  }
+                }}
+                trackColor={{ false: "#767577", true: "#4F46E5" }}
+                thumbColor={isRepeat ? "#fff" : "#ccc"}
+              />
+            </View>
+
+            {/* Date Picker */}
+            {!isRepeat && (
+              <View style={styles.datePickerContainer}>
+                <Pressable
+                  style={styles.datePickerButton}
+                  onPress={() => setIsCalendarVisible(true)}
+                >
+                  <Text style={styles.datePickerButtonText}>Pick Dates</Text>
+                </Pressable>
+                <Text style={styles.selectedDatesText}>
+                  Selected: {selectedDates.length} days
+                </Text>
+              </View>
+            )}
+
+            {/* Calendar Picker */}
+            <CalendarPicker
+              visible={isCalendarVisible}
+              onClose={() => setIsCalendarVisible(false)}
+              onConfirm={handleDateConfirm}
+              title="Select Task Dates"
+              initialDates={selectedDates}
+              highlightColor="#4F46E5"
+              singleSelect={false}
+              minDate={startDate}
+              maxDate={dueDate}
+            />
+
+            {/* Task Type Segments */}
+            <View
+              style={[styles.segmentContainer, !isRepeat && styles.disabled]}
+            >
+              {["Daily", "Weekly", "Monthly"].map((label) => {
+                const type = label.toLowerCase() as
+                  | "daily"
+                  | "weekly"
+                  | "monthly";
+                return (
+                  <Pressable
+                    key={type}
+                    onPress={() => handleSegmentPress(type)}
+                    style={[
+                      styles.segment,
+                      taskType === type && styles.segmentActive,
+                    ]}
+                    disabled={!isRepeat}
+                  >
+                    <Text
                       style={[
-                        styles.segment,
-                        taskType === type && styles.segmentActive,
+                        styles.segmentText,
+                        taskType === type && styles.segmentTextActive,
+                        !isRepeat && styles.disabledText,
                       ]}
-                      disabled={!isRepeat}
                     >
-                      <Text
-                        style={[
-                          styles.segmentText,
-                          taskType === type && styles.segmentTextActive,
-                          !isRepeat && styles.disabledText,
-                        ]}
-                      >
-                        {label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
-              {/* Custom Selectors */}
-              {taskType === "monthly" && renderMonthlySelector()}
-              {taskType === "weekly" && renderWeeklySelector()}
+            {/* Custom Selectors */}
+            {taskType === "monthly" && renderMonthlySelector()}
+            {taskType === "weekly" && renderWeeklySelector()}
 
-              {/* Action Buttons */}
-              <View style={styles.buttonContainer}>
-                <Pressable style={styles.cancelButton} onPress={onClose}>
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </Pressable>
-                <Pressable style={styles.confirmButton} onPress={handleSave}>
-                  <Text style={styles.buttonText}>Confirm</Text>
-                </Pressable>
-              </View>
+            {/* Action Buttons */}
+            <View style={styles.buttonContainer}>
+              <Pressable style={styles.cancelButton} onPress={onClose}>
+                <Text style={styles.buttonText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.confirmButton} onPress={handleSave}>
+                <Text style={styles.buttonText}>Confirm</Text>
+              </Pressable>
             </View>
           </Animated.View>
         </View>
@@ -421,6 +421,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     alignItems: "flex-start",
+    width: "100%",
   },
   overlay: {
     flex: 1,
