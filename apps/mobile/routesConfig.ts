@@ -14,6 +14,7 @@ export const routes = {
     "/(tabs)/create",
     "/(tabs)/analysis",
     "/(tabs)/community",
+    "/customGoal",
     "/(other)/createTemplate",
   ]) as ReadonlyArray<string>,
 
