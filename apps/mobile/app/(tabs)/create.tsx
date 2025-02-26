@@ -3,7 +3,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   Platform,
   Animated,
@@ -20,7 +19,6 @@ import {
 } from "react-native-reanimated";
 import { useEffect } from "react";
 import { router } from "expo-router";
-import { routes } from "@/routesConfig";
 
 export default function CreateScreen() {
   const scale = useSharedValue(1);
@@ -43,21 +41,33 @@ export default function CreateScreen() {
       title: "Cristiano Ronaldo",
       category: "Travel",
       image: "https://picsum.photos/seed/ronaldo/200/300",
+      owner: "BePlan",
+      description:
+        "Embark on a transformative journey with Cristiano Ronaldo as your guide. This travel goal is designed to help you break free from the ordinary and explore the world with a refined sense of luxury and adventure. Discover hidden destinations, learn insider travel tips, and gain inspiration to craft your own unforgettable experiences. Whether planning a quick escape or a long vacation, let Cristiano's expertise lead you toward a richer, more adventurous life.",
     },
     {
       title: "Lionel Messi",
       category: "Travel",
       image: "https://picsum.photos/seed/messi/200/300",
+      owner: "BePlan",
+      description:
+        "Inspired by Lionel Messi's passion and creativity, this goal invites you to dive into vibrant cultures and dynamic cityscapes. It’s all about exploring local traditions, savoring culinary delights, and uncovering unique experiences that make every journey memorable. With curated itineraries and practical tips, you’ll transform ordinary trips into epic adventures that resonate with both heart and soul.",
     },
     {
       title: "Neymar Jr",
       category: "Travel",
       image: "https://picsum.photos/seed/neymarjr/200/300",
+      owner: "BePlan",
+      description:
+        "Unleash your adventurous spirit with Neymar Jr’s travel goal. Geared toward thrill-seekers and cultural explorers alike, this goal pushes you to discover exotic locales and embrace new experiences with energy and enthusiasm. Learn how to navigate unfamiliar territories while balancing excitement with practicality, ensuring that every trip becomes a memorable chapter in your travel story.",
     },
     {
       title: "Olivier Giroud",
       category: "Travel",
       image: "https://picsum.photos/seed/giroud/200/300",
+      owner: "BePlan",
+      description:
+        "Experience a harmonious blend of elegance and adventure with Olivier Giroud’s travel goal. Tailored for those who appreciate sophisticated journeys, this goal provides a roadmap to explore luxurious destinations with precision and style. Gain access to exclusive tips, insider recommendations, and curated itineraries that make every adventure a perfect balance of leisure and cultural enrichment.",
     },
   ];
 
@@ -65,25 +75,34 @@ export default function CreateScreen() {
     {
       title: "Healthy Living",
       category: "Health",
+      description:
+        "Healthy Living is more than just a goal—it's a community dedicated to transforming everyday habits into a lifestyle of wellness. This goal empowers you with scientifically-backed nutrition tips, dynamic workout routines, and mindfulness practices that nourish both body and mind. Join us to unlock the secrets of holistic well-being, develop sustainable healthy habits, and become the best version of yourself.",
       image: "https://picsum.photos/seed/health/200/300",
+      owner: "John Doe",
     },
     {
       title: "Be Better Than Messi",
       category: "Workout",
+      description:
+        "Set your sights on peak performance with the 'Be Better Than Messi' workout goal. This dynamic challenge is designed to push your limits through high-energy training routines, competitive challenges, and motivational community support. Whether you’re building strength, agility, or endurance, this goal inspires you to surpass your personal bests and redefine what you thought was possible in your fitness journey.",
       image: "https://picsum.photos/seed/better_messi/200/300",
+      owner: "Jane Doe",
     },
     {
-      title: "One punch man",
+      title: "One Punch Man",
       category: "Workout",
+      description:
+        "Inspired by the unstoppable energy of anime heroes, the 'One Punch Man' workout goal challenges you to maximize impact with every session. Built around high-intensity interval training and power-packed exercises, this goal transforms your workout routine into an epic quest for strength and endurance. Embrace a philosophy of efficiency and relentless progress as you join a community of fighters dedicated to breaking barriers and achieving extraordinary results.",
       image: "https://picsum.photos/seed/anime/200/300",
+      owner: "John Doe",
     },
   ];
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <Header>
         <View style={{ flexDirection: "row", gap: 10 }}>
-          <Text style={{ fontSize: 36, fontWeight: "bold", color: "white" }}>
+          <Text style={{ fontSize: 32, fontWeight: "bold", color: "white" }}>
             Let's we help you make your dream come true.
           </Text>
         </View>
@@ -122,7 +141,7 @@ export default function CreateScreen() {
 
       <ScrollView
         contentContainerStyle={{
-          paddingBottom: Platform.OS === "ios" ? 150 : 200,
+          paddingBottom: Platform.OS === "ios" ? 180 : 200,
           marginTop: 20,
           marginBottom: 20,
           gap: 20,
@@ -215,6 +234,6 @@ export default function CreateScreen() {
           </TouchableOpacity>
         </Animated.View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

@@ -9,7 +9,9 @@ type SliderProps = {
   data: {
     title: string;
     category: string;
+    description?: string;
     image: string;
+    owner: string;
   }[];
 };
 
@@ -36,8 +38,10 @@ export default function Slider({ data }: SliderProps) {
             index={index}
             title={item.title}
             category={item.category}
+            description={item.description}
             image={item.image}
             scrollX={scrollX}
+            owner={item.owner}
           />
         )}
       />
