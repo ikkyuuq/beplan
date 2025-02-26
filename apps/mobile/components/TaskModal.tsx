@@ -25,7 +25,6 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { Task } from "@/types/taskTypes";
-import uuid from "react-native-uuid";
 
 // ====================== Type Definitions ======================
 type TaskModalProps = {
@@ -35,7 +34,6 @@ type TaskModalProps = {
   initialTask?: Task;
   startDate: string;
   dueDate: string;
-  goalId: string;
 };
 
 // ====================== Main Component ======================
@@ -44,7 +42,6 @@ export default function TaskModal({
   initialTask,
   startDate,
   dueDate,
-  goalId,
   onClose,
   onSave,
 }: TaskModalProps) {
@@ -106,35 +103,28 @@ export default function TaskModal({
       return;
     }
 
-    if (selectedDates.length === 0) {
+    if (
+      (taskType === "normal" || taskType === "monthly") &&
+      selectedDates.length === 0
+    ) {
       Alert.alert("Missing Dates", "Please select a date for the Task.");
       return;
     }
 
     let taskData: Task = {
-      id: initialTask?.id || (uuid.v4() as string),
       title: taskTitle,
       description: taskDescription,
-      type: "normal",
-      goalId,
+      type: taskType,
+      selectedDates: selectedDates,
+      selectedDaysOfWeek: selectedDaysOfWeek,
     };
 
-    if (isRepeat) {
-      taskData.type = taskType;
-      taskData.selectedDates = selectedDates;
-    } else if (selectedDates.length > 0) {
-      taskData.selectedDates = selectedDates;
-    }
-
-    if (taskType === "weekly") {
-      taskData = { ...taskData, selectedDaysOfWeek };
-    }
-
-    if (taskType === "monthly") {
-      taskData = { ...taskData, monthlyMode };
-    }
-
     onSave(taskData);
+    handleClose();
+  };
+
+  const handleClose = () => {
+    Keyboard.dismiss();
     onClose();
   };
 
@@ -165,35 +155,7 @@ export default function TaskModal({
   useEffect(() => {
     if (!isRepeat || !startDate || !dueDate) return;
 
-    const start = new Date(startDate);
-    const end = new Date(dueDate);
-
     switch (taskType) {
-      case "daily":
-        setSelectedDates(
-          eachDayOfInterval({ start, end }).map((date) =>
-            format(date, "yyyy-MM-dd")
-          )
-        );
-        break;
-
-      case "weekly":
-        const weeklyDates = eachWeekOfInterval(
-          { start, end },
-          { weekStartsOn: 0 }
-        )
-          .flatMap((weekStart) =>
-            eachDayOfInterval({
-              start: weekStart,
-              end: new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000),
-            })
-              .filter((day) => selectedDaysOfWeek.includes(day.getDay()))
-              .map((date) => format(date, "yyyy-MM-dd"))
-          )
-          .filter((date) => date >= startDate && date <= dueDate);
-        setSelectedDates(weeklyDates);
-        break;
-
       case "monthly":
         setSelectedDates(
           calculateMonthlyDates(startDate, dueDate, monthlyMode)
@@ -289,7 +251,7 @@ export default function TaskModal({
 
   // ====================== Render UI ======================
   return (
-    <Modal isVisible={visible}>
+    <Modal isVisible={visible} avoidKeyboard={true}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.overlay}>
           <Animated.View style={[styles.container, modalAnimatedStyle]}>
@@ -399,7 +361,7 @@ export default function TaskModal({
 
             {/* Action Buttons */}
             <View style={styles.buttonContainer}>
-              <Pressable style={styles.cancelButton} onPress={onClose}>
+              <Pressable style={styles.cancelButton} onPress={handleClose}>
                 <Text style={styles.buttonText}>Cancel</Text>
               </Pressable>
               <Pressable style={styles.confirmButton} onPress={handleSave}>

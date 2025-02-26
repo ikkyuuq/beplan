@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,16 +12,10 @@ import { Feather } from "@expo/vector-icons";
 import TaskModal from "@/components/TaskModal";
 import CalendarPicker from "@/components/CalendarPicker";
 import { Task } from "@/types/taskTypes";
-import uuid from "react-native-uuid";
 
 // ====================== Main Component ======================
 export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   // ====================== State Management ======================
-  const goalId = useMemo(
-    () => initialGoal?.id || (uuid.v4() as string),
-    [initialGoal?.id],
-  );
-
   const [goalTitle, setGoalTitle] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>("");
@@ -41,6 +35,53 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
 
   const getTaskColor = (type: string) => taskColors[type] || "#888";
 
+  // ====================== Mock-up Data ======================
+  const mockGoalData = {
+    title: "My New Goal",
+    startDate: "2025-03-01",
+    dueDate: "2025-03-21",
+  };
+
+  const mockTaskList: Task[] = [
+    {
+      title: "Task 1",
+      description: "Read a book",
+      type: "normal",
+      selectedDates: ["2025-03-02", "2025-03-05", "2025-03-07"],
+      selectedDaysOfWeek: [] as number[], // 🛠 แก้ `never[]` เป็น `number[]`
+    },
+    {
+      title: "Task 2",
+      description: "Exercise",
+      type: "daily",
+      selectedDates: [],
+      selectedDaysOfWeek: [] as number[],
+    },
+    {
+      title: "Task 3",
+      description: "Practice coding",
+      type: "weekly",
+      selectedDates: [],
+      selectedDaysOfWeek: [1, 3, 5],
+    },
+    {
+      title: "Task 4",
+      description: "Plan the month",
+      type: "monthly",
+      selectedDates: ["2025-03-16"],
+      selectedDaysOfWeek: [] as number[],
+    },
+  ];
+
+  // ====================== Load Data Function ======================
+  const loaddata = () => {
+    setGoalTitle(mockGoalData.title);
+    setStartDate(mockGoalData.startDate);
+    setDueDate(mockGoalData.dueDate);
+    setTaskList(mockTaskList);
+    console.log("📌 Mock Data Loaded!");
+  };
+
   // ====================== Date Handlers ======================
   const handleDateChange = (newDate: string, type: "start" | "due") => {
     if (taskList.length > 0) {
@@ -54,7 +95,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
             style: "destructive",
             onPress: () => updateDate(newDate, type, true),
           },
-        ],
+        ]
       );
     }
     updateDate(newDate, type);
@@ -63,7 +104,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   const updateDate = (
     newDate: string,
     type: "start" | "due",
-    clearTasks = false,
+    clearTasks = false
   ) => {
     if (type === "start") {
       setStartDate(newDate);
@@ -78,14 +119,12 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   const addTask = (task: Task) => {
     const newTask = {
       ...task,
-      id: uuid.v4() as string,
-      goalId,
     };
 
     setTaskList((prevTasks) =>
       editingIndex !== null
         ? prevTasks.map((t, index) => (index === editingIndex ? newTask : t))
-        : [...prevTasks, newTask],
+        : [...prevTasks, newTask]
     );
 
     setEditingIndex(null);
@@ -104,7 +143,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
     }
 
     const newGoal = {
-      id: goalId,
       title: goalTitle,
       startDate,
       dueDate,
@@ -123,7 +161,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
 
       const updatedTasks = (initialGoal.tasks ?? []).map((task: Task) => ({
         ...task,
-        goalId: initialGoal.id,
       }));
 
       setTaskList(updatedTasks);
@@ -132,7 +169,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
 
   const logGoalData = () => {
     const goalData = {
-      id: goalId,
       title: goalTitle,
       startDate: startDate || "Not Set",
       dueDate: dueDate || "Not Set",
@@ -140,9 +176,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
 
     const taskData = taskList.map((task) => ({
       ...task,
-      description: task.description || "No description",
-      selectedDates: task.selectedDates || [],
-      selectedDaysOfWeek: task.selectedDaysOfWeek || [],
     }));
 
     console.log("📌 Current Goal Data:", JSON.stringify(goalData, null, 2));
@@ -281,7 +314,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
         initialTask={editingIndex !== null ? taskList[editingIndex] : undefined}
         startDate={startDate}
         dueDate={dueDate}
-        goalId={goalId}
       />
       <CalendarPicker
         visible={isStartDatePickerVisible}
@@ -322,6 +354,9 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       </Pressable>
       <Pressable onPress={logGoalData} style={styles.logButton}>
         <Text style={styles.logButtonText}>Get Test Log</Text>
+      </Pressable>
+      <Pressable onPress={loaddata} style={styles.loadButton}>
+        <Text style={styles.logButtonText}>Load Test Data</Text>
       </Pressable>
     </View>
   );
@@ -414,6 +449,15 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginTop: 60,
     width: 150,
+  },
+  loadButton: {
+    backgroundColor: "#4CAF50",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    alignSelf: "center",
+    width: 150,
+    marginTop: 20,
   },
   logButtonText: {
     color: "#FFF",
