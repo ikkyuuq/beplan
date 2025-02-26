@@ -30,7 +30,9 @@ export default function Header({ children }: HeaderProps) {
         </Pressable>
       </View>
 
-      <View style={{ gap: 24 }}>{children}</View>
+      <View style={{ gap: 24, flex: 1, justifyContent: "flex-end" }}>
+        {children}
+      </View>
     </View>
   );
 }
