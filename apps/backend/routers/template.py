@@ -11,6 +11,11 @@ from database import get_db_pool
 router = APIRouter()
 
 
+@router.get("/template")
+async def fetch_template():
+    pass
+
+
 class GoalType(str, Enum):
     CUSTOM_GOAL = "custom goal"
     SMART_GOAL = "smart goal"
@@ -51,6 +56,20 @@ class CreateTemplateRequest(BaseModel):
 
 @router.post("/create_template")
 async def create_template(req: CreateTemplateRequest):
+    pass
+
+
+class UpdateTemplateRequest(BaseModel):
+    template_id: int
+    title: str
+    description: Optional[str] = None
+    image_url: str
+    category: str
+    goals: List[Goal]
+
+
+@router.put("/update_template")
+async def update_template(req: UpdateTemplateRequest):
     pass
 
 
