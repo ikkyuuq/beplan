@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Text,
   View,
@@ -10,9 +10,70 @@ import { useSignIn, useClerk } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
 import PasswordInput from "@/components/PasswordInput";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  Easing,
+  FadeIn,
+} from "react-native-reanimated";
 
 // ====================== Main Component ======================
 export default function SetPasswordScreen() {
+  // ====================== Animation Values ======================
+  const titleOpacity = useSharedValue(0);
+  const titleTranslateY = useSharedValue(20);
+  const subtitleOpacity = useSharedValue(0);
+  const formOpacity = useSharedValue(0);
+  const buttonOpacity = useSharedValue(0);
+  const buttonTranslateY = useSharedValue(15);
+
+  // ====================== Animation Setup ======================
+  useEffect(() => {
+    // Title animation
+    titleOpacity.value = withTiming(1, { duration: 600 });
+    titleTranslateY.value = withTiming(0, {
+      duration: 600,
+      easing: Easing.out(Easing.cubic),
+    });
+
+    // Subtitle animation
+    subtitleOpacity.value = withDelay(300, withTiming(1, { duration: 500 }));
+
+    // Form animation
+    formOpacity.value = withDelay(600, withTiming(1, { duration: 400 }));
+
+    // Button animation
+    buttonOpacity.value = withDelay(800, withTiming(1, { duration: 400 }));
+    buttonTranslateY.value = withDelay(
+      800,
+      withTiming(0, {
+        duration: 400,
+        easing: Easing.out(Easing.cubic),
+      })
+    );
+  }, []);
+
+  // ====================== Animated Styles ======================
+  const titleAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: titleOpacity.value,
+    transform: [{ translateY: titleTranslateY.value }],
+  }));
+
+  const subtitleAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: subtitleOpacity.value,
+  }));
+
+  const formAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: formOpacity.value,
+  }));
+
+  const buttonAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: buttonOpacity.value,
+    transform: [{ translateY: buttonTranslateY.value }],
+  }));
+
   // ====================== Authentication & Navigation Hooks ======================
   const { signIn, isLoaded } = useSignIn();
   const { signOut } = useClerk();
@@ -64,13 +125,18 @@ export default function SetPasswordScreen() {
   return (
     <View style={styles.container}>
       {/* Title & Subtitle */}
-      <Text style={styles.title}>Reset Password</Text>
-      <Text style={styles.subtitle}>
+      <Animated.Text style={[styles.title, titleAnimatedStyle]}>
+        Reset Password
+      </Animated.Text>
+
+      <Animated.Text style={[styles.subtitle, subtitleAnimatedStyle]}>
         Please enter your new password and confirm.
-      </Text>
+      </Animated.Text>
 
       {/* Input Fields */}
-      <View style={styles.inputWrapper}>
+      <Animated.View
+        style={[styles.inputWrapper, formAnimatedStyle, { width: "100%" }]}
+      >
         <PasswordInput
           placeholder="New password"
           value={password}
@@ -81,13 +147,22 @@ export default function SetPasswordScreen() {
           value={confirmPassword}
           onChangeText={setConfirmPassword}
         />
-        {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
-      </View>
+        {errorMessage && (
+          <Animated.Text
+            entering={FadeIn.duration(300)}
+            style={styles.errorText}
+          >
+            {errorMessage}
+          </Animated.Text>
+        )}
+      </Animated.View>
 
       {/* Continue Button */}
-      <TouchableOpacity style={styles.button} onPress={onSetPasswordPress}>
-        <Text style={styles.buttonText}>Continue</Text>
-      </TouchableOpacity>
+      <Animated.View style={buttonAnimatedStyle}>
+        <TouchableOpacity style={styles.button} onPress={onSetPasswordPress}>
+          <Text style={styles.buttonText}>Continue</Text>
+        </TouchableOpacity>
+      </Animated.View>
 
       {/* Loading Overlay */}
       {isSettingPassword && (
@@ -147,7 +222,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: "#000",
     paddingVertical: 16,
-    width: "100%",
+    width: 200,
     borderRadius: 10,
     alignItems: "center",
     marginTop: 10,

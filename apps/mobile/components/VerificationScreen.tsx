@@ -1,9 +1,17 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
 import { useRouter } from "expo-router";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  Easing,
+  FadeIn,
+} from "react-native-reanimated";
 
 // ====================== Type Definitions ======================
 interface VerificationScreenProps {
@@ -26,6 +34,56 @@ const VerificationScreen: React.FC<VerificationScreenProps> = ({
   errorMessage,
   onResendPress,
 }) => {
+  // ====================== Animation Values ======================
+  const titleOpacity = useSharedValue(0);
+  const titleTranslateY = useSharedValue(20);
+  const descriptionOpacity = useSharedValue(0);
+  const formOpacity = useSharedValue(0);
+  const buttonOpacity = useSharedValue(0);
+  const resendOpacity = useSharedValue(0);
+
+  // ====================== Animation Setup ======================
+  useEffect(() => {
+    // Title animation
+    titleOpacity.value = withTiming(1, { duration: 500 });
+    titleTranslateY.value = withTiming(0, {
+      duration: 500,
+      easing: Easing.out(Easing.cubic),
+    });
+
+    // Description animation
+    descriptionOpacity.value = withDelay(300, withTiming(1, { duration: 500 }));
+
+    // Form animation
+    formOpacity.value = withDelay(500, withTiming(1, { duration: 400 }));
+
+    // Button and resend link animation
+    buttonOpacity.value = withDelay(700, withTiming(1, { duration: 400 }));
+    resendOpacity.value = withDelay(900, withTiming(1, { duration: 400 }));
+  }, []);
+
+  // ====================== Animated Styles ======================
+  const titleAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: titleOpacity.value,
+    transform: [{ translateY: titleTranslateY.value }],
+  }));
+
+  const descriptionAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: descriptionOpacity.value,
+  }));
+
+  const formAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: formOpacity.value,
+  }));
+
+  const buttonAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: buttonOpacity.value,
+  }));
+
+  const resendAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: resendOpacity.value,
+  }));
+
   // ====================== Navigation Hook ======================
   const router = useRouter();
 
@@ -38,27 +96,45 @@ const VerificationScreen: React.FC<VerificationScreenProps> = ({
       </TouchableOpacity>
 
       {/* Title & Description */}
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.description}>{description}</Text>
+      <Animated.Text style={[styles.title, titleAnimatedStyle]}>
+        {title}
+      </Animated.Text>
+
+      <Animated.Text style={[styles.description, descriptionAnimatedStyle]}>
+        {description}
+      </Animated.Text>
 
       {/* Input Field */}
-      <InputField
-        placeholder="Enter verification code"
-        value={code}
-        onChangeText={setCode}
-        keyboardType="numeric"
-      />
+      <Animated.View style={[{ width: "100%" }, formAnimatedStyle]}>
+        <InputField
+          placeholder="Enter verification code"
+          value={code}
+          onChangeText={setCode}
+          keyboardType="numeric"
+        />
 
-      {/* Error Message */}
-      {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+        {/* Error Message */}
+        {errorMessage && (
+          <Animated.Text
+            entering={FadeIn.duration(300)}
+            style={styles.errorText}
+          >
+            {errorMessage}
+          </Animated.Text>
+        )}
+      </Animated.View>
 
       {/* Verify Button */}
-      <SignButton onPress={onVerifyPress} buttonText="Verify" />
+      <Animated.View style={[{ width: "100%" }, buttonAnimatedStyle]}>
+        <SignButton onPress={onVerifyPress} buttonText="Verify" />
+      </Animated.View>
 
       {/* Resend Link */}
-      <TouchableOpacity onPress={onResendPress}>
-        <Text style={styles.resendText}>Resend Verification Code</Text>
-      </TouchableOpacity>
+      <Animated.View style={resendAnimatedStyle}>
+        <TouchableOpacity onPress={onResendPress}>
+          <Text style={styles.resendText}>Resend Verification Code</Text>
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 };
@@ -91,6 +167,7 @@ const styles = StyleSheet.create({
     color: "red",
     fontSize: 14,
     marginTop: 5,
+    alignSelf: "center",
   },
   resendText: {
     marginTop: 15,
