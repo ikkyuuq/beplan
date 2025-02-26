@@ -52,7 +52,7 @@ export default function CalendarPicker({
   const [selectedDates, setSelectedDates] = useState<string[]>(initialDates);
   const [totalDays, setTotalDays] = useState<number>(initialDates.length);
 
-  // ====================== Animation Hooks ======================
+  // ====================== Animation Values ======================
   const modalTranslateY = useSharedValue(300);
   const modalAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: modalTranslateY.value }],
@@ -161,47 +161,49 @@ export default function CalendarPicker({
 
   // ====================== Render UI ======================
   return (
-    <Modal isVisible={visible}>
-      <Animated.View style={[styles.modalContent, modalAnimatedStyle]}>
-        {/* Calendar Section */}
-        <View style={styles.calendarContainer}>
-          <Text style={styles.modalTitle}>{title}</Text>
-          <Calendar
-            minDate={finalMinDate}
-            maxDate={finalMaxDate}
-            onDayPress={(day: { dateString: string }) =>
-              toggleDateSelection(day.dateString)
-            }
-            markedDates={markedDates}
-            disableAllTouchEventsForDisabledDays={false}
-            enableSwipeMonths={true}
-          />
-        </View>
+    <View>
+      <Modal isVisible={visible}>
+        <Animated.View style={[styles.modalContent, modalAnimatedStyle]}>
+          {/* Calendar Section */}
+          <View style={styles.calendarContainer}>
+            <Text style={styles.modalTitle}>{title}</Text>
+            <Calendar
+              minDate={finalMinDate}
+              maxDate={finalMaxDate}
+              onDayPress={(day: { dateString: string }) =>
+                toggleDateSelection(day.dateString)
+              }
+              markedDates={markedDates}
+              disableAllTouchEventsForDisabledDays={false}
+              enableSwipeMonths={true}
+            />
+          </View>
 
-        {/* Total Days Display */}
-        {!singleSelect && (
-          <Animated.Text style={styles.selectedDatesText}>
-            Total: {totalDays} days
-          </Animated.Text>
-        )}
+          {/* Total Days Display */}
+          {!singleSelect && (
+            <Animated.Text style={styles.selectedDatesText}>
+              Total: {totalDays} days
+            </Animated.Text>
+          )}
 
-        {/* Action Buttons */}
-        <View style={styles.buttonContainer}>
-          <Pressable style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.buttonText}>Cancel</Text>
-          </Pressable>
-          <Pressable
-            style={styles.confirmButton}
-            onPress={() => {
-              onConfirm(selectedDates);
-              onClose();
-            }}
-          >
-            <Text style={styles.buttonText}>Confirm</Text>
-          </Pressable>
-        </View>
-      </Animated.View>
-    </Modal>
+          {/* Action Buttons */}
+          <View style={styles.buttonContainer}>
+            <Pressable style={styles.cancelButton} onPress={onClose}>
+              <Text style={styles.buttonText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              style={styles.confirmButton}
+              onPress={() => {
+                onConfirm(selectedDates);
+                onClose();
+              }}
+            >
+              <Text style={styles.buttonText}>Confirm</Text>
+            </Pressable>
+          </View>
+        </Animated.View>
+      </Modal>
+    </View>
   );
 }
 
