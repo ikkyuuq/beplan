@@ -26,6 +26,7 @@ class TaskStatus(str, Enum):
     PENDING = "pending"
     COMPLETED = "completed"
     FAILED = "failed"
+    DELETED = "deleted"
 
 
 class Task(BaseModel):
@@ -218,23 +219,21 @@ async def get_goals_today(
 #     )
 #
 
+# class Status(str, Enum):
+#     PENDING = "pending"
+#     COMPLETED = "completed"
+#     FAILED = "failed"
+#     DELETED = "deleted"
 
-class Status(str, Enum):
-    PENDING = "pending"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    DELETED = "deleted"
-
-
-# Implement update methods to set goal status to 'delete'
+# Implement update methods to set goal status to 'delete','completed' and 'failed'
 @router.put("/update_goal_status")
 async def update_goal_status(
-    to: Status,
+    to: GoalStatus,
     assigned_goal_id: int,
     user_id: str = Query(..., description="User ID"),
     today: date = Query(
         default=date.today(),
-        description="Date for which goal should be deleted (YYYY-MM-DD)",
+        description="Date for which goal should be updated (YYYY-MM-DD)",
     ),
 ):
     pool = await get_db_pool()
@@ -275,10 +274,71 @@ async def update_goal_status(
 
         if not res == "UPDATE 1":
             raise HTTPException(
-                status_code=500, detail="Error updating goal status to 'deleted'"
+                status_code=500, detail="Error updating goal status to '{to}'"
+            )
+    
+        if to == GoalStatus.DELETED:
+            await conn.execute(
+            """
+            UPDATE public.assigned_task
+            SET status = 'deleted'
+            WHERE assigned_goal_id = $1
+            """,
+            assigned_goal_id,
             )
 
-        return {
-            "message": "Goal status updated to 'deleted'",
-            "assigned_goal_id": assigned_goal_id,
+    return {
+        "message": f"Goal status updated to '{to}', and tasks updated if applicable.",
+        "assigned_goal_id": assigned_goal_id,
+    }
+             
+
+#Implement update task status
+@router.put("/update_task_status")
+async def update_takk_status(
+    to:TaskStatus,
+    assigned_task_id: int,
+    user_id:str = Query(...,description="User_ID"),
+
+):
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if the task exists for the user in the assigned goal
+        assigned_task = await conn.fetchrow(
+        """
+            SELECT at.* 
+            FROM public.assigned_task at
+            JOIN public.assigned_goal ag ON at.assigned_goal_id = ag.id
+            WHERE id = $1
+            AND ag.user_id = $2
+            AND at.status = 'pending'
+
+        """,
+        assigned_task_id,
+        user_id,
+    )
+        
+        if not assigned_task:
+            raise HTTPException(
+                status_code=404, detail = "Task not found for this user"
+            )
+
+        res = await conn.execute(
+            """
+            UPDATE public.assigned_task
+            SET status = $1::task_status
+            WHERE id = $2
+            """,
+            to,
+            assigned_task_id,
+        )
+
+        if not res == "UPDATE 1":
+            raise HTTPException(
+                status_code=500, detail="Error updating task status"
+            )
+        
+        return{
+            "message": f"Task status updated to {to}",
+            "assigned_task_id": assigned_task_id,
         }
