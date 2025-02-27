@@ -375,24 +375,29 @@ const AdminDashboard = () => {
                                         </button>
                                     </div>
                                     <div className="goals-list">
-                                        {editingTemplate.goals.map((goal) => (
-                                            <div key={goal.id}>
-                                                <h3 onClick={() => setSelectedGoalId(goal.id)} style={{ cursor: "pointer" }}>
-                                                    {goal.text}
-                                                </h3>
+                                        {editingTemplate.goals.map((goal, index) => (
+                                            <div
+                                                key={goal.id}
+                                                className={selectedGoalId === goal.id ? "goal-selected" : "goal-not-selected"}
+                                                onClick={() => setSelectedGoalId(goal.id)}
+                                            >
+                                                <h3>Goal{index + 1}: {goal.text}</h3> {/* แสดงลำดับของ Goal */}
                                                 {selectedGoalId === goal.id && (
                                                     <>
-                                                        <button onClick={() => handleRemoveGoal(goal.id)} className="remove-goal-btn">
+                                                        <button
+                                                            onClick={() => handleRemoveGoal(goal.id)}
+                                                            className="remove-goal-btn"
+                                                        >
                                                             <span>🗑 Remove Goal</span>
                                                         </button>
-                                                        <ul>
+                                                        <ul className="task-list">
                                                             <p>Start Date: {goal.start_date}</p>
                                                             <p>Due Date: {goal.due_date}</p>
                                                             {goal.tasks.map((task) => (
                                                                 <li
                                                                     key={task.id}
-                                                                    className={`task-item ${selectedTaskId === task.id ? "task-selected" : ""}`} // เพิ่มคลาสเมื่อ Task ถูกเลือก
-                                                                    onClick={() => setSelectedTaskId(task.id)} // ตั้งค่า selectedTaskId เมื่อคลิกที่ Task
+                                                                    className={`task-item ${selectedTaskId === task.id ? "task-selected" : ""}`}
+                                                                    onClick={() => setSelectedTaskId(task.id)}
                                                                 >
                                                                     <span>
                                                                         {task.text}
@@ -402,10 +407,10 @@ const AdminDashboard = () => {
                                                                             </span>
                                                                         )}
                                                                     </span>
-                                                                    {selectedTaskId === task.id && ( // แสดงปุ่ม "Remove Task" เฉพาะเมื่อ Task ถูกเลือก
+                                                                    {selectedTaskId === task.id && (
                                                                         <button
                                                                             onClick={(e) => {
-                                                                                e.stopPropagation(); // หยุดการ bubbling ของ event
+                                                                                e.stopPropagation();
                                                                                 handleRemoveTask(goal.id, task.id);
                                                                             }}
                                                                             className="remove-task-btn"
