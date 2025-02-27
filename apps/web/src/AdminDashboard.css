@@ -195,6 +195,7 @@ body .admin-container  {
 
 /* ปุ่ม Save และ Cancel ใน Modal */
 .save-btn, .cancel-btn {
+  margin-top: 20px;
   background: #007bff;
   color: white;
   padding: 12px 20px;
