@@ -23,7 +23,7 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 
 // ====================== Main Component ======================
-export default function CreateTemplate() {
+export default function createTemplate() {
   // ====================== State Management ======================
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -152,10 +152,6 @@ export default function CreateTemplate() {
   };
 
   // ====================== Render UI ======================
-  // Back button handler
-  const handleGoBack = () => {
-    router.replace("/(tabs)/community");
-  };
 
   return (
     <KeyboardAvoidingView
@@ -164,12 +160,8 @@ export default function CreateTemplate() {
     >
       {/* Back Button Header */}
       <View style={styles.header}>
-        <Pressable
-          style={styles.backButton}
-          onPress={handleGoBack}
-          android_ripple={{ color: "rgba(0,0,0,0.1)", radius: 20 }}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
+        <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={24} color="#333" />
           <Text style={styles.backText}>Back</Text>
         </Pressable>
       </View>

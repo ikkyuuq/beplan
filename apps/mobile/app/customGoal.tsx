@@ -12,6 +12,7 @@ import { Feather } from "@expo/vector-icons";
 import TaskModal from "@/components/TaskModal";
 import CalendarPicker from "@/components/CalendarPicker";
 import { Task } from "@/types/taskTypes";
+import { useRouter } from "expo-router";
 
 // ====================== Main Component ======================
 export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
@@ -24,6 +25,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   const [taskList, setTaskList] = useState<Task[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isTaskModalVisible, setTaskModalVisible] = useState(false);
+  const router = useRouter();
 
   // ====================== Utility Functions ======================
   const taskColors: Record<string, string> = {
@@ -34,6 +36,10 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   };
 
   const getTaskColor = (type: string) => taskColors[type] || "#888";
+
+  const navigateToCreateTemplate = () => {
+    router.push("/(other)/createTemplate");
+  };
 
   // ====================== Mock-up Data ======================
   const mockGoalData = {
@@ -358,6 +364,12 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       <Pressable onPress={loaddata} style={styles.loadButton}>
         <Text style={styles.logButtonText}>Load Test Data</Text>
       </Pressable>
+      <Pressable
+        onPress={navigateToCreateTemplate}
+        style={styles.templateButton}
+      >
+        <Text style={styles.templateButtonText}>Create Template</Text>
+      </Pressable>
     </View>
   );
 }
@@ -542,5 +554,21 @@ const styles = StyleSheet.create({
     backgroundColor: "#222",
     padding: 14,
     borderRadius: 10,
+  },
+
+  // Template Button
+  templateButton: {
+    backgroundColor: "#3F51B5",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    alignSelf: "center",
+    width: 150,
+    marginTop: 20,
+  },
+  templateButtonText: {
+    color: "#FFF",
+    fontWeight: "bold",
+    fontSize: 16,
   },
 });
