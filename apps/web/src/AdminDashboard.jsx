@@ -408,13 +408,7 @@ const AdminDashboard = () => {
                                                                         )}
                                                                     </span>
                                                                     {selectedTaskId === task.id && (
-                                                                        <button
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                handleRemoveTask(goal.id, task.id);
-                                                                            }}
-                                                                            className="remove-task-btn"
-                                                                        >
+                                                                        <button onClick={(e) => {e.stopPropagation();handleRemoveTask(goal.id, task.id);}}className="remove-task-btn">
                                                                             <span>Remove task</span>
                                                                         </button>
                                                                     )}
