@@ -42,6 +42,7 @@ const AdminDashboard = () => {
     const [showDescription, setShowDescription] = useState(null); // สถานะใหม่สำหรับแสดงคำอธิบาย
     const [selectedGoalId, setSelectedGoalId] = useState(null); // สถานะใหม่สำหรับเก็บ Goal ที่ถูกเลือก
     const [selectedTaskId, setSelectedTaskId] = useState(null); // เพิ่ม state เพื่อเก็บ Task ที่ถูกเลือก
+    const [creatingTemplate, setCreatingTemplate] = useState(false);
 
     useEffect(() => {
         const storedUser = JSON.parse(localStorage.getItem("user"));
@@ -53,13 +54,18 @@ const AdminDashboard = () => {
     const handleCreateTemplate = () => {
         const newTemplate = {
             id: Date.now(),
-            name: "New Template",
+            name: "", // ตั้งชื่อเริ่มต้นเป็นค่าว่าง
             description: "Edit this template.",
             image: null,
             category: "Workout Routine",
             goals: [],
         };
-        setTemplates([...templates, newTemplate]);
+        setEditingTemplate(newTemplate);
+        setCreatingTemplate(true);
+        setNewName(""); // ตั้งค่า newName เป็นค่าว่าง
+        setNewDescription("Edit this template."); // ตั้งค่า newDescription เป็นค่าเริ่มต้น
+        setNewImage(null); // ตั้งค่า newImage เป็นค่าเริ่มต้น
+        setNewCategory("Workout Routine"); // ตั้งค่า newCategory เป็นค่าเริ่มต้น
     };
 
     const handleEditTemplate = (template) => {
@@ -115,16 +121,27 @@ const AdminDashboard = () => {
     };
 
     const handleSaveEdit = () => {
-        setTemplates(templates.map((t) =>
-            t.id === editingTemplate.id ? {
-                ...t,
-                name: newName,
+        if (creatingTemplate) {
+            const newTemplate = {
+                ...editingTemplate,
+                name: newName, 
                 description: newDescription,
                 image: newImage,
                 category: newCategory,
-                goals: editingTemplate.goals,
-            } : t
-        ));
+            };
+            setTemplates([...templates, newTemplate]);
+            setCreatingTemplate(false);
+        } else {
+            setTemplates(templates.map((t) =>
+                t.id === editingTemplate.id ? {
+                    ...editingTemplate,
+                    name: newName, 
+                    description: newDescription,
+                    image: newImage,
+                    category: newCategory,
+                } : t
+            ));
+        }
         setEditingTemplate(null);
     };
 
@@ -312,7 +329,7 @@ const AdminDashboard = () => {
                 {editingTemplate && (
                     <div className="modal">
                         <div className="modal-content">
-                            <h2>Edit Template</h2>
+                            <h2>{creatingTemplate ? "Create Template" : "Edit Template"}</h2>
                             <button
                                 onClick={() => setGoalEditingMode(!goalEditingMode)}
                                 className={`goal-edit-btn ${goalEditingMode ? "close" : ""}`}
@@ -381,7 +398,7 @@ const AdminDashboard = () => {
                                                 className={selectedGoalId === goal.id ? "goal-selected" : "goal-not-selected"}
                                                 onClick={() => setSelectedGoalId(goal.id)}
                                             >
-                                                <h3>Goal{index + 1}: {goal.text}</h3> {/* แสดงลำดับของ Goal */}
+                                                <h3>Goal{index + 1}: {goal.text}</h3>
                                                 {selectedGoalId === goal.id && (
                                                     <>
                                                         <button
@@ -408,7 +425,7 @@ const AdminDashboard = () => {
                                                                         )}
                                                                     </span>
                                                                     {selectedTaskId === task.id && (
-                                                                        <button onClick={(e) => {e.stopPropagation();handleRemoveTask(goal.id, task.id);}}className="remove-task-btn">
+                                                                        <button onClick={(e) => { e.stopPropagation(); handleRemoveTask(goal.id, task.id); }} className="remove-task-btn">
                                                                             <span>Remove task</span>
                                                                         </button>
                                                                     )}
@@ -478,7 +495,7 @@ const AdminDashboard = () => {
 
                             <div className="modal-buttons">
                                 <button className="save-btn" onClick={handleSaveEdit}>💾 Save</button>
-                                <button className="cancel-btn" onClick={() => setEditingTemplate(null)}>❌ Cancel</button>
+                                <button className="cancel-btn" onClick={() => { setEditingTemplate(null); setCreatingTemplate(false); }}>❌ Cancel</button>
                             </div>
                         </div>
                     </div>
