@@ -379,9 +379,15 @@ const AdminDashboard = () => {
                                                     <p>Start Date: {goal.start_date}</p>
                                                     <p>Due Date: {goal.due_date}</p>
                                                     {goal.tasks.map((task) => (
-                                                        <li key={task.id}>{task.text}</li>
+                                                        <li key={task.id}>
+                                                        {task.text}
+                                                        <button onClick={() => handleRemoveTask(goal.id, task.id)} className="remove-task-btn">
+                                                            <span>Remove task</span>
+                                                        </button>
+                                                    </li>
                                                     ))}
                                                 </ul>
+
                                                 <div>
                                                     <input
                                                         type="text"
