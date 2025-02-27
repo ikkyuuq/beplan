@@ -545,3 +545,11 @@ body .admin-container  {
 input[type="checkbox"], input[type="radio"] {
   margin-right: 8px;
 }
+
+.goal-selected {
+  background-color: #f0f8ff; /* สีพื้นหลังเมื่อ Goal ถูกเลือก */
+  border-left: 4px solid #007bff; /* เส้นขอบด้านซ้ายเมื่อ Goal ถูกเลือก */
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+}
