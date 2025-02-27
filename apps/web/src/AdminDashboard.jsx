@@ -121,28 +121,94 @@ const AdminDashboard = () => {
     };
 
     const handleSaveEdit = () => {
+        let templateToSave;
+
         if (creatingTemplate) {
             const newTemplate = {
                 ...editingTemplate,
-                name: newName, 
+                name: newName,
                 description: newDescription,
                 image: newImage,
                 category: newCategory,
             };
+            templateToSave = {
+                title: newName,
+                description: newDescription,
+                image_url: newImage,
+                created_by: userAccount.name,
+                category: newCategory,
+                goals: editingTemplate.goals.map(goal => ({
+                    title: goal.text,
+                    type: "template",
+                    start_date: goal.start_date,
+                    due_date: goal.due_date,
+                    tasks: goal.tasks.map(task => ({
+                        title: task.text,
+                        description: task.description || "",
+                        type: task.type,
+                        date_interval: [],
+                        week_interval: task.selectedDays ? task.selectedDays.map(day => {
+                            switch (day) {
+                                case "Sunday": return 0;
+                                case "Monday": return 1;
+                                case "Tuesday": return 2;
+                                case "Wednesday": return 3;
+                                case "Thursday": return 4;
+                                case "Friday": return 5;
+                                case "Saturday": return 6;
+                                default: return -1; // Handle unexpected day names
+                            }
+                        }) : []
+                    }))
+                }))
+            };
             setTemplates([...templates, newTemplate]);
             setCreatingTemplate(false);
         } else {
+            templateToSave = {
+                title: newName,
+                description: newDescription,
+                image_url: newImage,
+                created_by: userAccount.name,
+                category: newCategory,
+                goals: editingTemplate.goals.map(goal => ({
+                    title: goal.text,
+                    type: "template",
+                    start_date: goal.start_date,
+                    due_date: goal.due_date,
+                    tasks: goal.tasks.map(task => ({
+                        title: task.text,
+                        description: task.description || "",
+                        type: task.type,
+                        date_interval: [],
+                        week_interval: task.selectedDays ? task.selectedDays.map(day => {
+                            switch (day) {
+                                case "Sunday": return 0;
+                                case "Monday": return 1;
+                                case "Tuesday": return 2;
+                                case "Wednesday": return 3;
+                                case "Thursday": return 4;
+                                case "Friday": return 5;
+                                case "Saturday": return 6;
+                                default: return -1; // Handle unexpected day names
+                            }
+                        }) : []
+                    }))
+                }))
+            };
             setTemplates(templates.map((t) =>
                 t.id === editingTemplate.id ? {
                     ...editingTemplate,
-                    name: newName, 
+                    name: newName,
                     description: newDescription,
                     image: newImage,
                     category: newCategory,
                 } : t
             ));
         }
+
         setEditingTemplate(null);
+        console.log("✅ Template to save:", templateToSave);
     };
 
     const handleDeleteTemplate = (id) => {
