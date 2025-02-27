@@ -546,10 +546,20 @@ input[type="checkbox"], input[type="radio"] {
   margin-right: 8px;
 }
 
+/* CSS สำหรับ Goal ที่ไม่ถูกเลือก */
+.goal-not-selected {
+  padding: 10px;
+  margin-bottom: 10px;
+  cursor: pointer; /* เปลี่ยน cursor เป็น pointer */
+  border-left: 4px solid transparent; /* เส้นขอบด้านซ้ายโปร่งใสเมื่อไม่ถูกเลือก */
+}
+
+/* CSS สำหรับ Goal ที่ถูกเลือก */
 .goal-selected {
-  background-color: #f0f8ff; /* สีพื้นหลังเมื่อ Goal ถูกเลือก */
+  background-color: #202022;
   border-left: 4px solid #007bff; /* เส้นขอบด้านซ้ายเมื่อ Goal ถูกเลือก */
   padding: 10px;
   border-radius: 5px;
   margin-bottom: 10px;
+  margin-top: 20px;
 }
