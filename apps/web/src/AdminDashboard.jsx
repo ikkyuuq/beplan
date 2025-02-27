@@ -40,6 +40,8 @@ const AdminDashboard = () => {
 
     const [goalEditingMode, setGoalEditingMode] = useState(false);
     const [showDescription, setShowDescription] = useState(null); // สถานะใหม่สำหรับแสดงคำอธิบาย
+    const [selectedGoalId, setSelectedGoalId] = useState(null); // สถานะใหม่สำหรับเก็บ Goal ที่ถูกเลือก
+    const [selectedTaskId, setSelectedTaskId] = useState(null); // เพิ่ม state เพื่อเก็บ Task ที่ถูกเลือก
 
     useEffect(() => {
         const storedUser = JSON.parse(localStorage.getItem("user"));
@@ -66,6 +68,7 @@ const AdminDashboard = () => {
         setNewDescription(template.description);
         setNewImage(template.image);
         setNewCategory(template.category);
+        setSelectedGoalId(null); // รีเซ็ต selectedGoalId เมื่อเริ่มแก้ไข Template ใหม่
     };
 
     const handleImageUpload = (e) => {
@@ -168,12 +171,12 @@ const AdminDashboard = () => {
         setEditingTemplate(updatedTemplate);
     };
 
-    const handleAddTask = (goalId) => {
-        if (newTask.trim()) {
+    const handleAddTask = () => {
+        if (newTask.trim() && selectedGoalId) {
             const updatedTemplate = {
                 ...editingTemplate,
                 goals: editingTemplate.goals.map(goal =>
-                    goal.id === goalId
+                    goal.id === selectedGoalId
                         ? {
                             ...goal,
                             tasks: [
@@ -206,15 +209,18 @@ const AdminDashboard = () => {
     };
 
     const handleRemoveTask = (goalId, taskId) => {
-        const updatedTemplate = {
-            ...editingTemplate,
-            goals: editingTemplate.goals.map(goal =>
-                goal.id === goalId
-                    ? { ...goal, tasks: goal.tasks.filter(task => task.id !== taskId) }
-                    : goal
-            )
-        };
-        setEditingTemplate(updatedTemplate);
+        if (selectedTaskId === taskId) { // ตรวจสอบว่า Task ที่จะลบคือ Task ที่ถูกเลือกอยู่หรือไม่
+            const updatedTemplate = {
+                ...editingTemplate,
+                goals: editingTemplate.goals.map(goal =>
+                    goal.id === goalId
+                        ? { ...goal, tasks: goal.tasks.filter(task => task.id !== taskId) }
+                        : goal
+                )
+            };
+            setEditingTemplate(updatedTemplate);
+            setSelectedTaskId(null); // รีเซ็ต selectedTaskId หลังจากลบ Task
+        }
     };
 
     const toggleDescription = (templateId) => {
@@ -371,75 +377,100 @@ const AdminDashboard = () => {
                                     <div className="goals-list">
                                         {editingTemplate.goals.map((goal) => (
                                             <div key={goal.id}>
-                                                <h3>{goal.text}</h3>
-                                                <button onClick={() => handleRemoveGoal(goal.id)} className="remove-goal-btn">
-                                                    <span>🗑 Remove Goal</span>
-                                                </button>
-                                                <ul>
-                                                    <p>Start Date: {goal.start_date}</p>
-                                                    <p>Due Date: {goal.due_date}</p>
-                                                    {goal.tasks.map((task) => (
-                                                        <li key={task.id}>
-                                                        {task.text}
-                                                        <button onClick={() => handleRemoveTask(goal.id, task.id)} className="remove-task-btn">
-                                                            <span>Remove task</span>
+                                                <h3 onClick={() => setSelectedGoalId(goal.id)} style={{ cursor: "pointer" }}>
+                                                    {goal.text}
+                                                </h3>
+                                                {selectedGoalId === goal.id && (
+                                                    <>
+                                                        <button onClick={() => handleRemoveGoal(goal.id)} className="remove-goal-btn">
+                                                            <span>🗑 Remove Goal</span>
                                                         </button>
-                                                    </li>
-                                                    ))}
-                                                </ul>
+                                                        <ul>
+                                                            <p>Start Date: {goal.start_date}</p>
+                                                            <p>Due Date: {goal.due_date}</p>
+                                                            {goal.tasks.map((task) => (
+                                                                <li
+                                                                    key={task.id}
+                                                                    className={`task-item ${selectedTaskId === task.id ? "task-selected" : ""}`} // เพิ่มคลาสเมื่อ Task ถูกเลือก
+                                                                    onClick={() => setSelectedTaskId(task.id)} // ตั้งค่า selectedTaskId เมื่อคลิกที่ Task
+                                                                >
+                                                                    <span>
+                                                                        {task.text}
+                                                                        {task.type === "Weekly" && task.selectedDays && task.selectedDays.length > 0 && (
+                                                                            <span className="selected-days">
+                                                                                ({task.selectedDays.join(", ")})
+                                                                            </span>
+                                                                        )}
+                                                                    </span>
+                                                                    {selectedTaskId === task.id && ( // แสดงปุ่ม "Remove Task" เฉพาะเมื่อ Task ถูกเลือก
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation(); // หยุดการ bubbling ของ event
+                                                                                handleRemoveTask(goal.id, task.id);
+                                                                            }}
+                                                                            className="remove-task-btn"
+                                                                        >
+                                                                            <span>Remove task</span>
+                                                                        </button>
+                                                                    )}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
 
-                                                <div>
-                                                    <input
-                                                        type="text"
-                                                        value={newTask}
-                                                        onChange={(e) => setNewTask(e.target.value)}
-                                                        placeholder="Add task"
-                                                    />
-
-                                                    <div className="task-type-container">
-                                                        <label className="task-type-label">
+                                                        <div>
                                                             <input
-                                                                type="radio"
-                                                                name="taskType"
-                                                                value="Daily"
-                                                                checked={newTaskType === "Daily"}
-                                                                onChange={() => setNewTaskType("Daily")}
+                                                                type="text"
+                                                                value={newTask}
+                                                                onChange={(e) => setNewTask(e.target.value)}
+                                                                placeholder="Add task"
                                                             />
-                                                            Daily
-                                                        </label>
-                                                        <label className="task-type-label">
-                                                            <input
-                                                                type="radio"
-                                                                name="taskType"
-                                                                value="Weekly"
-                                                                checked={newTaskType === "Weekly"}
-                                                                onChange={() => setNewTaskType("Weekly")}
-                                                            />
-                                                            Weekly
-                                                        </label>
-                                                    </div>
 
-                                                    {newTaskType === "Weekly" && (
-                                                        <div className="weekly-days-container">
-                                                            <label>Select Days of the Week:</label>
-                                                            <div className="days-checkbox-container">
-                                                                {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => (
-                                                                    <label key={day} className="day-checkbox">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={selectedDays.includes(day)}
-                                                                            onChange={() => handleDaySelect(day)}
-                                                                        />
-                                                                        {day}
-                                                                    </label>
-                                                                ))}
+                                                            <div className="task-type-container">
+                                                                <label className="task-type-label">
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="taskType"
+                                                                        value="Daily"
+                                                                        checked={newTaskType === "Daily"}
+                                                                        onChange={() => setNewTaskType("Daily")}
+                                                                    />
+                                                                    Daily
+                                                                </label>
+                                                                <label className="task-type-label">
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="taskType"
+                                                                        value="Weekly"
+                                                                        checked={newTaskType === "Weekly"}
+                                                                        onChange={() => setNewTaskType("Weekly")}
+                                                                    />
+                                                                    Weekly
+                                                                </label>
                                                             </div>
+
+                                                            {newTaskType === "Weekly" && (
+                                                                <div className="weekly-days-container">
+                                                                    <label>Select Days of the Week:</label>
+                                                                    <div className="days-checkbox-container">
+                                                                        {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => (
+                                                                            <label key={day} className="day-checkbox">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={selectedDays.includes(day)}
+                                                                                    onChange={() => handleDaySelect(day)}
+                                                                                />
+                                                                                {day}
+                                                                            </label>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            <button onClick={handleAddTask} className="add-task-btn">
+                                                                <span>+ Add Task</span>
+                                                            </button>
                                                         </div>
-                                                    )}
-                                                    <button onClick={() => handleAddTask(goal.id)} className="add-task-btn">
-                                                        <span>+ Add Task</span>
-                                                    </button>
-                                                </div>
+                                                    </>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
