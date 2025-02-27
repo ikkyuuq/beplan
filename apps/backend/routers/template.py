@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import List, Optional
 
@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from database import get_db_pool
+from utils import date_calculation
 
 router = APIRouter()
 
@@ -33,8 +34,8 @@ class Task(BaseModel):
     title: str
     description: Optional[str] = None
     type: TaskType
-    date: Optional[str] = None
-    interval: Optional[int] = None
+    date_interval: List[str] | None = None
+    week_interval: List[int] | None = None
 
 
 class Goal(BaseModel):
@@ -56,7 +57,124 @@ class CreateTemplateRequest(BaseModel):
 
 @router.post("/create_template")
 async def create_template(req: CreateTemplateRequest):
-    pass
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        try:
+            async with conn.transaction():
+                global_start_date = min(
+                    datetime.strptime(goal.start_date, "%Y-%m-%d").date()
+                    for goal in req.goals
+                )
+                global_due_date = max(
+                    datetime.strptime(goal.due_date, "%Y-%m-%d").date()
+                    for goal in req.goals
+                )
+
+                new_template = await conn.fetchrow(
+                    """
+                    INSERT INTO public.template (title, description, image_url, created_by, category, start_date, due_date)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    RETURNING id
+                    """,
+                    req.title,
+                    req.description,
+                    req.image_url,
+                    req.created_by,
+                    req.category,
+                    global_start_date,
+                    global_due_date,
+                )
+
+                for goal in req.goals:
+                    new_goal = await conn.fetchrow(
+                        """
+                        INSERT INTO public.goal (title, type)
+                        VALUES ($1, $2)
+                        RETURNING id
+                        """,
+                        goal.title,
+                        goal.type,
+                    )
+
+                    new_tmpl_goal = await conn.fetchrow(
+                        """
+                        INSERT INTO public.tmpl_goal (template_id, goal_id)
+                        VALUES ($1, $2)
+                        RETURNING id
+                        """,
+                        new_template["id"],
+                        new_goal["id"],
+                    )
+
+                    for task in goal.tasks:
+                        if task.type == TaskType.DAILY:
+                            interval_date = date_calculation.get_daily_range(
+                                goal.start_date, goal.due_date
+                            )
+                        elif task.type == TaskType.WEEKLY:
+                            if not task.week_interval:
+                                raise HTTPException(
+                                    400, detail="Week interval is required"
+                                )
+                            else:
+                                interval_date = date_calculation.get_weekly_range(
+                                    goal.start_date, goal.due_date, task.week_interval
+                                )
+                        elif task.type == TaskType.MONTHLY:
+                            if not task.date_interval:
+                                raise HTTPException(
+                                    400, detail="Monthly interval is required"
+                                )
+                            else:
+                                interval_date = task.date_interval
+                        else:
+                            raise HTTPException(
+                                400,
+                                detail="Invalid task type, must be daily, weekly, or monthly",
+                            )
+
+                        new_task = await conn.fetchrow(
+                            """
+                            INSERT INTO public.task (title, description, goal_id, type, interval)
+                            VALUES ($1, $2, $3, $4, $5)
+                            RETURNING id
+                            """,
+                            task.title,
+                            task.description,
+                            new_goal["id"],
+                            task.type,
+                            task.week_interval if task.week_interval else None,
+                        )
+
+                        new_tmpl_goal_task = await conn.fetchrow(
+                            """
+                            INSERT INTO public.tmpl_goal_task (tmpl_goal_id, task_id)
+                            VALUES ($1, $2)
+                            RETURNING id
+                            """,
+                            new_tmpl_goal["id"],
+                            new_task["id"],
+                        )
+
+                        for interval in interval_date:
+                            try:
+                                await conn.execute(
+                                    """
+                                    INSERT INTO public.tmpl_goal_task_interval (tmpl_goal_task_id, interval_date)
+                                    VALUES ($1, $2)
+                                    """,
+                                    new_tmpl_goal_task["id"],
+                                    interval,
+                                )
+
+                            except Exception as e:
+                                raise HTTPException(
+                                    400, detail=f"Error inserting interval, {e}"
+                                )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal server error, {e}")
+
+        return {"message": "Template added to user"}
 
 
 class UpdateTemplateRequest(BaseModel):
@@ -160,21 +278,6 @@ async def assign_template(req: AssignTemplateRequest):
 
                     for tmpl_goal_task in tmpl_goal_tasks:
                         try:
-                            assign_task = await conn.fetchrow(
-                                """
-                                INSERT INTO public.assigned_task (assigned_goal_id, task_id)
-                                VALUES ($1, $2)
-                                RETURNING id
-                                """,
-                                assign_goal["id"],
-                                tmpl_goal_task["task_id"],
-                            )
-                        except Exception as e:
-                            raise HTTPException(
-                                400, detail=f"Error assigning task, {e}"
-                            )
-
-                        try:
                             tmpl_goal_task_intervals = await conn.fetch(
                                 """
                                 SELECT * FROM public.tmpl_goal_task_interval
@@ -189,6 +292,21 @@ async def assign_template(req: AssignTemplateRequest):
                             )
 
                         for tmpl_goal_task_interval in tmpl_goal_task_intervals:
+                            try:
+                                assign_task = await conn.fetchrow(
+                                    """
+                                    INSERT INTO public.assigned_task (assigned_goal_id, task_id)
+                                    VALUES ($1, $2)
+                                    RETURNING id
+                                    """,
+                                    assign_goal["id"],
+                                    tmpl_goal_task["task_id"],
+                                )
+                            except Exception as e:
+                                raise HTTPException(
+                                    400, detail=f"Error assigning task, {e}"
+                                )
+
                             original_interval_date = tmpl_goal_task_interval[
                                 "interval_date"
                             ]
