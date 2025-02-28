@@ -5,4 +5,5 @@ export type Task = {
   selectedDates?: string[];
   selectedDaysOfWeek?: number[];
   monthlyMode?: "start" | "mid" | "end";
+  status: "pending" | "completed" | "failed" | "deleted";
 };
