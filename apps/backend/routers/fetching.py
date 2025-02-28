@@ -309,7 +309,7 @@ async def update_takk_status(
             SELECT at.* 
             FROM public.assigned_task at
             JOIN public.assigned_goal ag ON at.assigned_goal_id = ag.id
-            WHERE id = $1
+            WHERE at.id = $1
             AND ag.user_id = $2
             AND at.status = 'pending'
 
