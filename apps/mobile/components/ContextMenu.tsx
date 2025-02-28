@@ -9,7 +9,6 @@ import {
   Animated,
 } from "react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { BlurView } from "@react-native-community/blur";
 import CalendarPicker from "./CalendarPicker";
 import { SharedValue } from "react-native-reanimated";
 
@@ -93,9 +92,10 @@ export default function ContextMenu({
         animationType="fade"
         onRequestClose={onClose}
       >
-        <BlurView style={{ flex: 1 }} blurAmount={10} blurType="dark">
-          <Pressable style={{ flex: 1 }} onPress={onClose} />
-        </BlurView>
+        <Pressable
+          style={{ flex: 1, width: "100%", height: "100%" }}
+          onPress={onClose}
+        />
 
         {preview}
 

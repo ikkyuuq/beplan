@@ -38,7 +38,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   const getTaskColor = (type: string) => taskColors[type] || "#888";
 
   const navigateToCreateTemplate = () => {
-    router.push("/(other)/createTemplate");
+    router.push("/(other)/CreateTemplate");
   };
 
   // ====================== Mock-up Data ======================
@@ -105,7 +105,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
             style: "destructive",
             onPress: () => updateDate(newDate, type, true),
           },
-        ]
+        ],
       );
     }
     updateDate(newDate, type);
@@ -114,15 +114,15 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   const handleDeleteTask = (index: number) => {
     setTaskList((prevTaskList) =>
       prevTaskList.map((task, i) =>
-        i === index ? { ...task, status: "deleted" } : task
-      )
+        i === index ? { ...task, status: "deleted" } : task,
+      ),
     );
   };
 
   const updateDate = (
     newDate: string,
     type: "start" | "due",
-    clearTasks = false
+    clearTasks = false,
   ) => {
     if (type === "start") {
       setStartDate(newDate);
@@ -143,7 +143,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
     setTaskList((prevTasks) =>
       editingIndex !== null
         ? prevTasks.map((t, index) => (index === editingIndex ? newTask : t))
-        : [...prevTasks, newTask]
+        : [...prevTasks, newTask],
     );
 
     setEditingIndex(null);
@@ -174,16 +174,16 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       JSON.stringify(
         taskList.filter((task) => task.status !== "deleted"),
         null,
-        2
-      )
+        2,
+      ),
     );
     console.log(
       "📌 Deleted Tasks:",
       JSON.stringify(
         taskList.filter((task) => task.status === "deleted"),
         null,
-        2
-      )
+        2,
+      ),
     );
 
     // API request
@@ -271,8 +271,8 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
                           (t, i) =>
                             t ===
                             taskList.filter(
-                              (task) => task.status !== "deleted"
-                            )[index]
+                              (task) => task.status !== "deleted",
+                            )[index],
                         );
                         setEditingIndex(actualIndex);
                         setTaskModalVisible(true);
@@ -288,9 +288,9 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
                             (t, i) =>
                               t ===
                               taskList.filter(
-                                (task) => task.status !== "deleted"
-                              )[index]
-                          )
+                                (task) => task.status !== "deleted",
+                              )[index],
+                          ),
                         )
                       }
                     >

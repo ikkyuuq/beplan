@@ -41,7 +41,6 @@ class Goal(BaseModel):
     id: int
     title: str
     status: GoalStatus
-    category: str
     start_date: date
     due_date: date
     tasks: List[Task] = []
@@ -57,7 +56,7 @@ async def get_goals_today(
         # Fetch assigned goals for the user and date range
         assigned_goals = await conn.fetch(
             """
-            SELECT ag.*, g.*
+            SELECT ag.*, g.title
             FROM public.assigned_goal ag
             JOIN public.goal g ON ag.goal_id = g.id
             WHERE ag.user_id = $1
@@ -71,14 +70,13 @@ async def get_goals_today(
 
         goals: List[Goal] = []
         for ag in assigned_goals:
-            # Fetch tasks for the assigned goal and interval date
             tasks = await conn.fetch(
                 """
-                SELECT at.*, ati.interval_date
+                SELECT at.*, ati.*
                 FROM public.assigned_task at
                 JOIN public.assigned_task_interval ati ON at.id = ati.assigned_task_id
                 WHERE at.assigned_goal_id = $1 
-                AND at.status = 'pending'
+                AND at.status = 'pending'::task_status
                 AND ati.interval_date = $2
                 """,
                 ag["id"],
@@ -108,7 +106,6 @@ async def get_goals_today(
                         id=ag["goal_id"],
                         title=ag["title"],
                         status=GoalStatus(ag["status"]),
-                        category=ag["category"],
                         start_date=ag["start_date"],
                         due_date=ag["due_date"],
                         tasks=task_list,
