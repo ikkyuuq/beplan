@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import List, Optional
 
@@ -44,15 +44,15 @@ class Task(BaseModel):
     title: str
     description: Optional[str] = None
     repeat_type: RepeatMode
-    date_interval: Optional[List[int]] = None
+    date_interval: Optional[List[date]] = None
     week_interval: Optional[List[int]] = None
 
 
 class Goal(BaseModel):
     title: str
     type: str = Field(default="custom goal")
-    start_date: str
-    due_date: str
+    start_date: date
+    due_date: date
     tasks: List[Task]
 
 
@@ -61,7 +61,7 @@ class TaskUpdate(BaseModel):
     title: str
     description: Optional[str] = None
     repeat_type: Optional[RepeatMode] = None
-    date_interval: Optional[List[int]] = None
+    date_interval: Optional[List[date]] = None
     week_interval: Optional[List[int]] = None
     status: Optional[Status] = None
 
@@ -70,8 +70,8 @@ class GoalUpdate(BaseModel):
     id: int
     title: str
     type: str = Field(default="custom goal")
-    start_date: str
-    due_date: str
+    start_date: date
+    due_date: date
     tasks: List[TaskUpdate]
 
 
@@ -106,11 +106,6 @@ async def create_goal(req: GoalCreateRequest):
 
             task_ids = []
 
-            global_start_date = datetime.strptime(
-                req.goal.start_date, "%Y-%m-%d"
-            ).date()
-            global_due_date = datetime.strptime(req.goal.due_date, "%Y-%m-%d").date()
-
             for task in req.goal.tasks:
                 task_id = await conn.fetchrow(
                     """
@@ -132,8 +127,8 @@ async def create_goal(req: GoalCreateRequest):
                 VALUES ($1, $2, $3, $4)
                 RETURNING id
                 """,
-                global_start_date,
-                global_due_date,
+                req.goal.start_date,
+                req.goal.due_date,
                 req.user_id,
                 goal_id["id"],
             )
@@ -202,8 +197,6 @@ async def create_goal(req: GoalCreateRequest):
 async def update_goal(req: GoalUpdateRequest):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
-        global_start_date = datetime.strptime(req.goal.start_date, "%Y-%m-%d").date()
-        global_due_date = datetime.strptime(req.goal.due_date, "%Y-%m-%d").date()
         try:
             await conn.execute(
                 """
@@ -224,8 +217,8 @@ async def update_goal(req: GoalUpdateRequest):
                 AND user_id = $4
                 AND id = $5
                 """,
-                global_start_date,
-                global_due_date,
+                req.goal.start_date,
+                req.goal.due_date,
                 req.goal.id,
                 req.user_id,
                 req.assigned_goal_id,
