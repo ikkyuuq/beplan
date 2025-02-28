@@ -38,7 +38,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   const getTaskColor = (type: string) => taskColors[type] || "#888";
 
   const navigateToCreateTemplate = () => {
-    router.push("/(other)/CreateTemplate");
+    router.push("/(other)/createTemplate");
   };
 
   // ====================== Mock-up Data ======================

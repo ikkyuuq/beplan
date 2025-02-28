@@ -14,8 +14,9 @@ export const routes = {
     "/(tabs)/create",
     "/(tabs)/analysis",
     "/(tabs)/community",
-    "/customGoal",
     "/(other)/createTemplate",
+    "/(other)/customGoal",
+    "/(other)/userSettings",
   ]) as ReadonlyArray<string>,
 
   // ====================== Default Redirects ======================
