@@ -1,0 +1,589 @@
+/* Reset basic styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Arial', sans-serif;
+}
+
+/* Body และพื้นหลัง */
+body .admin-container  {
+  background-color: #222224;
+  color: #ffffff;
+  font-size: 16px;
+}
+
+/* Layout หลักของ Admin */
+.admin-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 250px;
+  background: #2c2c2c;
+  color: white;
+  padding: 20px;
+  height: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  z-index: 100;
+  overflow-y: auto;  /* ทำให้สามารถเลื่อนเนื้อหาภายในได้ */
+}
+
+/* Sidebar Header */
+.sidebar h2 {
+  text-align: center;
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  color: #ffffff;
+}
+
+/* เมนูใน Sidebar */
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  padding: 15px;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background 0.3s ease;
+  color: #ffffff;
+}
+
+.sidebar li:hover {
+  background: #444;
+}
+
+/* Main Content */
+.dashboard-content {
+  margin-left: 250px;
+  width: calc(100% - 250px);
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: auto;  /* ทำให้สามารถเลื่อนเนื้อหาภายในได้ */
+  height: auto;  /* ปรับให้ความสูงเป็น auto */
+}
+
+/* Navbar */
+.admin-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #272525;
+  padding: 15px 20px;
+  position: fixed;
+  top: 0;
+  left: 250px;
+  width: calc(100% - 250px);
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  /* ลบ height เพื่อให้สามารถเลื่อนเนื้อหาภายในได้ */
+}
+
+/* Navbar - Title */
+.navbar-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+/* ปุ่ม Create */
+.create-btn {
+  background: #28a745;
+  color: white;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  position: fixed;
+  right: 20px;
+  font-size: 1rem;
+  transition: background 0.3s ease;
+}
+
+.create-btn:hover {
+  background: #218838;
+}
+
+/* ตารางข้อมูล */
+.template-table {
+  width: 100%;
+  margin-top: 70px;
+  border-collapse: collapse;
+  border-radius: 10px;
+  background: #333;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.template-table th, .template-table td {
+  border: 1px solid #444;
+  padding: 12px;
+  text-align: center;
+  color: #ffffff;
+}
+
+.template-table th {
+  background: #252525;
+  color: white;
+  font-size: 1rem;
+  
+}
+
+/* ปุ่ม Edit และ Delete */
+.edit-btn, .delete-btn {
+  padding: 8px 12px;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.edit-btn {
+  background: #ffc107;
+  color: black;
+}
+
+.edit-btn:hover {
+  background: #e0a800;
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.delete-btn:hover {
+  background: #c82333;
+}
+
+/* Modal สำหรับการแสดงข้อมูลหรือการยืนยัน */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #2c2c2c;
+  padding: 25px;
+  width: 90%;
+  max-width: 600px;
+  border-radius: 10px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+  /* เพิ่ม overflow สำหรับกรณีที่ข้อมูลเยอะ */
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-content h2 {
+  color: #ffffff;
+  margin-bottom: 20px;
+}
+
+/* ปุ่ม Save และ Cancel ใน Modal */
+.save-btn, .cancel-btn {
+  margin-top: 20px;
+  background: #007bff;
+  color: white;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.3s ease;
+  margin-right: 10px;
+}
+
+.save-btn:hover, .cancel-btn:hover {
+  background: #0056b3;
+}
+
+.cancel-btn {
+  background: #aa3c3c;
+}
+
+.cancel-btn:hover {
+  background: #5a6268;
+}
+
+/* Input และ Textarea ใน Modal */
+.modal-content input, .modal-content textarea, .modal-content select {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #444;
+  border-radius: 5px;
+  background: #333;
+  color: #ffffff;
+  font-size: 1rem;
+  outline: none;
+}
+
+.modal-content textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* ปุ่ม Upload Image */
+.modal-content input[type="file"] {
+  padding: 10px;
+  background: #444;
+  color: #ffffff;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* ปุ่ม Logout */
+.logout-btn {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.logout-btn:hover {
+  background: #c0392b;
+}
+
+/* ตัวแปรสำหรับการจัดตำแหน่งของ User Profile */
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #444;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 200px;
+    padding: 10px;
+  }
+
+  .admin-navbar {
+    left: 200px;
+    width: calc(100% - 200px);
+  }
+
+  .dashboard-content {
+    margin-left: 200px;
+    width: calc(100% - 200px);
+  }
+
+  .modal-content {
+    width: 95%;
+    padding: 15px;
+  }
+}
+
+.goal-edit-btn {
+  background-color: #28a745;  
+  color: white;
+  padding: 10px 20px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.goal-edit-btn:hover {
+  background-color: #218838;  
+  transform: translateY(-2px);  
+}
+
+.goal-edit-btn.close {
+  background-color: #6ca71f;  
+}
+
+.goal-edit-btn.close:hover {
+  background-color: #25a720;  
+}
+.goal-edit-btn svg {
+  font-size: 1.5rem;
+  transition: transform 0.3s ease;
+}
+
+.goal-edit-btn:hover svg {
+  transform: rotate(10deg);  
+}
+
+/* ปุ่ม Add Goal */
+.add-goal-btn, .add-task-btn {
+  background-color: #007bff;  /* สีฟ้าสำหรับปุ่ม */
+  color: white;
+  padding: 10px 20px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: bold;
+}
+
+/* สีเมื่อ hover */
+.add-goal-btn:hover, .add-task-btn:hover {
+  background-color: #0056b3;  /* สีฟ้าเข้มเมื่อ hover */
+  transform: translateY(-2px);  /* เอฟเฟกต์เมื่อ hover */
+}
+
+/* ปุ่ม Add Task */
+.add-task-btn {
+  background-color: #28a745;  /* สีเขียวสำหรับปุ่ม Add Task */
+}
+
+.add-task-btn:hover {
+  background-color: #218838;  /* สีเขียวเข้มเมื่อ hover */
+}
+
+/* ใช้สำหรับแสดงไอคอนในปุ่ม */
+.add-goal-btn svg, .add-task-btn svg {
+  font-size: 1.5rem;
+  transition: transform 0.3s ease;
+}
+
+/* หมุนไอคอนเล็กน้อยเมื่อ hover */
+.add-goal-btn:hover svg, .add-task-btn:hover svg {
+  transform: rotate(10deg);  
+}
+
+/* เพิ่มการเน้นข้อความให้ปุ่ม */
+.add-goal-btn span, .add-task-btn span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ปุ่ม Remove Goal */
+.remove-goal-btn {
+  background-color: #dc3545;  /* สีแดงสำหรับปุ่มลบ */
+  color: white;
+  padding: 8px 16px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: bold;
+}
+
+/* สีเมื่อ hover */
+.remove-goal-btn:hover {
+  background-color: #c82333;  
+  transform: scale(1.05); 
+}
+
+/* ใช้สำหรับแสดงไอคอนในปุ่ม */
+.remove-goal-btn svg {
+  font-size: 1.5rem;
+  transition: transform 0.3s ease;
+}
+
+/* หมุนไอคอนเล็กน้อยเมื่อ hover */
+.remove-goal-btn:hover svg {
+  transform: rotate(10deg);  
+}
+
+/* เพิ่มการเน้นข้อความให้ปุ่ม */
+.remove-goal-btn span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.description-modal {
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  width: 100%; 
+  height: 100%; 
+  background-color: rgba(0, 0, 0, 0.5); 
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  z-index: 9999; 
+}
+
+.description-btn {
+  background-color: #3c6cf1; 
+  color: white; 
+  border: none; 
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer; 
+  font-size: 16px; 
+  transition: background-color 0.3s ease; 
+}
+
+.description-btn:hover {
+  background-color: #45a049; 
+}
+
+.description-btn:focus {
+  outline: none; 
+  box-shadow: 0 0 10px rgba(0, 128, 0, 0.5); 
+}
+
+.description-modal button {
+  background-color: #ff4d4d; 
+  color: white; 
+  border: none; 
+  border-radius: 8px; 
+  padding: 10px 15px; 
+  cursor: pointer; 
+  font-size: 18px; 
+  transition: background-color 0.3s ease, transform 0.2s ease; 
+}
+
+.description-modal button:hover {
+  background-color: #e60000; 
+  transform: scale(1.1);
+}
+
+.description-modal button:active {
+  transform: scale(0.95);
+}
+
+.description-modal .modal-content p {
+  white-space: pre-line; 
+  word-wrap: break-word; 
+  line-height: 1.6; 
+}
+
+.task-type-container {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 10px 0;
+}
+
+.task-type-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.task-type-label input[type="radio"] {
+  transform: scale(1.2);
+  accent-color: #4caf50; /* ปรับสีของ radio button */
+}
+
+.task-type-label input[type="radio"]:checked {
+  background-color: #4caf50;
+}
+
+/* Weekly Days Selection Styling */
+.weekly-days-container {
+  margin-top: 15px;
+}
+
+.days-checkbox-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.day-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.day-checkbox input[type="checkbox"] {
+  transform: scale(1.2);
+  accent-color: #ff9800;
+}
+
+.day-checkbox input[type="checkbox"]:checked {
+  background-color: #ff9800;
+}
+
+/* Checkbox spacing */
+input[type="checkbox"], input[type="radio"] {
+  margin-right: 8px;
+}
+
+/* CSS สำหรับ Goal ที่ไม่ถูกเลือก */
+.goal-not-selected {
+  padding: 10px;
+  margin-bottom: 10px;
+  cursor: pointer; /* เปลี่ยน cursor เป็น pointer */
+  border-left: 4px solid transparent; /* เส้นขอบด้านซ้ายโปร่งใสเมื่อไม่ถูกเลือก */
+}
+
+/* CSS สำหรับ Goal ที่ถูกเลือก */
+.goal-selected {
+  background-color: #202022;
+  border-left: 4px solid #007bff; /* เส้นขอบด้านซ้ายเมื่อ Goal ถูกเลือก */
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  margin-top: 20px;
+}
+
+.remove-task-btn {
+  background-color: #ff4d4d; /* สีแดงสด */
+  color: white; /* ตัวอักษรสีขาว */
+  border: none;
+  border-radius: 8px; /* ขอบมน */
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: bold;
+  margin-left: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+}
+
+.remove-task-btn:hover {
+  background-color: #cc0000; /* สีแดงเข้มเมื่อ hover */
+  transform: scale(1.05); /* ขยายเล็กน้อย */
+}
+
+.remove-task-btn:active {
+  background-color: #990000; /* สีแดงเข้มขึ้นเมื่อกด */
+  transform: scale(0.95); /* กดแล้วหดลง */
+}
