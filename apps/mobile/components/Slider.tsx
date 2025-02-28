@@ -13,9 +13,10 @@ type SliderProps = {
     image: string;
     owner: string;
   }[];
+  onCardPress?: (template: any) => void; // Add onCardPress callback prop
 };
 
-export default function Slider({ data }: SliderProps) {
+export default function Slider({ data, onCardPress }: SliderProps) {
   const scrollX = useSharedValue(0);
 
   const onScrollHandler = useAnimatedScrollHandler({
@@ -42,6 +43,7 @@ export default function Slider({ data }: SliderProps) {
             image={item.image}
             scrollX={scrollX}
             owner={item.owner}
+            onPress={() => onCardPress && onCardPress(item)} // Pass the onPress handler
           />
         )}
       />
