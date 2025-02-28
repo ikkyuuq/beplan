@@ -12,11 +12,6 @@ from utils import date_calculation
 router = APIRouter()
 
 
-@router.get("/template")
-async def fetch_template():
-    pass
-
-
 class GoalType(str, Enum):
     CUSTOM_GOAL = "custom goal"
     SMART_GOAL = "smart goal"
@@ -34,16 +29,26 @@ class Task(BaseModel):
     title: str
     description: Optional[str] = None
     type: TaskType
-    date_interval: List[str] | None = None
+    date_interval: List[date] | None = None
     week_interval: List[int] | None = None
 
 
 class Goal(BaseModel):
     title: str
     type: GoalType
-    start_date: str
-    due_date: str
+    start_date: date
+    due_date: date
     tasks: List[Task]
+
+
+class TemplateType(str, Enum):
+    TEMPLATE = "template"
+    COMMUNITY = "community"
+
+
+class TemplateStatus(str, Enum):
+    UNUSED = "unused"
+    ASSIGNED = "assigned"
 
 
 class CreateTemplateRequest(BaseModel):
@@ -52,28 +57,179 @@ class CreateTemplateRequest(BaseModel):
     image_url: str
     created_by: Optional[str] = "BePlan"
     category: str
+    type: Optional[TemplateType] = TemplateType.TEMPLATE
     goals: List[Goal]
 
 
-@router.post("/create_template")
+class UpdateTemplateRequest(BaseModel):
+    template_id: int
+    title: str
+    description: Optional[str] = None
+    image_url: str
+    category: str
+    goals: List[Goal]
+
+
+class FetchTemplateRequest(BaseModel):
+    template_id: Optional[int] = None
+    user_id: str
+
+
+class TaskTemplate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    type: TaskType
+    week_interval: List[int] | None = None
+
+
+class GoalTemplate(BaseModel):
+    title: str
+    tasks: List[TaskTemplate]
+
+
+class TemplateResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    image_url: str
+    created_by: Optional[str] = "BePlan"
+    category: str
+    goals: List[GoalTemplate]
+    type: TemplateType
+    status: TemplateStatus
+
+
+@router.get("/template")
+async def fetch_template(req: FetchTemplateRequest):
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        tmpls_resp: List[TemplateResponse] = []
+
+        tmpls = None
+
+        if req.template_id is not None:
+            tmpls = await conn.fetch(
+                """
+                SELECT * FROM public.template
+                WHERE id = $1
+                """,
+                req.template_id,
+            )
+        else:
+            tmpls = await conn.fetch(
+                """
+                SELECT * FROM public.template
+                """,
+            )
+
+        assigned_tmpls = await conn.fetch(
+            """
+            SELECT * FROM public.assigned_template
+            WHERE user_id = $1
+            """,
+            req.user_id,
+        )
+
+        for tmpl in tmpls:
+            tmpl_goals = await conn.fetch(
+                """
+                SELECT * FROM public.tmpl_goal
+                WHERE template_id = $1
+                """,
+                tmpl["id"],
+            )
+
+            goals: List[GoalTemplate] = []
+            for tmpl_goal in tmpl_goals:
+                tmpl_goal_tasks = await conn.fetch(
+                    """
+                    SELECT * FROM public.tmpl_goal_task
+                    WHERE tmpl_goal_id = $1
+                    """,
+                    tmpl_goal["id"],
+                )
+
+                tasks: List[TaskTemplate] = []
+                for tmpl_goal_task in tmpl_goal_tasks:
+                    tasks_resp = await conn.fetch(
+                        """
+                        SELECT * FROM public.task
+                        WHERE id = $1
+                        """,
+                        tmpl_goal_task["task_id"],
+                    )
+
+                    for task in tasks_resp:
+                        tasks.append(
+                            TaskTemplate(
+                                title=task["title"],
+                                description=task["description"],
+                                type=task["type"],
+                                week_interval=task["interval"],
+                            )
+                        )
+
+                goal_resp = await conn.fetchrow(
+                    """
+                    SELECT * FROM public.goal
+                    WHERE id = $1
+                    """,
+                    tmpl_goal["goal_id"],
+                )
+                goals.append(
+                    GoalTemplate(
+                        title=goal_resp["title"],
+                        tasks=tasks,
+                    )
+                )
+
+            if tmpl["id"] in [
+                assigned_tmpl["template_id"] for assigned_tmpl in assigned_tmpls
+            ]:
+                tmpls_resp.append(
+                    TemplateResponse(
+                        id=tmpl["id"],
+                        title=tmpl["title"],
+                        description=tmpl["description"],
+                        image_url=tmpl["image_url"],
+                        created_by=tmpl["created_by"],
+                        category=tmpl["category"],
+                        type=tmpl["type"],
+                        goals=goals,
+                        status=TemplateStatus.ASSIGNED,
+                    )
+                )
+            else:
+                tmpls_resp.append(
+                    TemplateResponse(
+                        id=tmpl["id"],
+                        title=tmpl["title"],
+                        description=tmpl["description"],
+                        image_url=tmpl["image_url"],
+                        created_by=tmpl["created_by"],
+                        category=tmpl["category"],
+                        type=tmpl["type"],
+                        goals=goals,
+                        status=TemplateStatus.UNUSED,
+                    )
+                )
+
+        return tmpls_resp
+
+
+@router.post("/template")
 async def create_template(req: CreateTemplateRequest):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
             async with conn.transaction():
-                global_start_date = min(
-                    datetime.strptime(goal.start_date, "%Y-%m-%d").date()
-                    for goal in req.goals
-                )
-                global_due_date = max(
-                    datetime.strptime(goal.due_date, "%Y-%m-%d").date()
-                    for goal in req.goals
-                )
+                global_start_date = min(goal.start_date for goal in req.goals)
+                global_due_date = max(goal.due_date for goal in req.goals)
 
                 new_template = await conn.fetchrow(
                     """
-                    INSERT INTO public.template (title, description, image_url, created_by, category, start_date, due_date)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    INSERT INTO public.template (title, description, image_url, created_by, category, type, start_date, due_date)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     RETURNING id
                     """,
                     req.title,
@@ -81,6 +237,7 @@ async def create_template(req: CreateTemplateRequest):
                     req.image_url,
                     req.created_by,
                     req.category,
+                    req.type,
                     global_start_date,
                     global_due_date,
                 )
@@ -98,12 +255,14 @@ async def create_template(req: CreateTemplateRequest):
 
                     new_tmpl_goal = await conn.fetchrow(
                         """
-                        INSERT INTO public.tmpl_goal (template_id, goal_id)
-                        VALUES ($1, $2)
+                        INSERT INTO public.tmpl_goal (template_id, goal_id, start_date, due_date)
+                        VALUES ($1, $2, $3, $4)
                         RETURNING id
                         """,
                         new_template["id"],
                         new_goal["id"],
+                        goal.start_date,
+                        goal.due_date,
                     )
 
                     for task in goal.tasks:
@@ -174,19 +333,10 @@ async def create_template(req: CreateTemplateRequest):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error, {e}")
 
-        return {"message": "Template added to user"}
+        return {"message": "Template created"}
 
 
-class UpdateTemplateRequest(BaseModel):
-    template_id: int
-    title: str
-    description: Optional[str] = None
-    image_url: str
-    category: str
-    goals: List[Goal]
-
-
-@router.put("/update_template")
+@router.put("/template")
 async def update_template(req: UpdateTemplateRequest):
     pass
 
