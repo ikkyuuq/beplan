@@ -1,11 +1,17 @@
-import { BrowserRouter as Router, Route, Routes, Link, Outlet } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Link,
+  Outlet,
+} from "react-router-dom";
 import Home from "./Home";
 import AboutMe from "./AboutMe";
 import Donate from "./Donate";
 import FAQ from "./FAQ";
 import Login from "./Login";
 import "./Home.css";
-import AdminDashboard from "./Admindashboard";
+import AdminDashboard from "./AdminDashboard";
 
 const Layout = () => {
   return (
@@ -14,13 +20,24 @@ const Layout = () => {
         <nav>
           <ul>
             <div className="logo-container">
-              <img src="https://img2.pic.in.th/pic/Screenshot-2025-02-11-215739.png" alt="Logo" />
+              <img
+                src="https://img2.pic.in.th/pic/Screenshot-2025-02-11-215739.png"
+                alt="Logo"
+              />
               <a href="/">SMART GOAL</a>
             </div>
-            <li><Link to="/">Home</Link></li>
-            <li><Link to="/aboutme">About Me</Link></li>
-            <li><Link to="/donate">Donate</Link></li>
-            <li><Link to="/faq">FAQ</Link></li>
+            <li>
+              <Link to="/">Home</Link>
+            </li>
+            <li>
+              <Link to="/aboutme">About Me</Link>
+            </li>
+            <li>
+              <Link to="/donate">Donate</Link>
+            </li>
+            <li>
+              <Link to="/faq">FAQ</Link>
+            </li>
           </ul>
         </nav>
       </header>

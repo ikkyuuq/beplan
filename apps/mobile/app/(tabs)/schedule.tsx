@@ -138,7 +138,7 @@ export default function schedule() {
           repeat: {
             type: "daily",
             interval: [],
-            interval_date: ["2025-02-23", "2025-02-24", "2025-02-25"],
+            interval_date: ["2025-02-28", "2025-03-02", "2025-03-05"],
           },
         },
         {
@@ -150,7 +150,7 @@ export default function schedule() {
           repeat: {
             type: "weekly",
             interval: [1, 3, 5], // Monday, Wednesday, Friday
-            interval_date: ["2025-02-23", "2025-02-25", "2025-02-27"],
+            interval_date: ["2025-02-28", "2025-03-02", "2025-03-05"],
           },
         },
       ],
@@ -173,10 +173,10 @@ export default function schedule() {
             type: "daily",
             interval: [],
             interval_date: [
-              "2025-02-23",
-              "2025-02-24",
-              "2025-02-25",
-              "2025-02-26",
+              "2025-02-28",
+              "2025-03-01",
+              "2025-03-02",
+              "2025-03-03",
             ],
           },
         },
@@ -190,10 +190,10 @@ export default function schedule() {
             type: "weekly",
             interval: [1, 3, 5],
             interval_date: [
-              "2025-02-23",
-              "2025-02-25",
-              "2025-02-27",
+              "2025-02-28",
               "2025-03-01",
+              "2025-03-02",
+              "2025-03-03",
             ],
           },
         },
