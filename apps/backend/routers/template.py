@@ -61,6 +61,15 @@ class CreateTemplateRequest(BaseModel):
     goals: List[Goal]
 
 
+class GoalUpdate(BaseModel):
+    id: int
+    title: str
+    type: GoalType
+    start_date: date
+    due_date: date
+    tasks: List[Task]
+
+
 class UpdateTemplateRequest(BaseModel):
     template_id: int
     title: str
@@ -424,6 +433,16 @@ async def assign_template(req: AssignTemplateRequest):
             raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
+# NOTE: Wait for next meeting to discuss the update template logic
 @router.put("/template")
 async def update_template(req: UpdateTemplateRequest):
-    pass
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        try:
+            async with conn.transaction():
+                pass
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
