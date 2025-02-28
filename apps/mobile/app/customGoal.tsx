@@ -55,6 +55,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       type: "normal",
       selectedDates: ["2025-03-02", "2025-03-05", "2025-03-07"],
       selectedDaysOfWeek: [] as number[], // 🛠 แก้ `never[]` เป็น `number[]`
+      status: "pending",
     },
     {
       title: "Task 2",
@@ -62,6 +63,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       type: "daily",
       selectedDates: [],
       selectedDaysOfWeek: [] as number[],
+      status: "pending",
     },
     {
       title: "Task 3",
@@ -69,6 +71,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       type: "weekly",
       selectedDates: [],
       selectedDaysOfWeek: [1, 3, 5],
+      status: "pending",
     },
     {
       title: "Task 4",
@@ -76,6 +79,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       type: "monthly",
       selectedDates: ["2025-03-16"],
       selectedDaysOfWeek: [] as number[],
+      status: "pending",
     },
   ];
 
@@ -107,6 +111,14 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
     updateDate(newDate, type);
   };
 
+  const handleDeleteTask = (index: number) => {
+    setTaskList((prevTaskList) =>
+      prevTaskList.map((task, i) =>
+        i === index ? { ...task, status: "deleted" } : task
+      )
+    );
+  };
+
   const updateDate = (
     newDate: string,
     type: "start" | "due",
@@ -125,6 +137,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   const addTask = (task: Task) => {
     const newTask = {
       ...task,
+      status: task.status || "pending",
     };
 
     setTaskList((prevTasks) =>
@@ -152,10 +165,29 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       title: goalTitle,
       startDate,
       dueDate,
+      tasks: taskList,
     };
 
     console.log("📌 Goal Created:", JSON.stringify(newGoal, null, 2));
-    console.log("📌 Task List:", JSON.stringify(taskList, null, 2));
+    console.log(
+      "📌 Active Tasks:",
+      JSON.stringify(
+        taskList.filter((task) => task.status !== "deleted"),
+        null,
+        2
+      )
+    );
+    console.log(
+      "📌 Deleted Tasks:",
+      JSON.stringify(
+        taskList.filter((task) => task.status === "deleted"),
+        null,
+        2
+      )
+    );
+
+    // API request
+    // saveGoal(newGoal);
   };
 
   // ====================== Effects ======================
@@ -205,49 +237,68 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       />
 
       {/* Task List */}
-      {taskList.length > 0 && (
+      {taskList.filter((task) => task.status !== "deleted").length > 0 && (
         <View style={styles.taskListContainer}>
           <Text style={styles.sectionTitle}>Tasks</Text>
           <ScrollView style={styles.taskList} nestedScrollEnabled>
-            {taskList.map((task, index) => (
-              <View key={index} style={styles.taskItem}>
-                <View
-                  style={[
-                    styles.taskIcon,
-                    { backgroundColor: getTaskColor(task.type) },
-                  ]}
-                >
-                  <Text style={styles.taskIconText}>
-                    {task.type.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-                <View style={styles.taskContent}>
-                  <Text style={styles.taskText}>{task.title}</Text>
-                  {task.description && (
-                    <Text style={styles.taskDescription}>
-                      {task.description}
+            {taskList
+              .filter((task) => task.status !== "deleted")
+              .map((task, index) => (
+                <View key={index} style={styles.taskItem}>
+                  <View
+                    style={[
+                      styles.taskIcon,
+                      { backgroundColor: getTaskColor(task.type) },
+                    ]}
+                  >
+                    <Text style={styles.taskIconText}>
+                      {task.type.charAt(0).toUpperCase()}
                     </Text>
-                  )}
+                  </View>
+                  <View style={styles.taskContent}>
+                    <Text style={styles.taskText}>{task.title}</Text>
+                    {task.description && (
+                      <Text style={styles.taskDescription}>
+                        {task.description}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.taskActions}>
+                    <Pressable
+                      onPress={() => {
+                        // หา actual index ใน original array
+                        const actualIndex = taskList.findIndex(
+                          (t, i) =>
+                            t ===
+                            taskList.filter(
+                              (task) => task.status !== "deleted"
+                            )[index]
+                        );
+                        setEditingIndex(actualIndex);
+                        setTaskModalVisible(true);
+                      }}
+                    >
+                      <Text style={styles.editIcon}>✏️</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() =>
+                        handleDeleteTask(
+                          // หา actual index ใน original array เช่นกัน
+                          taskList.findIndex(
+                            (t, i) =>
+                              t ===
+                              taskList.filter(
+                                (task) => task.status !== "deleted"
+                              )[index]
+                          )
+                        )
+                      }
+                    >
+                      <Text style={styles.deleteIcon}>🗑️</Text>
+                    </Pressable>
+                  </View>
                 </View>
-                <View style={styles.taskActions}>
-                  <Pressable
-                    onPress={() => {
-                      setEditingIndex(index);
-                      setTaskModalVisible(true);
-                    }}
-                  >
-                    <Text style={styles.editIcon}>✏️</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() =>
-                      setTaskList(taskList.filter((_, i) => i !== index))
-                    }
-                  >
-                    <Text style={styles.deleteIcon}>🗑️</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))}
+              ))}
           </ScrollView>
         </View>
       )}
