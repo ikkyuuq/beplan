@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { View, ViewStyle, Pressable, StyleSheet, Image } from "react-native";
+import { useUser } from "@clerk/clerk-expo";
 
 type HeaderProps = {
   children?: React.ReactNode;
@@ -9,10 +10,14 @@ type HeaderProps = {
 
 export default function Header({ children, containerStyle }: HeaderProps) {
   const router = useRouter();
+  const { user } = useUser();
 
   const handleNavigateToSettings = () => {
     router.push("/userSettings");
   };
+
+  const profileImageUrl =
+    user?.imageUrl || "https://picsum.photos/seed/user/150";
 
   return (
     <View style={[styles.header, containerStyle]}>
@@ -23,7 +28,7 @@ export default function Header({ children, containerStyle }: HeaderProps) {
           style={styles.profileButton}
         >
           <Image
-            source={{ uri: "https://picsum.photos/200/300" }}
+            source={{ uri: profileImageUrl }}
             style={styles.profileImage}
             resizeMode="cover"
           />

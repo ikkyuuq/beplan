@@ -4,8 +4,6 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  Pressable,
-  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
