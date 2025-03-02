@@ -45,14 +45,12 @@ export function useCollapsibleGesture({
   resistance = 0.3,
   collapseConfig,
 }: UseCollapsibleGestureProps) {
-  // Shared values
   const translateX = useSharedValue(0);
   const opacity = useSharedValue(1);
   const scaleValue = useSharedValue(1);
-  const containerWidth = useSharedValue(0); // เปลี่ยนจาก useRef เป็น useSharedValue
+  const containerWidth = useSharedValue(0);
   const screenWidth = Dimensions.get("window").width;
 
-  // สร้าง stable callbacks สำหรับให้ worklet เรียกใช้
   const handleToggleCollapse = useCallback(() => {
     if (onToggleCollapse) {
       onToggleCollapse();
@@ -77,7 +75,6 @@ export function useCollapsibleGesture({
     }
   }, [onFail]);
 
-  // ใช้ useCallback สำหรับ onLayout
   const onLayout = useCallback(
     (e: LayoutChangeEvent) => {
       containerWidth.value = e.nativeEvent.layout.width;
@@ -85,11 +82,9 @@ export function useCollapsibleGesture({
     [containerWidth]
   );
 
-  // ปรับปรุงฟังก์ชัน closeCollapse และใช้ useCallback
   const closeCollapse = useCallback(
     (callback?: () => void) => {
       if (collapseConfig && collapseConfig.collapsed) {
-        // ต้องใช้ runOnJS เพราะ setCollapsed เป็น JS thread function
         runOnJS(collapseConfig.setCollapsed)(false);
 
         collapseConfig.innerCollapsePaddingBottom.value = withTiming(0, {
@@ -114,7 +109,6 @@ export function useCollapsibleGesture({
     [collapseConfig]
   );
 
-  // ปรับปรุงฟังก์ชัน runSwipeAnimation และใช้ useCallback
   const runSwipeAnimation = useCallback(
     (
       direction: "left" | "right",
@@ -162,7 +156,6 @@ export function useCollapsibleGesture({
     [closeCollapse, translateX, opacity, collapseConfig, screenWidth]
   );
 
-  // Gesture handlers
   const gestureTap = Gesture.Tap().onEnd((_, success) => {
     if (success) {
       runOnJS(handleToggleCollapse)();
@@ -175,7 +168,6 @@ export function useCollapsibleGesture({
       translateX.value = translationX * resistance;
     })
     .onEnd((e) => {
-      // ใช้ containerWidth.value แทน .current
       const normalizedDrag = translateX.value / containerWidth.value;
       const absTranslation = Math.abs(translateX.value);
       const absVelocity = Math.abs(e.velocityX);
@@ -187,22 +179,16 @@ export function useCollapsibleGesture({
 
       if (isSignificantSwipe) {
         if (translateX.value > 0) {
-          // ใช้ handleComplete
           runOnJS(handleComplete)();
-
-          // ทำ animation ใน worklet โดยตรง
           translateX.value = withSpring(containerWidth.value);
           opacity.value = withTiming(0, { duration: 300 });
         } else if (translateX.value < 0) {
-          // ใช้ handleFail
           runOnJS(handleFail)();
 
-          // ทำ animation ใน worklet โดยตรง
           translateX.value = withSpring(-containerWidth.value);
           opacity.value = withTiming(0, { duration: 300 });
         }
       } else {
-        // Not significant – bounce back to 0.
         translateX.value = withSpring(0, {
           damping: 12,
           stiffness: 400,
@@ -221,7 +207,6 @@ export function useCollapsibleGesture({
       scaleValue.value = withSpring(1, { damping: 10, stiffness: 100 });
     });
 
-  // Compose the gestures
   const composedGesture = Gesture.Race(
     gesturePan,
     gestureLongPress,
