@@ -1,38 +1,40 @@
-import { routes } from "@/routesConfig";
-import { useClerk } from "@clerk/clerk-expo";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { View, Pressable, StyleSheet, Image } from "react-native";
+import { View, ViewStyle, Pressable, StyleSheet, Image } from "react-native";
+import { useUser } from "@clerk/clerk-expo";
 
 type HeaderProps = {
   children?: React.ReactNode;
+  containerStyle?: ViewStyle;
 };
 
-export default function Header({ children }: HeaderProps) {
-  const { signOut } = useClerk();
+export default function Header({ children, containerStyle }: HeaderProps) {
   const router = useRouter();
+  const { user } = useUser();
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.replace(routes.signIn);
+  const handleNavigateToSettings = () => {
+    router.push("/userSettings");
   };
 
+  const profileImageUrl =
+    user?.imageUrl || "https://picsum.photos/seed/user/150";
+
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, containerStyle]}>
       <View style={styles.headerContent}>
         <Feather name="menu" size={24} color="#fff" />
-        <Pressable onPress={handleSignOut} style={styles.profileButton}>
+        <Pressable
+          onPress={handleNavigateToSettings}
+          style={styles.profileButton}
+        >
           <Image
-            source={{ uri: "https://picsum.photos/200/300" }}
+            source={{ uri: profileImageUrl }}
             style={styles.profileImage}
             resizeMode="cover"
           />
         </Pressable>
       </View>
-
-      <View style={{ gap: 24, flex: 1, justifyContent: "flex-end" }}>
-        {children}
-      </View>
+      {children}
     </View>
   );
 }
@@ -45,7 +47,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     padding: 24,
-    paddingTop: 50,
+    paddingTop: 35,
     gap: 18,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },

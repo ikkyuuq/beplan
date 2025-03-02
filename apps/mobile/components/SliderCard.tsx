@@ -24,6 +24,7 @@ type SliderCardProps = {
   owner: string;
   category: string;
   scrollX: SharedValue<number>;
+  onPress?: () => void; // Add onPress prop
 };
 
 export default function SliderCard({
@@ -34,6 +35,7 @@ export default function SliderCard({
   owner,
   image,
   scrollX,
+  onPress,
 }: SliderCardProps) {
   const screen = Dimensions.get("screen");
   const [isListed, setIsListed] = useState(false);
@@ -86,6 +88,14 @@ export default function SliderCard({
     ),
   }));
 
+  const handleCardPress = () => {
+    if (onPress) {
+      onPress();
+    } else {
+      handleDisplayPreviewModal();
+    }
+  };
+
   return (
     <Animated.View>
       <PreviewTemplateModal
@@ -104,7 +114,7 @@ export default function SliderCard({
           },
         ]}
       >
-        <Pressable onPress={handleDisplayPreviewModal}>
+        <Pressable onPress={handleCardPress}>
           <Image
             source={{ uri: image }}
             style={{ width: 325, height: 200, borderRadius: 20 }}
@@ -127,18 +137,7 @@ export default function SliderCard({
               }}
             >
               <View style={{ alignItems: "flex-end" }}>
-                <TouchableOpacity
-                  hitSlop={10}
-                  onPress={() => {
-                    handleAddToList();
-                  }}
-                >
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={36}
-                    style={{ color: isListed ? "lightgreen" : "#e3e3e3" }}
-                  />
-                </TouchableOpacity>
+                {/* ลบปุ่มหัวใจเพื่อทำตามคำขอ */}
               </View>
               <View style={{ gap: 4 }}>
                 <Text style={{ color: "#e3e3e3", fontSize: 12 }}>

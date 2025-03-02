@@ -4,13 +4,8 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  Pressable,
-  Image,
 } from "react-native";
-import { Feather, Ionicons } from "@expo/vector-icons";
-import { useClerk } from "@clerk/clerk-expo";
-import { useRouter } from "expo-router";
-import { routes } from "@/routesConfig";
+import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,10 +14,8 @@ import Animated, {
   Easing,
   FadeInDown,
 } from "react-native-reanimated";
-import {
-  LineChart,
-  PieChart,
-} from "react-native-chart-kit";
+import { LineChart, PieChart } from "react-native-chart-kit";
+import Header from "@/components/Header";
 
 // ====================== Mock Data ======================
 const mockData = {
@@ -62,24 +55,20 @@ export default function Analysis() {
   const cardsOpacity2 = useSharedValue(0);
   const cardsOpacity3 = useSharedValue(0);
   const chartOpacity = useSharedValue(0);
-  
-  // ====================== Hooks ======================
-  const { signOut } = useClerk();
-  const router = useRouter();
 
   // ====================== Animation Setup ======================
   useEffect(() => {
     // Header animation
-    headerOpacity.value = withTiming(1, { 
+    headerOpacity.value = withTiming(1, {
       duration: 600,
-      easing: Easing.out(Easing.cubic)
+      easing: Easing.out(Easing.cubic),
     });
-    
+
     // Cards animation with sequential timing
     cardsOpacity1.value = withDelay(300, withTiming(1, { duration: 500 }));
     cardsOpacity2.value = withDelay(500, withTiming(1, { duration: 500 }));
     cardsOpacity3.value = withDelay(700, withTiming(1, { duration: 500 }));
-    
+
     // Chart animation
     chartOpacity.value = withDelay(900, withTiming(1, { duration: 600 }));
   }, []);
@@ -88,37 +77,43 @@ export default function Analysis() {
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     opacity: headerOpacity.value,
   }));
-  
+
   const cardsAnimatedStyle1 = useAnimatedStyle(() => ({
     opacity: cardsOpacity1.value,
     transform: [
-      { translateY: withTiming(cardsOpacity1.value * 1 === 1 ? 0 : 20, { duration: 500 }) }
-    ]
+      {
+        translateY: withTiming(cardsOpacity1.value * 1 === 1 ? 0 : 20, {
+          duration: 500,
+        }),
+      },
+    ],
   }));
-  
+
   const cardsAnimatedStyle2 = useAnimatedStyle(() => ({
     opacity: cardsOpacity2.value,
     transform: [
-      { translateY: withTiming(cardsOpacity2.value * 1 === 1 ? 0 : 20, { duration: 500 }) }
-    ]
+      {
+        translateY: withTiming(cardsOpacity2.value * 1 === 1 ? 0 : 20, {
+          duration: 500,
+        }),
+      },
+    ],
   }));
-  
+
   const cardsAnimatedStyle3 = useAnimatedStyle(() => ({
     opacity: cardsOpacity3.value,
     transform: [
-      { translateY: withTiming(cardsOpacity3.value * 1 === 1 ? 0 : 20, { duration: 500 }) }
-    ]
+      {
+        translateY: withTiming(cardsOpacity3.value * 1 === 1 ? 0 : 20, {
+          duration: 500,
+        }),
+      },
+    ],
   }));
-  
+
   const chartAnimatedStyle = useAnimatedStyle(() => ({
     opacity: chartOpacity.value,
   }));
-
-  // ====================== Event Handlers ======================
-  const handleSignOut = async () => {
-    await signOut();
-    router.replace(routes.signIn);
-  };
 
   // ====================== Chart Configurations ======================
   const chartConfig = {
@@ -157,23 +152,14 @@ export default function Analysis() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <Animated.View style={[styles.header, headerAnimatedStyle]}>
-        <View style={styles.headerContent}>
-          <Feather name="menu" size={24} color="#fff" />
-          <Pressable onPress={handleSignOut} style={styles.profileButton}>
-            <Image
-              source={{ uri: "https://picsum.photos/200/300" }}
-              style={styles.profileImage}
-              resizeMode="cover"
-            />
-          </Pressable>
-        </View>
-
-        <View style={styles.titleContainer}>
+      <Header containerStyle={{ height: 220, gap: 0 }}>
+        <Animated.View style={[headerAnimatedStyle, styles.titleContainer]}>
           <Text style={styles.title}>Analysis</Text>
-          <Text style={styles.subtitle}>Track your progress and achievement</Text>
-        </View>
-      </Animated.View>
+          <Text style={styles.subtitle}>
+            Track your progress and achievement
+          </Text>
+        </Animated.View>
+      </Header>
 
       <ScrollView
         style={styles.scrollView}
@@ -339,14 +325,16 @@ export default function Analysis() {
                 ]}
               />
             </View>
-            <Text style={styles.rateValue}>{mockData.templates.successRate}%</Text>
+            <Text style={styles.rateValue}>
+              {mockData.templates.successRate}%
+            </Text>
           </View>
         </Animated.View>
 
         {/* Charts Section */}
         <Animated.View style={[styles.chartsContainer, chartAnimatedStyle]}>
           <Text style={styles.sectionTitle}>Detailed Analytics</Text>
-          
+
           {/* Weekly Goals Progress Chart */}
           <View style={styles.chartCard}>
             <Text style={styles.chartTitle}>Weekly Goals Progress</Text>
@@ -367,18 +355,25 @@ export default function Analysis() {
               {mockData.weekLabels.slice(0, 5).map((day, index) => (
                 <View key={index} style={styles.taskDistributionItem}>
                   <View style={styles.taskBar}>
-                    <View 
+                    <View
                       style={[
-                        styles.taskBarFill, 
-                        { 
-                          height: `${(mockData.tasks.weeklyDistribution[index] / Math.max(...mockData.tasks.weeklyDistribution)) * 100}%`,
-                          backgroundColor: index % 2 === 0 ? '#4E5A94' : '#8B98D5'
-                        }
-                      ]} 
+                        styles.taskBarFill,
+                        {
+                          height: `${
+                            (mockData.tasks.weeklyDistribution[index] /
+                              Math.max(...mockData.tasks.weeklyDistribution)) *
+                            100
+                          }%`,
+                          backgroundColor:
+                            index % 2 === 0 ? "#4E5A94" : "#8B98D5",
+                        },
+                      ]}
                     />
                   </View>
                   <Text style={styles.taskBarLabel}>{day}</Text>
-                  <Text style={styles.taskBarValue}>{mockData.tasks.weeklyDistribution[index]}</Text>
+                  <Text style={styles.taskBarValue}>
+                    {mockData.tasks.weeklyDistribution[index]}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -419,32 +414,6 @@ const styles = StyleSheet.create({
   },
 
   // Header Styles
-  header: {
-    height: 200,
-    backgroundColor: "#16171F",
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    padding: 24,
-    gap: 18,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 10,
-    shadowOpacity: 0.1,
-    elevation: 5,
-  },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  profileButton: {
-    alignItems: "center",
-  },
-  profileImage: {
-    width: 35,
-    height: 35,
-    borderRadius: 100,
-  },
   titleContainer: {
     alignItems: "flex-start",
     marginTop: 20,
@@ -606,41 +575,41 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginVertical: 8,
   },
-  
+
   // Custom Task Distribution Chart Styles
   tasksDistributionContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "flex-end",
+    width: "100%",
     height: 200,
     marginTop: 10,
     marginBottom: 20,
   },
   taskDistributionItem: {
-    alignItems: 'center',
+    alignItems: "center",
     width: 50,
   },
   taskBar: {
     width: 30,
     height: 150,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: "#F0F0F0",
     borderRadius: 8,
-    overflow: 'hidden',
-    justifyContent: 'flex-end',
+    overflow: "hidden",
+    justifyContent: "flex-end",
   },
   taskBarFill: {
-    width: '100%',
+    width: "100%",
     borderRadius: 8,
   },
   taskBarLabel: {
     marginTop: 8,
-    color: '#555',
+    color: "#555",
     fontSize: 12,
   },
   taskBarValue: {
-    color: '#333',
-    fontWeight: 'bold',
+    color: "#333",
+    fontWeight: "bold",
     fontSize: 12,
     marginTop: 4,
   },
