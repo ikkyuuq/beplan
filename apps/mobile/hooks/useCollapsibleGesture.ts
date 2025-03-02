@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useCallback } from "react";
 import { Dimensions, LayoutChangeEvent } from "react-native";
 import {
   useSharedValue,
@@ -33,10 +33,6 @@ export interface UseCollapsibleGestureProps {
 
 /**
  * A reusable hook for collapse + swipe gestures.
- *
- * It allows the user to swipe even when the collapse is open.
- * When a swipe is triggered, it first animates the collapse closed (if needed)
- * then animates the item off‑screen.
  */
 export function useCollapsibleGesture({
   onComplete,
@@ -49,110 +45,161 @@ export function useCollapsibleGesture({
   resistance = 0.3,
   collapseConfig,
 }: UseCollapsibleGestureProps) {
+  // Shared values
   const translateX = useSharedValue(0);
   const opacity = useSharedValue(1);
   const scaleValue = useSharedValue(1);
-  const containerWidth = useRef(0);
+  const containerWidth = useSharedValue(0); // เปลี่ยนจาก useRef เป็น useSharedValue
   const screenWidth = Dimensions.get("window").width;
 
-  const onLayout = (e: LayoutChangeEvent) => {
-    containerWidth.current = e.nativeEvent.layout.width;
-  };
-
-  const closeCollapse = (callback?: () => void) => {
-    if (collapseConfig && collapseConfig.collapsed) {
-      runOnJS(collapseConfig.setCollapsed)(false);
-      collapseConfig.innerCollapsePaddingBottom.value = withTiming(0, {
-        duration: 200,
-      });
-      collapseConfig.innerCollapseHeight.value = withTiming(
-        0,
-        { duration: 200 },
-        () => {
-          if (callback) {
-            runOnJS(callback)();
-          }
-        },
-      );
-    } else {
-      if (callback) {
-        callback();
-      }
+  // สร้าง stable callbacks สำหรับให้ worklet เรียกใช้
+  const handleToggleCollapse = useCallback(() => {
+    if (onToggleCollapse) {
+      onToggleCollapse();
     }
-  };
+  }, [onToggleCollapse]);
 
-  /**
-   * Animate the item off‑screen after closing the collapse (if needed).
-   */
-  const runSwipeAnimation = (
-    direction: "left" | "right",
-    callback?: () => void,
-    durationOverride?: number,
-  ) => {
-    closeCollapse(() => {
-      const animDuration = durationOverride ?? 300;
-      const fadeDuration = 200;
-      const currentX = translateX.value;
-      const targetX =
-        direction === "left"
-          ? -screenWidth - Math.abs(currentX)
-          : screenWidth + Math.abs(currentX);
+  const handleLongPress = useCallback(() => {
+    if (onLongPress) {
+      onLongPress();
+    }
+  }, [onLongPress]);
 
-      translateX.value = withTiming(targetX, { duration: animDuration }, () => {
-        opacity.value = withTiming(0, { duration: fadeDuration }, () => {
-          if (collapseConfig) {
-            collapseConfig.collapseMarginBottom.value = withTiming(
-              0,
-              { duration: 200 },
-              () => {
-                collapseConfig.containerHeight.value = withTiming(
+  const handleComplete = useCallback(() => {
+    if (onComplete) {
+      onComplete();
+    }
+  }, [onComplete]);
+
+  const handleFail = useCallback(() => {
+    if (onFail) {
+      onFail();
+    }
+  }, [onFail]);
+
+  // ใช้ useCallback สำหรับ onLayout
+  const onLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      containerWidth.value = e.nativeEvent.layout.width;
+    },
+    [containerWidth]
+  );
+
+  // ปรับปรุงฟังก์ชัน closeCollapse และใช้ useCallback
+  const closeCollapse = useCallback(
+    (callback?: () => void) => {
+      if (collapseConfig && collapseConfig.collapsed) {
+        // ต้องใช้ runOnJS เพราะ setCollapsed เป็น JS thread function
+        runOnJS(collapseConfig.setCollapsed)(false);
+
+        collapseConfig.innerCollapsePaddingBottom.value = withTiming(0, {
+          duration: 200,
+        });
+
+        collapseConfig.innerCollapseHeight.value = withTiming(
+          0,
+          { duration: 200 },
+          () => {
+            if (callback) {
+              runOnJS(callback)();
+            }
+          }
+        );
+      } else {
+        if (callback) {
+          runOnJS(callback)();
+        }
+      }
+    },
+    [collapseConfig]
+  );
+
+  // ปรับปรุงฟังก์ชัน runSwipeAnimation และใช้ useCallback
+  const runSwipeAnimation = useCallback(
+    (
+      direction: "left" | "right",
+      callback?: () => void,
+      durationOverride?: number
+    ) => {
+      closeCollapse(() => {
+        const animDuration = durationOverride ?? 300;
+        const fadeDuration = 200;
+        const currentX = translateX.value;
+        const targetX =
+          direction === "left"
+            ? -screenWidth - Math.abs(currentX)
+            : screenWidth + Math.abs(currentX);
+
+        translateX.value = withTiming(
+          targetX,
+          { duration: animDuration },
+          () => {
+            opacity.value = withTiming(0, { duration: fadeDuration }, () => {
+              if (collapseConfig) {
+                collapseConfig.collapseMarginBottom.value = withTiming(
                   0,
                   { duration: 200 },
                   () => {
-                    callback && runOnJS(callback)();
-                  },
+                    collapseConfig.containerHeight.value = withTiming(
+                      0,
+                      { duration: 200 },
+                      () => {
+                        if (callback) {
+                          runOnJS(callback)();
+                        }
+                      }
+                    );
+                  }
                 );
-              },
-            );
-          } else {
-            callback && runOnJS(callback)();
+              } else if (callback) {
+                runOnJS(callback)();
+              }
+            });
           }
-        });
+        );
       });
-    });
-  };
+    },
+    [closeCollapse, translateX, opacity, collapseConfig, screenWidth]
+  );
 
-  /**
-   * Tap gesture: toggles the collapse.
-   */
+  // Gesture handlers
   const gestureTap = Gesture.Tap().onEnd((_, success) => {
-    if (success && onToggleCollapse) {
-      runOnJS(onToggleCollapse)();
+    if (success) {
+      runOnJS(handleToggleCollapse)();
     }
   });
 
-  /**
-   * Pan (swipe) gesture: allows horizontal dragging even if collapse is open.
-   * On release, checks thresholds for "complete" or "fail" actions.
-   */
   const gesturePan = Gesture.Pan()
     .activeOffsetX([-10, 10])
     .onUpdate(({ translationX }) => {
       translateX.value = translationX * resistance;
     })
     .onEnd((e) => {
-      const normalizedDrag = translateX.value / containerWidth.current;
+      // ใช้ containerWidth.value แทน .current
+      const normalizedDrag = translateX.value / containerWidth.value;
       const absTranslation = Math.abs(translateX.value);
       const absVelocity = Math.abs(e.velocityX);
+
       const isSignificantSwipe =
         absTranslation > minSwipeDistance &&
         (Math.abs(normalizedDrag) > swipeThreshold ||
           absVelocity > velocityThreshold);
+
       if (isSignificantSwipe) {
-        if (translateX.value > 0 && onComplete) {
-          runOnJS(runSwipeAnimation)("right", onComplete);
-        } else if (translateX.value < 0 && onFail) {
-          runOnJS(runSwipeAnimation)("left", onFail);
+        if (translateX.value > 0) {
+          // ใช้ handleComplete
+          runOnJS(handleComplete)();
+
+          // ทำ animation ใน worklet โดยตรง
+          translateX.value = withSpring(containerWidth.value);
+          opacity.value = withTiming(0, { duration: 300 });
+        } else if (translateX.value < 0) {
+          // ใช้ handleFail
+          runOnJS(handleFail)();
+
+          // ทำ animation ใน worklet โดยตรง
+          translateX.value = withSpring(-containerWidth.value);
+          opacity.value = withTiming(0, { duration: 300 });
         }
       } else {
         // Not significant – bounce back to 0.
@@ -164,28 +211,21 @@ export function useCollapsibleGesture({
       }
     });
 
-  /**
-   * Long press gesture: scales up slightly and triggers a callback.
-   */
   const gestureLongPress = Gesture.LongPress()
     .minDuration(600)
     .onStart(() => {
       scaleValue.value = withSpring(1.1, { damping: 10, stiffness: 100 });
-      if (onLongPress) {
-        runOnJS(onLongPress)();
-      }
+      runOnJS(handleLongPress)();
     })
-    .onEnd((_, success) => {
-      if (!success) {
-        scaleValue.value = withSpring(1, { damping: 10, stiffness: 100 });
-      }
+    .onEnd(() => {
+      scaleValue.value = withSpring(1, { damping: 10, stiffness: 100 });
     });
 
-  // Compose the gestures so that whichever fires first wins.
+  // Compose the gestures
   const composedGesture = Gesture.Race(
     gesturePan,
     gestureLongPress,
-    gestureTap,
+    gestureTap
   );
 
   return {
