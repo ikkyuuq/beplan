@@ -32,7 +32,7 @@ class Goal(BaseModel):
     id: int
     title: str
     status: Status
-    category: str
+    # category: str
     start_date: date
     due_date: date
     tasks: List[Task] = []
@@ -48,7 +48,7 @@ async def get_goals_today(
         # Fetch assigned goals for the user and date range
         assigned_goals = await conn.fetch(
             """
-            SELECT ag.*, g.*
+            SELECT ag.*, g.title
             FROM public.assigned_goal ag
             JOIN public.goal g ON ag.goal_id = g.id
             WHERE ag.user_id = $1
@@ -99,7 +99,7 @@ async def get_goals_today(
                         id=ag["goal_id"],
                         title=ag["title"],
                         status=Status(ag["status"]),
-                        category=ag["category"],
+                        # category=ag["category"],
                         start_date=ag["start_date"],
                         due_date=ag["due_date"],
                         tasks=task_list,
@@ -280,7 +280,7 @@ async def update_goal_status(
 
 #Implement update task status
 @router.put("/update_task_status")
-async def update_takk_status(
+async def update_task_status(
     to:Status,
     assigned_task_id: int,
     user_id:str = Query(...,description="User_ID"),
