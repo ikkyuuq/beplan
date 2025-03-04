@@ -1,6 +1,13 @@
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import React from "react";
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+} from "react-native";
 
+// ====================== Type Definitions ======================
 interface SignButtonProps {
   onPress: () => void;
   buttonText: string;
@@ -8,30 +15,38 @@ interface SignButtonProps {
   textStyle?: TextStyle;
 }
 
-const SignButton: React.FC<SignButtonProps> = ({ onPress, buttonText, buttonStyle, textStyle }) => {
+// ====================== Main Component ======================
+const SignButton: React.FC<SignButtonProps> = ({
+  onPress,
+  buttonText,
+  buttonStyle,
+  textStyle,
+}) => {
+  // ====================== Render UI ======================
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[styles.button, buttonStyle]}
-    >
+    <TouchableOpacity onPress={onPress} style={[styles.button, buttonStyle]}>
       <Text style={[styles.text, textStyle]}>{buttonText}</Text>
     </TouchableOpacity>
   );
 };
 
+// ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Button Styles
   button: {
-    backgroundColor: '#000',
+    backgroundColor: "#000",
     padding: 15,
     borderRadius: 8,
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
     marginTop: 10,
   },
+
+  // Text Styles
   text: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 });
 

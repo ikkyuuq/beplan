@@ -37,10 +37,3 @@ async def lifespan(app: FastAPI):
     await init_db()
     yield
     await close_db()
-
-
-async def fetch_current_time():
-    """Fetch current time from database"""
-    if db_pool is not None:
-        async with db_pool.acquire() as conn:
-            return await conn.fetchval("SELECT NOW();")
