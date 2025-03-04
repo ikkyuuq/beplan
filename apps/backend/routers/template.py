@@ -28,7 +28,7 @@ class TaskType(str, Enum):
 class Task(BaseModel):
     title: str
     description: Optional[str] = None
-    type: TaskType
+    repeat_type: TaskType
     date_interval: Optional[List[date]] = None
     week_interval: Optional[List[int]] = None
 
@@ -41,6 +41,24 @@ class Goal(BaseModel):
     tasks: List[Task]
 
 
+class AssignedTask(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    repeat_type: TaskType
+    date_interval: Optional[List[date]] = None
+    week_interval: Optional[List[int]] = None
+
+
+class AssingedGoal(BaseModel):
+    id: int
+    title: str
+    type: GoalType
+    start_date: date
+    due_date: date
+    tasks: List[AssignedTask]
+
+
 class TemplateType(str, Enum):
     TEMPLATE = "template"
     COMMUNITY = "community"
@@ -49,6 +67,17 @@ class TemplateType(str, Enum):
 class TemplateStatus(str, Enum):
     UNUSED = "unused"
     ASSIGNED = "assigned"
+
+
+class CreateTemplateFromUserGoalRequest(BaseModel):
+    user_id: str
+    title: str
+    description: Optional[str] = None
+    image_url: str
+    created_by: Optional[str] = "BePlan"
+    category: str
+    type: Optional[TemplateType] = TemplateType.TEMPLATE
+    assigned_goal_ids: List[int]
 
 
 class CreateTemplateRequest(BaseModel):
@@ -108,7 +137,7 @@ class TemplateResponse(BaseModel):
     status: TemplateStatus
 
 
-@router.get("/template")
+@router.get("")
 async def fetch_template(req: FetchTemplateRequest):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -214,7 +243,33 @@ async def fetch_template(req: FetchTemplateRequest):
             raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/template")
+@router.get("/available_goals")
+async def fetch_goal_for_create_template(user_id: str):
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        try:
+            goals_rec = await conn.fetch(
+                """
+                SELECT ag.id, g.title
+                FROM public.goal g
+                JOIN public.assigned_goal ag ON g.id = ag.goal_id
+                WHERE ag.user_id = $1
+                AND g.type = 'custom goal'
+                """,
+                user_id,
+            )
+
+            goals = {row["id"]: row["title"] for row in goals_rec}
+
+            return goals
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+
+
+@router.post("/create")
 async def create_template(req: CreateTemplateRequest):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -261,11 +316,11 @@ async def create_template(req: CreateTemplateRequest):
                     )
 
                     for task in goal.tasks:
-                        if task.type == TaskType.DAILY:
+                        if task.repeat_type == TaskType.DAILY:
                             interval_dates = date_calculation.get_daily_range(
                                 goal.start_date, goal.due_date
                             )
-                        elif task.type == TaskType.WEEKLY:
+                        elif task.repeat_type == TaskType.WEEKLY:
                             if not task.week_interval:
                                 raise HTTPException(
                                     400, detail="Week interval is required"
@@ -273,7 +328,7 @@ async def create_template(req: CreateTemplateRequest):
                             interval_dates = date_calculation.get_weekly_range(
                                 goal.start_date, goal.due_date, task.week_interval
                             )
-                        elif task.type == TaskType.MONTHLY:
+                        elif task.repeat_type == TaskType.MONTHLY:
                             if not task.date_interval:
                                 raise HTTPException(
                                     400, detail="Monthly interval is required"
@@ -295,7 +350,7 @@ async def create_template(req: CreateTemplateRequest):
                             task.title,
                             task.description,
                             new_goal["id"],
-                            task.type,
+                            task.repeat_type,
                             task.week_interval if task.week_interval else None,
                         )
 
@@ -328,13 +383,140 @@ async def create_template(req: CreateTemplateRequest):
             raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
+@router.post("/create_from_user_goals")
+async def create_template_from_user_goals(req: CreateTemplateFromUserGoalRequest):
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        try:
+            async with conn.transaction():
+                assigned_goal_ids = req.assigned_goal_ids
+                assigned_goals = await conn.fetch(
+                    """
+                    SELECT g.id, g.title, ag.start_date, ag.due_date 
+                    FROM public.goal g
+                    JOIN public.assigned_goal ag ON g.id = ag.goal_id
+                    WHERE ag.user_id = $1
+                      AND ag.id = ANY($2)
+                    """,
+                    req.user_id,
+                    assigned_goal_ids,
+                )
+                if not assigned_goals:
+                    raise HTTPException(400, detail="No assigned goals found")
+
+                global_start_date = min(goal["start_date"] for goal in assigned_goals)
+                global_due_date = max(goal["due_date"] for goal in assigned_goals)
+
+                new_template = await conn.fetchrow(
+                    """
+                    INSERT INTO public.template 
+                        (title, description, image_url, created_by, category, type, start_date, due_date)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    RETURNING id
+                    """,
+                    req.title,
+                    req.description,
+                    req.image_url,
+                    req.created_by,
+                    req.category,
+                    req.type,
+                    global_start_date,
+                    global_due_date,
+                )
+                if not new_template:
+                    raise HTTPException(500, detail="Failed to create template")
+
+                assigned_task_intervals_rec = await conn.fetch(
+                    """
+                    SELECT ati.interval_date, t.id as task_id
+                    FROM public.assigned_task_interval ati
+                    JOIN public.assigned_task at ON ati.assigned_task_id = at.id
+                    JOIN public.task t ON at.task_id = t.id
+                    WHERE at.assigned_goal_id = ANY($1)
+                    """,
+                    assigned_goal_ids,
+                )
+
+                assigned_task_intervals_dict = {}
+                for row in assigned_task_intervals_rec:
+                    assigned_task_intervals_dict.setdefault(row["task_id"], []).append(
+                        row["interval_date"]
+                    )
+
+                for goal in assigned_goals:
+                    new_tmpl_goal = await conn.fetchrow(
+                        """
+                        INSERT INTO public.tmpl_goal 
+                            (template_id, goal_id, start_date, due_date)
+                        VALUES ($1, $2, $3, $4)
+                        RETURNING id
+                        """,
+                        new_template["id"],
+                        goal["id"],
+                        goal["start_date"],
+                        goal["due_date"],
+                    )
+                    if not new_tmpl_goal:
+                        raise HTTPException(
+                            500, detail="Failed to create template goal"
+                        )
+
+                    tasks_rec = await conn.fetch(
+                        """
+                        SELECT id
+                        FROM public.task
+                        WHERE goal_id = $1
+                        """,
+                        goal["id"],
+                    )
+                    task_ids = [row["id"] for row in tasks_rec]
+
+                    for task_id in task_ids:
+                        new_tmpl_goal_task = await conn.fetchrow(
+                            """
+                            INSERT INTO public.tmpl_goal_task 
+                                (tmpl_goal_id, task_id)
+                            VALUES ($1, $2)
+                            RETURNING id
+                            """,
+                            new_tmpl_goal["id"],
+                            task_id,
+                        )
+                        if not new_tmpl_goal_task:
+                            raise HTTPException(
+                                500, detail="Failed to create template goal task"
+                            )
+
+                        interval_dates = assigned_task_intervals_dict.get(task_id, [])
+                        for interval_date in interval_dates:
+                            await conn.execute(
+                                """
+                                INSERT INTO public.tmpl_goal_task_interval
+                                    (tmpl_goal_task_id, interval_date)
+                                VALUES ($1, $2)
+                                """,
+                                new_tmpl_goal_task["id"],
+                                interval_date,
+                            )
+
+                return {
+                    "message": "Template created from user goals",
+                    "template_id": new_template["id"],
+                }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+
+
 class AssignTemplateRequest(BaseModel):
     template_id: int
     user_id: str
     start_date: date
 
 
-@router.post("/assign_template")
+@router.post("/assign")
 async def assign_template(req: AssignTemplateRequest):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -434,7 +616,7 @@ async def assign_template(req: AssignTemplateRequest):
 
 
 # NOTE: Wait for next meeting to discuss the update template logic
-@router.put("/template")
+@router.put("/update")
 async def update_template(req: UpdateTemplateRequest):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
