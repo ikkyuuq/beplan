@@ -14,33 +14,24 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 router = APIRouter()
 
-
-class GoalStatus(str, Enum):
+class Status(str, Enum):
     PENDING = "pending"
     COMPLETED = "completed"
     FAILED = "failed"
     DELETED = "deleted"
-
-
-class TaskStatus(str, Enum):
-    PENDING = "pending"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    DELETED = "deleted"
-
 
 class Task(BaseModel):
     id: int
     title: str
     description: Optional[str]
     # description: str | None
-    status: TaskStatus
+    status: Status
 
 
 class Goal(BaseModel):
     id: int
     title: str
-    status: GoalStatus
+    status: Status
     category: str
     start_date: date
     due_date: date
@@ -97,7 +88,7 @@ async def get_goals_today(
                         id=task["task_id"],
                         title=task_detail["title"],
                         description=task_detail["description"],
-                        status=TaskStatus(task["status"]),
+                        status=Status(task["status"]),
                     )
                 )
 
@@ -107,7 +98,7 @@ async def get_goals_today(
                     Goal(
                         id=ag["goal_id"],
                         title=ag["title"],
-                        status=GoalStatus(ag["status"]),
+                        status=Status(ag["status"]),
                         category=ag["category"],
                         start_date=ag["start_date"],
                         due_date=ag["due_date"],
@@ -219,16 +210,10 @@ async def get_goals_today(
 #     )
 #
 
-# class Status(str, Enum):
-#     PENDING = "pending"
-#     COMPLETED = "completed"
-#     FAILED = "failed"
-#     DELETED = "deleted"
-
 # Implement update methods to set goal status to 'delete','completed' and 'failed'
 @router.put("/update_goal_status")
 async def update_goal_status(
-    to: GoalStatus,
+    to: Status,
     assigned_goal_id: int,
     user_id: str = Query(..., description="User ID"),
     today: date = Query(
@@ -277,7 +262,7 @@ async def update_goal_status(
                 status_code=500, detail="Error updating goal status to '{to}'"
             )
     
-        if to == GoalStatus.DELETED:
+        if to == Status.DELETED:
             await conn.execute(
             """
             UPDATE public.assigned_task
@@ -296,7 +281,7 @@ async def update_goal_status(
 #Implement update task status
 @router.put("/update_task_status")
 async def update_takk_status(
-    to:TaskStatus,
+    to:Status,
     assigned_task_id: int,
     user_id:str = Query(...,description="User_ID"),
 
