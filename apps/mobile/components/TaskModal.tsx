@@ -12,13 +12,7 @@ import {
 } from "react-native";
 import Modal from "react-native-modal";
 import CalendarPicker from "./CalendarPicker";
-import {
-  format,
-  eachDayOfInterval,
-  eachWeekOfInterval,
-  eachMonthOfInterval,
-  getDaysInMonth,
-} from "date-fns";
+import { format, eachMonthOfInterval, getDaysInMonth } from "date-fns";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -117,6 +111,7 @@ export default function TaskModal({
       type: taskType,
       selectedDates: selectedDates,
       selectedDaysOfWeek: selectedDaysOfWeek,
+      status: "pending",
     };
 
     onSave(taskData);

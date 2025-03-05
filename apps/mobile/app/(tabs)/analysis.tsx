@@ -1,10 +1,5 @@
 import React, { useEffect } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-} from "react-native";
+import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
@@ -167,168 +162,175 @@ export default function Analysis() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Goals Section */}
-        <Animated.View
-          entering={FadeInDown.delay(300).duration(500)}
-          style={[styles.card, cardsAnimatedStyle1]}
-        >
-          <View style={styles.cardHeader}>
-            <Ionicons name="flag" size={24} color="#4E5A94" />
-            <Text style={styles.cardTitle}>Goals</Text>
-          </View>
+        <Animated.View entering={FadeInDown.delay(300).duration(500)}>
+          <Animated.View style={[styles.card, cardsAnimatedStyle1]}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="flag" size={24} color="#4E5A94" />
+              <Text style={styles.cardTitle}>Goals</Text>
+            </View>
 
-          <View style={styles.statRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                {mockData.goals.success + mockData.goals.fail}
+            <View style={styles.statRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>
+                  {mockData.goals.success + mockData.goals.fail}
+                </Text>
+                <Text style={styles.statLabel}>Completed</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{mockData.goals.pending}</Text>
+                <Text style={styles.statLabel}>In Progress</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{mockData.goals.total}</Text>
+                <Text style={styles.statLabel}>Total</Text>
+              </View>
+            </View>
+
+            <View style={styles.detailRow}>
+              <View style={styles.detailItem}>
+                <View style={[styles.badge, styles.successBadge]}>
+                  <Ionicons name="checkmark" size={16} color="#fff" />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Success</Text>
+                  <Text style={styles.detailValue}>
+                    {mockData.goals.success}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.detailItem}>
+                <View style={[styles.badge, styles.failBadge]}>
+                  <Ionicons name="close" size={16} color="#fff" />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Failed</Text>
+                  <Text style={styles.detailValue}>{mockData.goals.fail}</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.rateContainer}>
+              <Text style={styles.rateLabel}>Success Rate</Text>
+              <View style={styles.progressBarContainer}>
+                <View
+                  style={[
+                    styles.progressBar,
+                    { width: `${mockData.goals.successRate}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.rateValue}>
+                {mockData.goals.successRate}%
               </Text>
-              <Text style={styles.statLabel}>Completed</Text>
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{mockData.goals.pending}</Text>
-              <Text style={styles.statLabel}>In Progress</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{mockData.goals.total}</Text>
-              <Text style={styles.statLabel}>Total</Text>
-            </View>
-          </View>
-
-          <View style={styles.detailRow}>
-            <View style={styles.detailItem}>
-              <View style={[styles.badge, styles.successBadge]}>
-                <Ionicons name="checkmark" size={16} color="#fff" />
-              </View>
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Success</Text>
-                <Text style={styles.detailValue}>{mockData.goals.success}</Text>
-              </View>
-            </View>
-            <View style={styles.detailItem}>
-              <View style={[styles.badge, styles.failBadge]}>
-                <Ionicons name="close" size={16} color="#fff" />
-              </View>
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Failed</Text>
-                <Text style={styles.detailValue}>{mockData.goals.fail}</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.rateContainer}>
-            <Text style={styles.rateLabel}>Success Rate</Text>
-            <View style={styles.progressBarContainer}>
-              <View
-                style={[
-                  styles.progressBar,
-                  { width: `${mockData.goals.successRate}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.rateValue}>{mockData.goals.successRate}%</Text>
-          </View>
+          </Animated.View>
         </Animated.View>
 
         {/* Tasks Section */}
-        <Animated.View
-          entering={FadeInDown.delay(500).duration(500)}
-          style={[styles.card, cardsAnimatedStyle2]}
-        >
-          <View style={styles.cardHeader}>
-            <Ionicons name="list" size={24} color="#4E5A94" />
-            <Text style={styles.cardTitle}>Tasks</Text>
-          </View>
+        <Animated.View entering={FadeInDown.delay(500).duration(500)}>
+          <Animated.View style={[styles.card, cardsAnimatedStyle2]}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="list" size={24} color="#4E5A94" />
+              <Text style={styles.cardTitle}>Tasks</Text>
+            </View>
 
-          <View style={styles.statRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                {mockData.tasks.success + mockData.tasks.fail}
+            <View style={styles.statRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>
+                  {mockData.tasks.success + mockData.tasks.fail}
+                </Text>
+                <Text style={styles.statLabel}>Completed</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{mockData.tasks.pending}</Text>
+                <Text style={styles.statLabel}>In Progress</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{mockData.tasks.total}</Text>
+                <Text style={styles.statLabel}>Total</Text>
+              </View>
+            </View>
+
+            <View style={styles.detailRow}>
+              <View style={styles.detailItem}>
+                <View style={[styles.badge, styles.successBadge]}>
+                  <Ionicons name="checkmark" size={16} color="#fff" />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Success</Text>
+                  <Text style={styles.detailValue}>
+                    {mockData.tasks.success}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.detailItem}>
+                <View style={[styles.badge, styles.failBadge]}>
+                  <Ionicons name="close" size={16} color="#fff" />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Failed</Text>
+                  <Text style={styles.detailValue}>{mockData.tasks.fail}</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.rateContainer}>
+              <Text style={styles.rateLabel}>Success Rate</Text>
+              <View style={styles.progressBarContainer}>
+                <View
+                  style={[
+                    styles.progressBar,
+                    { width: `${mockData.tasks.successRate}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.rateValue}>
+                {mockData.tasks.successRate}%
               </Text>
-              <Text style={styles.statLabel}>Completed</Text>
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{mockData.tasks.pending}</Text>
-              <Text style={styles.statLabel}>In Progress</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{mockData.tasks.total}</Text>
-              <Text style={styles.statLabel}>Total</Text>
-            </View>
-          </View>
-
-          <View style={styles.detailRow}>
-            <View style={styles.detailItem}>
-              <View style={[styles.badge, styles.successBadge]}>
-                <Ionicons name="checkmark" size={16} color="#fff" />
-              </View>
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Success</Text>
-                <Text style={styles.detailValue}>{mockData.tasks.success}</Text>
-              </View>
-            </View>
-            <View style={styles.detailItem}>
-              <View style={[styles.badge, styles.failBadge]}>
-                <Ionicons name="close" size={16} color="#fff" />
-              </View>
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Failed</Text>
-                <Text style={styles.detailValue}>{mockData.tasks.fail}</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.rateContainer}>
-            <Text style={styles.rateLabel}>Success Rate</Text>
-            <View style={styles.progressBarContainer}>
-              <View
-                style={[
-                  styles.progressBar,
-                  { width: `${mockData.tasks.successRate}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.rateValue}>{mockData.tasks.successRate}%</Text>
-          </View>
+          </Animated.View>
         </Animated.View>
 
         {/* Templates Section */}
-        <Animated.View
-          entering={FadeInDown.delay(700).duration(500)}
-          style={[styles.card, cardsAnimatedStyle3]}
-        >
-          <View style={styles.cardHeader}>
-            <Ionicons name="document-text" size={24} color="#4E5A94" />
-            <Text style={styles.cardTitle}>Templates</Text>
-          </View>
+        <Animated.View entering={FadeInDown.delay(700).duration(500)}>
+          <Animated.View style={[styles.card, cardsAnimatedStyle3]}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="document-text" size={24} color="#4E5A94" />
+              <Text style={styles.cardTitle}>Templates</Text>
+            </View>
 
-          <View style={styles.statRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{mockData.templates.total}</Text>
-              <Text style={styles.statLabel}>Total</Text>
+            <View style={styles.statRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{mockData.templates.total}</Text>
+                <Text style={styles.statLabel}>Total</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>
+                  {mockData.templates.success}
+                </Text>
+                <Text style={styles.statLabel}>Success</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{mockData.templates.fail}</Text>
+                <Text style={styles.statLabel}>Failed</Text>
+              </View>
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{mockData.templates.success}</Text>
-              <Text style={styles.statLabel}>Success</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{mockData.templates.fail}</Text>
-              <Text style={styles.statLabel}>Failed</Text>
-            </View>
-          </View>
 
-          <View style={styles.rateContainer}>
-            <Text style={styles.rateLabel}>Success Rate</Text>
-            <View style={styles.progressBarContainer}>
-              <View
-                style={[
-                  styles.progressBar,
-                  { width: `${mockData.templates.successRate}%` },
-                ]}
-              />
+            <View style={styles.rateContainer}>
+              <Text style={styles.rateLabel}>Success Rate</Text>
+              <View style={styles.progressBarContainer}>
+                <View
+                  style={[
+                    styles.progressBar,
+                    { width: `${mockData.templates.successRate}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.rateValue}>
+                {mockData.templates.successRate}%
+              </Text>
             </View>
-            <Text style={styles.rateValue}>
-              {mockData.templates.successRate}%
-            </Text>
-          </View>
+          </Animated.View>
         </Animated.View>
 
         {/* Charts Section */}

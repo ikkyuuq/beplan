@@ -16,7 +16,6 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useUser, useClerk } from "@clerk/clerk-expo";
 import { routes } from "@/routesConfig";
-import * as ImagePicker from "expo-image-picker";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -25,6 +24,7 @@ import Animated, {
   Easing,
   FadeInDown,
 } from "react-native-reanimated";
+import OccupationSelector from "@/components/OccupationSelector";
 
 // ====================== Main Component ======================
 export default function UserSettings() {
@@ -35,7 +35,8 @@ export default function UserSettings() {
 
   // ====================== State Management ======================
   const [isChangingUsername, setIsChangingUsername] = useState(false);
-  const [isChangingProfileImage, setIsChangingProfileImage] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [isEditingOccupation, setIsEditingOccupation] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -43,27 +44,25 @@ export default function UserSettings() {
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
   const [profileImage, setProfileImage] = useState("");
-  const [tempProfileImage, setTempProfileImage] = useState("");
   const [primaryEmail, setPrimaryEmail] = useState("");
+  const [description, setDescription] = useState("");
+  const [occupation, setOccupation] = useState("");
   const [externalAccounts, setExternalAccounts] = useState<any[]>([]);
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
 
   // ====================== Animation Values ======================
   const headerOpacity = useSharedValue(0);
-  const sectionsOpacity = useSharedValue(0);
   const profileOpacity = useSharedValue(0);
   const securityOpacity = useSharedValue(0);
   const actionsOpacity = useSharedValue(0);
 
   // ====================== Animation Setup ======================
   useEffect(() => {
-    // Header animation
     headerOpacity.value = withTiming(1, {
       duration: 600,
       easing: Easing.out(Easing.cubic),
     });
 
-    // Content animations with sequential timing
     profileOpacity.value = withDelay(300, withTiming(1, { duration: 500 }));
     securityOpacity.value = withDelay(500, withTiming(1, { duration: 500 }));
     actionsOpacity.value = withDelay(700, withTiming(1, { duration: 500 }));
@@ -117,22 +116,18 @@ export default function UserSettings() {
           setLastName(user.lastName || "");
           setUsername(user.username || getDefaultUsername());
           setProfileImage(user.imageUrl);
-          setTempProfileImage(user.imageUrl);
           setPrimaryEmail(user.primaryEmailAddress?.emailAddress || "");
-
-          // Load external accounts (OAuth connections)
+          setDescription((user.unsafeMetadata?.description as string) || "");
+          setOccupation((user.unsafeMetadata?.occupation as string) || "");
           setExternalAccounts(user.externalAccounts || []);
 
-          // Load active sessions
           if (user.getSessions) {
             const sessions = await user.getSessions();
 
-            // Find current active session
             const activeSession = sessions.find(
               (session) => session.status === "active"
             );
 
-            // Add current session indicator
             const processedSessions = await Promise.all(
               sessions.map(async (session) => {
                 const isCurrent = session.id === activeSession?.id;
@@ -203,118 +198,12 @@ export default function UserSettings() {
     }
   };
 
-  const handlePickImage = async () => {
-    try {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission Required",
-          "We need access to your photos to update your profile picture."
-        );
-        return;
-      }
-
-      let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: "images",
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setTempProfileImage(result.assets[0].uri);
-        setIsChangingProfileImage(true);
-      }
-    } catch (error) {
-      console.error("Image picker error:", error);
-      Alert.alert("Error", "Failed to pick image.");
-    }
-  };
-
-  const handleSaveProfileImage = async () => {
-    if (!user) return;
-
-    try {
-      setIsSaving(true);
-
-      // For now, update only local state
-      setProfileImage(tempProfileImage);
-
-      // FUTURE IMPLEMENTATION: Upload to Clerk via backend API when ready
-      /* 
-      if (tempProfileImage) {
-        // Create form data for image upload
-        const formData = new FormData();
-        
-        // Get file extension from URI, handling query params properly
-        const uriParts = tempProfileImage.split(/[?#]/)[0].split('.');
-        const fileExtension = uriParts[uriParts.length - 1].toLowerCase();
-        
-        // Create proper MIME type, handling both jpg and jpeg correctly
-        const mimeType = fileExtension === 'jpg' || fileExtension === 'jpeg' 
-          ? 'image/jpeg' 
-          : `image/${fileExtension}`;
-        
-        // Create file object for FormData
-        const fileInfo = {
-          uri: tempProfileImage,
-          name: `profile-image.${fileExtension}`,
-          type: mimeType
-        };
-        
-        // @ts-ignore: React Native's FormData implementation accepts this format
-        formData.append('file', fileInfo);
-        
-        // Send to your FastAPI backend endpoint
-        const response = await fetch(`https://your-api-url.com/upload-profile-image/${user.id}`, {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            // 'Authorization': `Bearer ${user.sessionToken}`, // Add auth headers when needed
-          },
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to upload image to server');
-        }
-        
-        // Get updated image URL from response with fallback to local image
-        const result = await response.json();
-        setProfileImage(result?.image_url || tempProfileImage);
-      }
-      */
-
-      setIsChangingProfileImage(false);
-      Alert.alert(
-        "Success",
-        "Profile image updated locally. Backend integration will be implemented later."
-      );
-    } catch (error: any) {
-      console.error("Profile image update error:", error);
-      Alert.alert(
-        "Error",
-        error.message || "Failed to update profile image. Please try again."
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleCancelProfileImage = () => {
-    setTempProfileImage(profileImage);
-    setIsChangingProfileImage(false);
-  };
-
   const handleSaveUsername = async () => {
     if (!user) return;
 
     try {
       setIsSaving(true);
 
-      // Update only username through Clerk API
       if (username !== getDefaultUsername()) {
         await user.update({
           username: username,
@@ -334,7 +223,61 @@ export default function UserSettings() {
     }
   };
 
-  // ลบฟังก์ชัน handleUnlinkAccount
+  const handleSaveDescription = async () => {
+    if (!user) return;
+
+    try {
+      setIsSaving(true);
+
+      const currentMetadata = user.unsafeMetadata || {};
+
+      await user.update({
+        unsafeMetadata: {
+          ...currentMetadata,
+          description: description,
+        },
+      });
+
+      setIsEditingDescription(false);
+      Alert.alert("Success", "Description updated successfully!");
+    } catch (error: any) {
+      console.error("Description update error:", error);
+      Alert.alert(
+        "Error",
+        error.message || "Failed to update description. Please try again."
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveOccupation = async () => {
+    if (!user) return;
+
+    try {
+      setIsSaving(true);
+
+      const currentMetadata = user.unsafeMetadata || {};
+
+      await user.update({
+        unsafeMetadata: {
+          ...currentMetadata,
+          occupation: occupation,
+        },
+      });
+
+      setIsEditingOccupation(false);
+      Alert.alert("Success", "Occupation updated successfully!");
+    } catch (error: any) {
+      console.error("Occupation update error:", error);
+      Alert.alert(
+        "Error",
+        error.message || "Failed to update occupation. Please try again."
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // ====================== Loading State ======================
   if (!isLoaded || isLoading) {
@@ -363,193 +306,243 @@ export default function UserSettings() {
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Section */}
-        <Animated.View
-          entering={FadeInDown.delay(300).duration(500)}
-          style={[styles.section, profileAnimatedStyle]}
-        >
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleContainer}>
-              <Feather name="user" size={20} color="#4E5A94" />
-              <Text style={styles.sectionTitle}>Profile Information</Text>
-            </View>
-          </View>
-
-          <View style={styles.profileImageContainer}>
-            <Image
-              source={{
-                uri: isChangingProfileImage
-                  ? tempProfileImage
-                  : profileImage || "https://picsum.photos/seed/profile/150",
-              }}
-              style={styles.profileImage}
-            />
-
-            {!isChangingProfileImage ? (
-              <TouchableOpacity
-                style={styles.changeImageButton}
-                onPress={handlePickImage}
-              >
-                <Feather name="camera" size={16} color="#fff" />
-              </TouchableOpacity>
-            ) : null}
-
-            {isChangingProfileImage && (
-              <View style={styles.imageButtonsContainer}>
-                <TouchableOpacity
-                  style={styles.saveImageButton}
-                  onPress={handleSaveProfileImage}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Feather name="check" size={20} color="#fff" />
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.cancelImageButton}
-                  onPress={handleCancelProfileImage}
-                >
-                  <Feather name="x" size={20} color="#fff" />
-                </TouchableOpacity>
+        <Animated.View entering={FadeInDown.delay(300).duration(500)}>
+          <Animated.View style={[styles.section, profileAnimatedStyle]}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleContainer}>
+                <Feather name="user" size={20} color="#4E5A94" />
+                <Text style={styles.sectionTitle}>Profile Information</Text>
               </View>
-            )}
-          </View>
-
-          <View style={styles.profileDetailsContainer}>
-            <View style={styles.profileInfoRow}>
-              <Text style={styles.profileInfoLabel}>Name</Text>
-              <Text style={styles.profileInfoValue}>
-                {firstName} {lastName}
-              </Text>
             </View>
 
-            <View style={styles.profileInfoRow}>
-              <Text style={styles.profileInfoLabel}>Username</Text>
-              {isChangingUsername ? (
-                <View style={styles.usernameEditContainer}>
-                  <TextInput
-                    style={[styles.input, { flex: 1 }]}
-                    value={username}
-                    onChangeText={setUsername}
-                    placeholder="Choose a username"
-                  />
-                  <TouchableOpacity
-                    style={styles.saveUsernameButton}
-                    onPress={handleSaveUsername}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.saveUsernameText}>Save</Text>
-                    )}
-                  </TouchableOpacity>
+            <View style={styles.profileImageContainer}>
+              <Image
+                source={{
+                  uri: profileImage || "https://picsum.photos/seed/profile/150",
+                }}
+                style={styles.profileImage}
+              />
+            </View>
+
+            <View style={styles.profileDetailsContainer}>
+              <View style={styles.profileInfoRow}>
+                <Text style={styles.profileInfoLabel}>Name</Text>
+                <Text style={styles.profileInfoValue}>
+                  {firstName} {lastName}
+                </Text>
+              </View>
+
+              <View style={styles.profileInfoRow}>
+                <Text style={styles.profileInfoLabel}>Username</Text>
+                {isChangingUsername ? (
+                  <View style={styles.usernameEditContainer}>
+                    <TextInput
+                      style={[styles.input, { flex: 1 }]}
+                      value={username}
+                      onChangeText={setUsername}
+                      placeholder="Choose a username"
+                    />
+                    <TouchableOpacity
+                      style={styles.saveButton}
+                      onPress={handleSaveUsername}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <Text style={styles.saveButtonText}>Save</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.usernameContainer}>
+                    <Text style={styles.profileInfoValue}>{username}</Text>
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => setIsChangingUsername(true)}
+                    >
+                      <Feather name="edit-2" size={14} color="#4E5A94" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.profileInfoRow}>
+                <Text style={styles.profileInfoLabel}>Email</Text>
+                <Text style={styles.profileInfoValue}>{primaryEmail}</Text>
+              </View>
+
+              {/* Occupation Field - Using the new OccupationSelector component */}
+              <View style={styles.profileInfoRow}>
+                <Text style={styles.profileInfoLabel}>Occupation</Text>
+                {isEditingOccupation ? (
+                  <View style={{ flex: 1 }}>
+                    <OccupationSelector
+                      value={occupation}
+                      onValueChange={setOccupation}
+                      onSave={handleSaveOccupation}
+                      isSaving={isSaving}
+                      onCancel={() => setIsEditingOccupation(false)}
+                    />
+                  </View>
+                ) : (
+                  <View style={styles.usernameContainer}>
+                    <Text style={styles.profileInfoValue}>
+                      {occupation || "Not specified"}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => setIsEditingOccupation(true)}
+                    >
+                      <Feather name="edit-2" size={14} color="#4E5A94" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
+              {/* Description Field */}
+              <View style={styles.descriptionRow}>
+                <View style={styles.descriptionHeader}>
+                  <Text style={styles.descriptionLabel}>About Me</Text>
+                  {!isEditingDescription && (
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => setIsEditingDescription(true)}
+                    >
+                      <Feather name="edit-2" size={14} color="#4E5A94" />
+                    </TouchableOpacity>
+                  )}
                 </View>
-              ) : (
-                <View style={styles.usernameContainer}>
-                  <Text style={styles.profileInfoValue}>{username}</Text>
-                  <TouchableOpacity
-                    style={styles.editUsernameButton}
-                    onPress={() => setIsChangingUsername(true)}
-                  >
-                    <Feather name="edit-2" size={14} color="#4E5A94" />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
 
-            <View style={styles.profileInfoRow}>
-              <Text style={styles.profileInfoLabel}>Email</Text>
-              <Text style={styles.profileInfoValue}>{primaryEmail}</Text>
+                {isEditingDescription ? (
+                  <View style={styles.descriptionEditContainer}>
+                    <TextInput
+                      style={styles.descriptionInput}
+                      value={description}
+                      onChangeText={setDescription}
+                      placeholder="Tell community members about yourself..."
+                      multiline
+                      numberOfLines={4}
+                      maxLength={300}
+                    />
+                    <Text style={styles.charCount}>
+                      {description.length}/300
+                    </Text>
+                    <View style={styles.descriptionButtons}>
+                      <TouchableOpacity
+                        style={[styles.saveButton, { flex: 1 }]}
+                        onPress={handleSaveDescription}
+                        disabled={isSaving}
+                      >
+                        {isSaving ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Text style={styles.saveButtonText}>Save</Text>
+                        )}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.cancelButton, { flex: 1 }]}
+                        onPress={() => setIsEditingDescription(false)}
+                        disabled={isSaving}
+                      >
+                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={styles.descriptionText}>
+                    {description || "Tell community members about yourself..."}
+                  </Text>
+                )}
+              </View>
             </View>
-          </View>
+          </Animated.View>
         </Animated.View>
 
         {/* Security Section */}
-        <Animated.View
-          entering={FadeInDown.delay(500).duration(500)}
-          style={[styles.section, securityAnimatedStyle]}
-        >
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleContainer}>
-              <Feather name="shield" size={20} color="#4E5A94" />
-              <Text style={styles.sectionTitle}>Security & Authentication</Text>
-            </View>
-          </View>
-
-          {/* Connected Accounts */}
-          <Text style={styles.subsectionTitle}>Connected Accounts</Text>
-
-          {externalAccounts.length > 0 ? (
-            externalAccounts.map((account, index) => (
-              <View key={index} style={styles.accountItem}>
-                <View style={styles.accountInfo}>
-                  {getAccountIcon(account.provider)}
-                  <Text style={styles.accountLabel}>
-                    {account.provider.charAt(0).toUpperCase() +
-                      account.provider.slice(1)}
-                  </Text>
-                </View>
+        <Animated.View entering={FadeInDown.delay(500).duration(500)}>
+          <Animated.View style={[styles.section, securityAnimatedStyle]}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleContainer}>
+                <Feather name="shield" size={20} color="#4E5A94" />
+                <Text style={styles.sectionTitle}>
+                  Security & Authentication
+                </Text>
               </View>
-            ))
-          ) : (
-            <Text style={styles.noDataText}>No connected accounts</Text>
-          )}
+            </View>
 
-          {/* Active Sessions */}
-          <Text style={styles.subsectionTitle}>Active Sessions</Text>
-          <Text style={styles.noteText}>
-            Note: For security reasons, sessions can only be managed via the
-            Clerk Dashboard. Your current session can be ended using the Sign
-            Out button below.
-          </Text>
+            {/* Connected Accounts */}
+            <Text style={styles.subsectionTitle}>Connected Accounts</Text>
 
-          {activeSessions.length > 0 ? (
-            activeSessions.map((session, index) => (
-              <View key={index} style={styles.sessionItem}>
-                <View style={styles.sessionInfo}>
-                  {getDeviceIcon(session.latestActivity?.userAgent || "")}
-                  <View style={styles.sessionDetails}>
-                    <Text style={styles.sessionName}>
-                      {session.latestActivity?.userAgent?.split(" ")[0] ||
-                        "Unknown Device"}
-                      {session.isCurrent && (
-                        <Text style={styles.currentDevice}> (Current)</Text>
-                      )}
-                    </Text>
-                    <Text style={styles.sessionTime}>
-                      Last active: {formatLastActiveTime(session.lastActiveAt)}
+            {externalAccounts.length > 0 ? (
+              externalAccounts.map((account, index) => (
+                <View key={index} style={styles.accountItem}>
+                  <View style={styles.accountInfo}>
+                    {getAccountIcon(account.provider)}
+                    <Text style={styles.accountLabel}>
+                      {account.provider.charAt(0).toUpperCase() +
+                        account.provider.slice(1)}
                     </Text>
                   </View>
                 </View>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.noDataText}>No active sessions</Text>
-          )}
+              ))
+            ) : (
+              <Text style={styles.noDataText}>No connected accounts</Text>
+            )}
+
+            {/* Active Sessions */}
+            <Text style={styles.subsectionTitle}>Active Sessions</Text>
+            <Text style={styles.noteText}>
+              Note: For security reasons, sessions can only be managed via the
+              Clerk Dashboard. Your current session can be ended using the Sign
+              Out button below.
+            </Text>
+
+            {activeSessions.length > 0 ? (
+              activeSessions.map((session, index) => (
+                <View key={index} style={styles.sessionItem}>
+                  <View style={styles.sessionInfo}>
+                    {getDeviceIcon(session.latestActivity?.userAgent || "")}
+                    <View style={styles.sessionDetails}>
+                      <Text style={styles.sessionName}>
+                        {session.latestActivity?.userAgent?.split(" ")[0] ||
+                          "Unknown Device"}
+                        {session.isCurrent && (
+                          <Text style={styles.currentDevice}> (Current)</Text>
+                        )}
+                      </Text>
+                      <Text style={styles.sessionTime}>
+                        Last active:{" "}
+                        {formatLastActiveTime(session.lastActiveAt)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.noDataText}>No active sessions</Text>
+            )}
+          </Animated.View>
         </Animated.View>
 
         {/* Account Actions Section */}
-        <Animated.View
-          entering={FadeInDown.delay(700).duration(500)}
-          style={[styles.section, actionsAnimatedStyle]}
-        >
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleContainer}>
-              <Feather name="settings" size={20} color="#4E5A94" />
-              <Text style={styles.sectionTitle}>Account Actions</Text>
+        <Animated.View entering={FadeInDown.delay(700).duration(500)}>
+          <Animated.View style={[styles.section, actionsAnimatedStyle]}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleContainer}>
+                <Feather name="settings" size={20} color="#4E5A94" />
+                <Text style={styles.sectionTitle}>Account Actions</Text>
+              </View>
             </View>
-          </View>
 
-          <TouchableOpacity
-            style={styles.signOutButton}
-            onPress={handleSignOut}
-          >
-            <Feather name="log-out" size={20} color="#fff" />
-            <Text style={styles.signOutText}>Sign Out</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.signOutButton}
+              onPress={handleSignOut}
+            >
+              <Feather name="log-out" size={20} color="#fff" />
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </TouchableOpacity>
+          </Animated.View>
         </Animated.View>
       </ScrollView>
     </SafeAreaView>
@@ -591,6 +584,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 20,
     paddingTop: Platform.OS === "ios" ? 50 : 20,
+    paddingBottom: 10,
     backgroundColor: "#16171F",
   },
   headerTitle: {
@@ -663,51 +657,6 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     marginBottom: 15,
   },
-  changeImageButton: {
-    position: "absolute",
-    right: "35%",
-    bottom: 15,
-    backgroundColor: "#4E5A94",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#FFF",
-  },
-  imageButtonsContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 20,
-    marginTop: 5,
-  },
-  saveImageButton: {
-    backgroundColor: "#4CAF50",
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  cancelImageButton: {
-    backgroundColor: "#FF3B30",
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
-  },
   profileDetailsContainer: {
     gap: 12,
   },
@@ -730,27 +679,61 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "right",
   },
-  editUsernameButton: {
-    padding: 6,
-    marginLeft: 10,
-  },
 
-  // Form Elements
-  inputGroup: {
-    marginBottom: 12,
+  // Description styling
+  descriptionRow: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+    paddingVertical: 8,
   },
-  inputLabel: {
+  descriptionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  descriptionLabel: {
     fontSize: 14,
     color: "#666",
-    marginBottom: 4,
+    fontWeight: "500",
   },
-  input: {
+  descriptionText: {
+    fontSize: 14,
+    color: "#333",
+    lineHeight: 20,
+    fontStyle: "italic",
+    opacity: 0.8,
+  },
+  descriptionEditContainer: {
+    width: "100%",
+  },
+  descriptionInput: {
     borderWidth: 1,
     borderColor: "#DDD",
     borderRadius: 8,
     padding: 10,
     fontSize: 14,
     backgroundColor: "#FAFAFA",
+    height: 100,
+    textAlignVertical: "top",
+  },
+  charCount: {
+    fontSize: 12,
+    color: "#999",
+    textAlign: "right",
+    marginTop: 4,
+  },
+  descriptionButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+    gap: 10,
+  },
+
+  // Edit and Save Buttons
+  editButton: {
+    padding: 6,
+    marginLeft: 10,
   },
   usernameContainer: {
     flexDirection: "row",
@@ -764,14 +747,39 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 8,
   },
-  saveUsernameButton: {
+  input: {
+    borderWidth: 1,
+    borderColor: "#DDD",
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+    backgroundColor: "#FAFAFA",
+  },
+  saveButton: {
     backgroundColor: "#4E5A94",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  saveUsernameText: {
+  saveButtonText: {
     color: "#FFF",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  cancelButton: {
+    backgroundColor: "#F5F5F5",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#DDD",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    color: "#666",
     fontSize: 14,
     fontWeight: "500",
   },
@@ -827,9 +835,6 @@ const styles = StyleSheet.create({
     color: "#4CAF50",
     fontSize: 12,
     fontWeight: "normal",
-  },
-  revokeButton: {
-    padding: 8,
   },
 
   // Account Actions
