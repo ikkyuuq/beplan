@@ -16,7 +16,7 @@ router = APIRouter()
 
 class Status(str, Enum):
     PENDING = "pending"
-    COMPLETED = "completed"
+    SUCCESS = "success"
     FAILED = "failed"
     DELETED = "deleted"
 
@@ -24,7 +24,6 @@ class Task(BaseModel):
     id: int
     title: str
     description: Optional[str]
-    # description: str | None
     status: Status
 
 
@@ -32,7 +31,6 @@ class Goal(BaseModel):
     id: int
     title: str
     status: Status
-    # category: str
     start_date: date
     due_date: date
     tasks: List[Task] = []
@@ -99,7 +97,6 @@ async def get_goals_today(
                         id=ag["goal_id"],
                         title=ag["title"],
                         status=Status(ag["status"]),
-                        # category=ag["category"],
                         start_date=ag["start_date"],
                         due_date=ag["due_date"],
                         tasks=task_list,
@@ -107,108 +104,6 @@ async def get_goals_today(
                 )
 
         return goals  # Return the list of goals (filtered to include only those with tasks)
-
-
-# NOTE: This might be useful for the analysis page to show the user's progress
-# but it's still need more work to be done
-
-# Implement get goals from database
-# @router.get("/goal", response_model=List[Goal])  # Fetch all goals
-# async def get_goals():
-#     pool = await get_db_pool()
-#     async with pool.acquire() as conn:
-#         goals = await conn.fetch("SELECT * FROM goal")
-#         goal_list = []
-
-#         for goal in goals:
-#             subtasks = await conn.fetch(
-#                 "SELECT * FROM task WHERE goal_id=$1", goal["id"]
-#             )
-#             goal_list.append(
-#                 Goal(
-#                     id=goal["id"],
-#                     title=goal["title"],
-#                     completed=goal["status"],
-#                     category=goal["category"],
-#                     subtasks=[
-#                         Task(
-#                             id=subtask["id"],
-#                             title=subtask["title"],
-#                             completed=subtask["status"],
-#                             description=subtask["description"],
-#                             due_date=subtask["due_date"],
-#                         )
-#                         for subtask in subtasks
-#                     ],
-#                 )
-#             )
-#         return goal_list
-
-# NOTE: This might be useful for the analysis page to show the user's progress
-
-
-# @router.get("/goals/{goal_id}", response_model=Goal)  # Fetch single goal
-# async def get_goal(goal_id: int):
-#     pool = await get_db_pool()
-#     async with pool.acquire() as conn:
-#         goal = await conn.fetchrow("SELECT * FROM public.goal WHERE id=$1", goal_id)
-#         if not goal:
-#             raise HTTPException(status_code=404, detail="Goal not found")
-#
-#         subtasks = await conn.fetch(
-#             "SELECT * FROM public.task WHERE goal_id=$1", goal_id
-#         )
-#         return Goal(
-#             id=goal["id"],
-#             title=goal["title"],
-#             completed=goal["completed"],
-#             category=goal["category"],
-#             subtasks=[
-#                 Task(
-#                     id=subtask["id"],
-#                     title=subtask["title"],
-#                     completed=subtask["completed"],
-#                     description=subtask["description"],
-#                     due_date=subtask["due_date"],
-#                 )
-#                 for subtask in subtasks
-#             ],
-#         )
-#
-#
-# # Implement get tasks from database
-# @router.get("/tasks/", response_model=List[Task])  # Fetch all task
-# async def get_tasks():
-#     pool = await get_db_pool()
-#     async with pool.acquire() as conn:
-#         tasks = await conn.fetch("SELECT * FROM public.task")
-#         return [
-#             Task(
-#                 id=task["id"],
-#                 title=task["title"],
-#                 completed=task["completed"],
-#                 description=task["description"],
-#                 due_date=task["due_date"],
-#             )
-#             for task in tasks
-#         ]
-#
-#
-# @router.get("/tasks/{task_id}", response_model=Task)  # Fetch single task
-# async def get_task(task_id: int):
-#     pool = await get_db_pool()
-#     async with pool.acquire() as conn:
-#         task = await conn.fetchrow("SELECT * FROM public.task WHERE id=$1", task_id)
-#     if task is None:
-#         raise HTTPException(status_code=404, detail="Task not found")
-#     return Task(
-#         id=task["id"],
-#         title=task["title"],
-#         description=task["description"],
-#         due_date=task["due_date"],
-#         completed=task["completed"],
-#     )
-#
 
 # Implement update methods to set goal status to 'delete','completed' and 'failed'
 @router.put("/update_goal_status")
@@ -242,11 +137,11 @@ async def update_goal_status(
                 status_code=404, detail="Goal not found for this user and date"
             )
 
-        # Update goal status to 'delete'
+        # Update goal status
         res = await conn.execute(
             """
             UPDATE public.assigned_goal
-            SET status = $1::goal_status
+            SET status = $1::status
             WHERE id = $2
             AND user_id = $3
             AND due_date >= $4
@@ -259,7 +154,7 @@ async def update_goal_status(
 
         if not res == "UPDATE 1":
             raise HTTPException(
-                status_code=500, detail="Error updating goal status to '{to}'"
+                status_code=500, detail=f"Error updating goal status to '{to}'"
             )
     
         if to == Status.DELETED:
@@ -294,7 +189,7 @@ async def update_task_status(
             SELECT at.* 
             FROM public.assigned_task at
             JOIN public.assigned_goal ag ON at.assigned_goal_id = ag.id
-            WHERE id = $1
+            WHERE at.id = $1
             AND ag.user_id = $2
             AND at.status = 'pending'
 
@@ -311,7 +206,7 @@ async def update_task_status(
         res = await conn.execute(
             """
             UPDATE public.assigned_task
-            SET status = $1::task_status
+            SET status = $1::status
             WHERE id = $2
             """,
             to,
@@ -320,7 +215,7 @@ async def update_task_status(
 
         if not res == "UPDATE 1":
             raise HTTPException(
-                status_code=500, detail="Error updating task status"
+                status_code=500, detail=f"Error updating task status to {to}"
             )
         
         return{
