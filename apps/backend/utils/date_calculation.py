@@ -20,7 +20,8 @@ def get_weekly_range(
     current_date = start_date
 
     while current_date <= due_date:
-        if (current_date.weekday() + 1) in interval_date_in_week:
+        new_weekday = (current_date.weekday() + 1) % 7
+        if new_weekday in interval_date_in_week:
             interval_date.append(current_date)
         current_date += timedelta(days=1)
 
