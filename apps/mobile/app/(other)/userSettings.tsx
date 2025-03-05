@@ -24,6 +24,7 @@ import Animated, {
   Easing,
   FadeInDown,
 } from "react-native-reanimated";
+import OccupationSelector from "@/components/OccupationSelector";
 
 // ====================== Main Component ======================
 export default function UserSettings() {
@@ -371,28 +372,18 @@ export default function UserSettings() {
                 <Text style={styles.profileInfoValue}>{primaryEmail}</Text>
               </View>
 
-              {/* Occupation Field */}
+              {/* Occupation Field - Using the new OccupationSelector component */}
               <View style={styles.profileInfoRow}>
                 <Text style={styles.profileInfoLabel}>Occupation</Text>
                 {isEditingOccupation ? (
-                  <View style={styles.usernameEditContainer}>
-                    <TextInput
-                      style={[styles.input, { flex: 1 }]}
+                  <View style={{ flex: 1 }}>
+                    <OccupationSelector
                       value={occupation}
-                      onChangeText={setOccupation}
-                      placeholder="Enter your occupation"
+                      onValueChange={setOccupation}
+                      onSave={handleSaveOccupation}
+                      isSaving={isSaving}
+                      onCancel={() => setIsEditingOccupation(false)}
                     />
-                    <TouchableOpacity
-                      style={styles.saveButton}
-                      onPress={handleSaveOccupation}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <Text style={styles.saveButtonText}>Save</Text>
-                      )}
-                    </TouchableOpacity>
                   </View>
                 ) : (
                   <View style={styles.usernameContainer}>
