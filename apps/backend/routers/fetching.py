@@ -35,6 +35,17 @@ class Goal(BaseModel):
     due_date: date
     tasks: List[Task] = []
 
+class GoalUpdateRequest(BaseModel):
+    to: Status
+    assigned_goal_id: int
+    user_id: str
+    today:Optional[date] = date.today(  ) 
+
+class TaskUpdateRequest(BaseModel):
+    to:Status
+    user_id:str
+    assigned_task_id: int
+
 
 @router.get("/goals")
 async def get_goals_today(
@@ -107,15 +118,7 @@ async def get_goals_today(
 
 # Implement update methods to set goal status to 'delete','completed' and 'failed'
 @router.put("/update_goal_status")
-async def update_goal_status(
-    to: Status,
-    assigned_goal_id: int,
-    user_id: str = Query(..., description="User ID"),
-    today: date = Query(
-        default=date.today(),
-        description="Date for which goal should be updated (YYYY-MM-DD)",
-    ),
-):
+async def update_goal_status(request: GoalUpdateRequest):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         # Check if the goal exists for the user on that date
@@ -127,9 +130,9 @@ async def update_goal_status(
             AND start_date <= $3
             AND due_date >= $3
             """,
-            assigned_goal_id,
-            user_id,
-            today,
+            request.assigned_goal_id,
+            request.user_id,
+            request.today,
         )
 
         if not assigned_goal:
@@ -146,41 +149,36 @@ async def update_goal_status(
             AND user_id = $3
             AND due_date >= $4
             """,
-            to,
-            assigned_goal_id,
-            user_id,
-            today,
+            request.to,
+            request.assigned_goal_id,
+            request.user_id,
+            request.today,
         )
 
         if not res == "UPDATE 1":
             raise HTTPException(
-                status_code=500, detail=f"Error updating goal status to '{to}'"
+                status_code=500, detail=f"Error updating goal status to '{request.to}'"
             )
     
-        if to == Status.DELETED:
+        if request.to == Status.DELETED:
             await conn.execute(
             """
             UPDATE public.assigned_task
             SET status = 'deleted'
             WHERE assigned_goal_id = $1
             """,
-            assigned_goal_id,
+            request.assigned_goal_id,
             )
 
     return {
-        "message": f"Goal status updated to '{to}', and tasks updated if applicable.",
-        "assigned_goal_id": assigned_goal_id,
+        "message": f"Goal status updated to '{request.to}', and tasks updated if applicable.",
+        "assigned_goal_id": request.assigned_goal_id,
     }
              
 
 #Implement update task status
 @router.put("/update_task_status")
-async def update_task_status(
-    to:Status,
-    assigned_task_id: int,
-    user_id:str = Query(...,description="User_ID"),
-
-):
+async def update_task_status(request: TaskUpdateRequest):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         # Check if the task exists for the user in the assigned goal
@@ -194,8 +192,8 @@ async def update_task_status(
             AND at.status = 'pending'
 
         """,
-        assigned_task_id,
-        user_id,
+        request.assigned_task_id,
+        request.user_id,
     )
         
         if not assigned_task:
@@ -209,16 +207,16 @@ async def update_task_status(
             SET status = $1::status
             WHERE id = $2
             """,
-            to,
-            assigned_task_id,
+            request.to,
+            request.assigned_task_id,
         )
 
         if not res == "UPDATE 1":
             raise HTTPException(
-                status_code=500, detail=f"Error updating task status to {to}"
+                status_code=500, detail=f"Error updating task status to {request.to}"
             )
         
         return{
-            "message": f"Task status updated to {to}",
-            "assigned_task_id": assigned_task_id,
+            "message": f"Task status updated to {request.to}",
+            "assigned_task_id": request.assigned_task_id,
         }
