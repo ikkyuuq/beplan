@@ -1,6 +1,7 @@
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple
 
 from fastapi import APIRouter, HTTPException
 
@@ -10,7 +11,7 @@ router = APIRouter()
 
 
 class Status(str, Enum):
-    COMPLETED = "completed"
+    SUCCESS = "success"
     FAILED = "failed"
     PENDING = "pending"
 
@@ -20,18 +21,18 @@ class TemplateCategory(str, Enum):
     HEALTH = "health"
     EDUCATION = "education"
     WORK = "work"
-    HOBBY = "hobby"
+    TRAVEL = "travel"
     PD = "personal_development"
     OTHER = "other"
 
 
-async def task_list(user_id: str, target_date: date, conn):
-    tasks_rec = await conn.fetch(
+async def fetch_tasks_with_intervals(conn, user_id: str) -> List[Dict]:
+    return await conn.fetch(
         """
         SELECT
             ag.id AS assigned_goal_id,
             at.id AS assigned_task_id,
-            at.status,
+            at.status AS task_status,
             ati.interval_date,
             t.title AS task_title,
             t.description,
@@ -41,90 +42,17 @@ async def task_list(user_id: str, target_date: date, conn):
         JOIN public.task t ON at.task_id = t.id
         JOIN public.assigned_task_interval ati ON at.id = ati.assigned_task_id
         WHERE ag.user_id = $1
-          AND ati.interval_date = $2
         """,
         user_id,
-        target_date,
     )
 
-    tasks_dict = {}
-    for row in tasks_rec:
-        key = row["assigned_goal_id"]
-        tasks_dict.setdefault(key, []).append(
-            {
-                "id": row["assigned_task_id"],
-                "title": row["task_title"],
-                "description": row["description"],
-                "status": row["status"],
-                "type": row["task_type"],
-            }
-        )
-    return tasks_dict
 
-
-async def compute_weekly_progress(
-    conn, user_id: str, week_ago: datetime, today: datetime
-):
-    weekly_progress = {
-        (week_ago + timedelta(days=i)).strftime("%Y-%m-%d"): 0
-        for i in range((today - week_ago).days + 1)
-    }
-
-    for date_str in weekly_progress:
-        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        tasks = await task_list(user_id, target_date, conn)
-        for tasks_list in tasks.values():
-            if tasks_list and all(
-                task["status"] == Status.COMPLETED for task in tasks_list
-            ):
-                weekly_progress[date_str] += 1
-
-    return weekly_progress
-
-
-async def compute_weekly_tasks_distribution(
-    conn, user_id: str, week_ago: datetime, today: datetime
-):
-    distribution = {
-        (week_ago + timedelta(days=i)).strftime("%Y-%m-%d"): 0
-        for i in range((today - week_ago).days + 1)
-    }
-
-    for date_str in distribution:
-        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        tasks_count_rec = await conn.fetch(
-            """
-            SELECT COUNT(*) as count
-            FROM public.assigned_task_interval ati
-            JOIN public.assigned_task at ON ati.assigned_task_id = at.id
-            JOIN public.assigned_goal ag ON at.assigned_goal_id = ag.id
-            WHERE ag.user_id = $1
-              AND ati.interval_date = $2
-            """,
-            user_id,
-            target_date,
-        )
-        if tasks_count_rec:
-            distribution[date_str] = tasks_count_rec[0]["count"]
-    return distribution
-
-
-async def compute_goals_analysis(conn, user_id: str, goals_weekly_progress: Dict):
-    goals_analysis = {
-        "total": 0,
-        "completed": {"count": 0, "data": []},
-        "failed": {"count": 0, "data": []},
-        "pending": 0,
-        "success_rate": 0,
-        "weekly_progress": goals_weekly_progress,
-    }
-
-    assigned_goals_rec = await conn.fetch(
+async def fetch_assigned_goals(conn, user_id: str) -> List[Dict]:
+    return await conn.fetch(
         """
         SELECT 
             ag.id AS assigned_goal_id, 
             ag.status, 
-            g.id AS goal_id, 
             g.title, 
             g.type
         FROM public.assigned_goal ag
@@ -134,49 +62,16 @@ async def compute_goals_analysis(conn, user_id: str, goals_weekly_progress: Dict
         user_id,
     )
 
-    for row in assigned_goals_rec:
-        goals_analysis["total"] += 1
-        goal_obj = {
-            "id": row["assigned_goal_id"],
-            "title": row["title"],
-            "type": row["type"],
-        }
-        if row["status"] == Status.COMPLETED:
-            goals_analysis["completed"]["count"] += 1
-            goals_analysis["completed"]["data"].append(goal_obj)
-        elif row["status"] == Status.FAILED:
-            goals_analysis["failed"]["count"] += 1
-            goals_analysis["failed"]["data"].append(goal_obj)
-        else:
-            goals_analysis["pending"] += 1
 
-    if goals_analysis["total"]:
-        goals_analysis["success_rate"] = (
-            goals_analysis["completed"]["count"] / goals_analysis["total"]
-        ) * 100
-
-    return goals_analysis
-
-
-async def compute_tasks_analysis(conn, user_id: str, tasks_weekly_distribution: Dict):
-    tasks_analysis = {
-        "total": 0,
-        "completed": {"count": 0, "data": []},
-        "failed": {"count": 0, "data": []},
-        "pending": 0,
-        "success_rate": 0,
-        "weekly_distribution": tasks_weekly_distribution,
-    }
-
-    assigned_tasks_rec = await conn.fetch(
+async def fetch_assigned_tasks(conn, user_id: str) -> List[Dict]:
+    return await conn.fetch(
         """
         SELECT 
-            ag.id AS assigned_goal_id,
             at.id AS assigned_task_id, 
             at.status, 
             t.title, 
             t.description,
-            t.type
+            ag.id AS assigned_goal_id
         FROM public.assigned_task at
         JOIN public.task t ON at.task_id = t.id
         JOIN public.assigned_goal ag ON at.assigned_goal_id = ag.id
@@ -185,48 +80,9 @@ async def compute_tasks_analysis(conn, user_id: str, tasks_weekly_distribution: 
         user_id,
     )
 
-    for row in assigned_tasks_rec:
-        tasks_analysis["total"] += 1
-        task_obj = {
-            "id": row["assigned_task_id"],
-            "from": row["assigned_goal_id"],
-            "title": row["title"],
-            "description": row["description"],
-            "type": row["type"],
-        }
-        if row["status"] == Status.COMPLETED:
-            tasks_analysis["completed"]["count"] += 1
-            tasks_analysis["completed"]["data"].append(task_obj)
-        elif row["status"] == Status.FAILED:
-            tasks_analysis["failed"]["count"] += 1
-            tasks_analysis["failed"]["data"].append(task_obj)
-        else:
-            tasks_analysis["pending"] += 1
 
-    if tasks_analysis["total"]:
-        tasks_analysis["success_rate"] = (
-            tasks_analysis["completed"]["count"] / tasks_analysis["total"]
-        ) * 100
-
-    return tasks_analysis
-
-
-async def compute_template_analysis(conn, user_id: str):
-    category_usage = {
-        TemplateCategory.FITNESS: 0,
-        TemplateCategory.HEALTH: 0,
-        TemplateCategory.EDUCATION: 0,
-        TemplateCategory.WORK: 0,
-        TemplateCategory.HOBBY: 0,
-        TemplateCategory.PD: 0,
-        TemplateCategory.OTHER: 0,
-    }
-    templates_analysis = {
-        "total": 0,
-        "category_usage": category_usage,
-    }
-
-    templates_rec = await conn.fetch(
+async def fetch_templates(conn, user_id: str) -> List[Dict]:
+    return await conn.fetch(
         """
         SELECT 
             t.id AS template_id,
@@ -238,15 +94,177 @@ async def compute_template_analysis(conn, user_id: str):
         user_id,
     )
 
-    for row in templates_rec:
-        templates_analysis["total"] += 1
-        category = row["category"]
-        if category in templates_analysis["category_usage"]:
-            templates_analysis["category_usage"][category] += 1
-        else:
-            templates_analysis["category_usage"][category] = 1
 
-    return templates_analysis
+def parse_interval_date(interval_date: Any) -> date:
+    if isinstance(interval_date, datetime):
+        return interval_date.date()
+    elif isinstance(interval_date, date):
+        return interval_date
+    elif isinstance(interval_date, str):
+        return datetime.strptime(interval_date, "%Y-%m-%d").date()
+    raise ValueError(f"Unsupported date type: {type(interval_date)}")
+
+
+def process_tasks_by_date_and_goal(
+    tasks_with_intervals: List[Dict],
+) -> Dict[Tuple[date, str], List[str]]:
+    tasks_by_date_and_goal = defaultdict(list)
+    for row in tasks_with_intervals:
+        interval_date = parse_interval_date(row["interval_date"])
+        goal_id = row["assigned_goal_id"]
+        status = row["task_status"]
+        tasks_by_date_and_goal[(interval_date, goal_id)].append(status)
+    return tasks_by_date_and_goal
+
+
+def compute_progress(
+    tasks_by_date_and_goal: Dict[Tuple[date, str], List[str]],
+    start_date: date,
+    end_date: date,
+    target_status: Status,
+) -> Dict[str, int]:
+    progress = {}
+    current_date = start_date
+    while current_date <= end_date:
+        date_str = current_date.strftime("%Y-%m-%d")
+        count = 0
+        for (date_key, goal_id), statuses in tasks_by_date_and_goal.items():
+            if date_key == current_date and all(s == target_status for s in statuses):
+                count += 1
+        progress[date_str] = count
+        current_date += timedelta(days=1)
+    return progress
+
+
+def compute_weekly_distribution(
+    tasks_with_intervals: List[Dict], start_date: date, end_date: date
+) -> Dict[str, int]:
+    date_counts = defaultdict(int)
+    for row in tasks_with_intervals:
+        interval_date = parse_interval_date(row["interval_date"])
+        if start_date <= interval_date <= end_date:
+            date_str = interval_date.strftime("%Y-%m-%d")
+            date_counts[date_str] += 1
+    distribution = {}
+    current_date = start_date
+    while current_date <= end_date:
+        date_str = current_date.strftime("%Y-%m-%d")
+        distribution[date_str] = date_counts.get(date_str, 0)
+        current_date += timedelta(days=1)
+    return distribution
+
+
+def compute_weekly_progress(
+    tasks_by_date_and_goal: Dict[Tuple[date, str], List[str]],
+) -> Dict[str, int]:
+    weekly_progress = {
+        day: 0 for day in ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
+    }
+    weekday_names = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
+    for (date_key, _), statuses in tasks_by_date_and_goal.items():
+        if all(s == Status.SUCCESS for s in statuses):
+            weekday = weekday_names[date_key.weekday() + 1 % 7]
+            weekly_progress[weekday] += 1
+    return weekly_progress
+
+
+async def compute_goals_analysis(
+    assigned_goals: List[Dict],
+    weekly_progress: Dict,
+    last_7_days: Dict,
+    last_14_days: Dict,
+    this_month: Dict,
+    last_month: Dict,
+) -> Dict:
+    analysis = {
+        "total": 0,
+        "completed": 0,
+        "success": {"count": 0, "list": []},
+        "failed": {"count": 0, "list": []},
+        "pending": 0,
+        "success_rate": 0,
+        "weekly_progress_overview": weekly_progress,
+        "last_7_days": last_7_days,
+        "last_14_days": last_14_days,
+        "this_month": this_month,
+        "last_month": last_month,
+    }
+    for row in assigned_goals:
+        analysis["total"] += 1
+        goal = {
+            "id": row["assigned_goal_id"],
+            "title": row["title"],
+            "type": row["type"],
+        }
+        status = row["status"]
+        if status == Status.SUCCESS:
+            analysis["success"]["count"] += 1
+            analysis["success"]["list"].append(goal)
+            analysis["completed"] += 1
+        elif status == Status.FAILED:
+            analysis["failed"]["count"] += 1
+            analysis["failed"]["list"].append(goal)
+            analysis["completed"] += 1
+        else:
+            analysis["pending"] += 1
+    if analysis["total"] > 0:
+        analysis["success_rate"] = round(
+            (analysis["success"]["count"] / analysis["total"]) * 100, 2
+        )
+    return analysis
+
+
+async def compute_tasks_analysis(
+    assigned_tasks: List[Dict], weekly_distribution: Dict
+) -> Dict:
+    analysis = {
+        "total": 0,
+        "completed": 0,
+        "success": {"count": 0, "list": []},
+        "failed": {"count": 0, "list": []},
+        "pending": 0,
+        "success_rate": 0,
+        "weekly_distribution": weekly_distribution,
+    }
+    for row in assigned_tasks:
+        analysis["total"] += 1
+        task = {
+            "id": row["assigned_task_id"],
+            "from": row["assigned_goal_id"],
+            "title": row["title"],
+            "description": row["description"],
+        }
+        status = row["status"]
+        if status == Status.SUCCESS:
+            analysis["success"]["count"] += 1
+            analysis["success"]["list"].append(task)
+            analysis["completed"] += 1
+        elif status == Status.FAILED:
+            analysis["failed"]["count"] += 1
+            analysis["failed"]["list"].append(task)
+            analysis["completed"] += 1
+        else:
+            analysis["pending"] += 1
+    if analysis["total"] > 0:
+        analysis["success_rate"] = round(
+            (analysis["success"]["count"] / analysis["total"]) * 100, 2
+        )
+    return analysis
+
+
+async def compute_template_analysis(templates: List[Dict]) -> Dict:
+    category_usage = {cat: 0 for cat in TemplateCategory}
+    analysis = {
+        "total": len(templates),
+        "category_usage": category_usage,
+    }
+    for row in templates:
+        category = row["category"].lower()
+        if category in analysis["category_usage"]:
+            analysis["category_usage"][category] += 1
+        else:
+            analysis["category_usage"][TemplateCategory.OTHER] += 1
+    return analysis
 
 
 @router.get("")
@@ -254,29 +272,69 @@ async def read_analysis(user_id: str):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
-            week_ago = datetime.now() - timedelta(days=6)
             today = datetime.now()
+            week_ago = today - timedelta(days=6)
+            two_week_ago = today - timedelta(days=13)
+            start_of_month = today.replace(day=1)
+            end_of_month = (start_of_month + timedelta(days=32)).replace(
+                day=1
+            ) - timedelta(days=1)
+            start_of_past_month = (start_of_month - timedelta(days=1)).replace(day=1)
+            end_of_past_month = start_of_month - timedelta(days=1)
 
-            goals_weekly_progress = await compute_weekly_progress(
-                conn, user_id, week_ago, today
+            tasks_with_intervals = await fetch_tasks_with_intervals(conn, user_id)
+            assigned_goals = await fetch_assigned_goals(conn, user_id)
+            assigned_tasks = await fetch_assigned_tasks(conn, user_id)
+            templates = await fetch_templates(conn, user_id)
+
+            tasks_by_date_and_goal = process_tasks_by_date_and_goal(
+                tasks_with_intervals
             )
-            tasks_weekly_distribution = await compute_weekly_tasks_distribution(
-                conn, user_id, week_ago, today
+            weekly_progress = compute_weekly_progress(tasks_by_date_and_goal)
+
+            last_week_progress = compute_progress(
+                tasks_by_date_and_goal, week_ago.date(), today.date(), Status.SUCCESS
+            )
+            last_two_weeks_progress = compute_progress(
+                tasks_by_date_and_goal,
+                two_week_ago.date(),
+                today.date(),
+                Status.SUCCESS,
+            )
+            this_month_progress = compute_progress(
+                tasks_by_date_and_goal,
+                start_of_month.date(),
+                end_of_month.date(),
+                Status.SUCCESS,
+            )
+            last_month_progress = compute_progress(
+                tasks_by_date_and_goal,
+                start_of_past_month.date(),
+                end_of_past_month.date(),
+                Status.SUCCESS,
+            )
+
+            tasks_weekly_distribution = compute_weekly_distribution(
+                tasks_with_intervals, week_ago.date(), today.date()
             )
 
             goals_analysis = await compute_goals_analysis(
-                conn, user_id, goals_weekly_progress
+                assigned_goals,
+                weekly_progress,
+                last_week_progress,
+                last_two_weeks_progress,
+                this_month_progress,
+                last_month_progress,
             )
             tasks_analysis = await compute_tasks_analysis(
-                conn, user_id, tasks_weekly_distribution
+                assigned_tasks, tasks_weekly_distribution
             )
-            template_analysis = await compute_template_analysis(conn, user_id)
+            template_analysis = await compute_template_analysis(templates)
 
             return {
                 "goals": goals_analysis,
                 "tasks": tasks_analysis,
                 "templates": template_analysis,
             }
-
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
