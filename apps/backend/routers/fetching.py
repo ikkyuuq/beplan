@@ -44,7 +44,7 @@ class GoalUpdateRequest(BaseModel):
 class TaskUpdateRequest(BaseModel):
     to:Status
     user_id:str
-    assigned_task_id: int
+    assigned_task_id: List[int]
 
 
 @router.get("/goals")
@@ -187,7 +187,7 @@ async def update_task_status(request: TaskUpdateRequest):
             SELECT at.* 
             FROM public.assigned_task at
             JOIN public.assigned_goal ag ON at.assigned_goal_id = ag.id
-            WHERE at.id = $1
+            WHERE at.id = ANY($1)
             AND ag.user_id = $2
             AND at.status = 'pending'
 
@@ -205,7 +205,7 @@ async def update_task_status(request: TaskUpdateRequest):
             """
             UPDATE public.assigned_task
             SET status = $1::status
-            WHERE id = $2
+            WHERE id = ANY($2)
             """,
             request.to,
             request.assigned_task_id,
