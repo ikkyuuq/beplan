@@ -8,7 +8,6 @@ import {
   Platform,
   StyleSheet,
   ActivityIndicator,
-  Dimensions,
   Keyboard,
   KeyboardAvoidingView,
   Image,
@@ -128,7 +127,6 @@ export default function CreateScreen() {
   const searchInputRef = useRef<TextInput>(null);
 
   const router = useRouter();
-  const { width: screenWidth } = Dimensions.get("window");
 
   // ====================== Mock Data ======================
   // Predefined suggestions
@@ -246,20 +244,6 @@ export default function CreateScreen() {
     }
   };
 
-  const handleSearchSubmit = () => {
-    if (searchQuery.trim()) {
-      console.log("Searching for:", searchQuery);
-      Keyboard.dismiss();
-      setSuggestions([]);
-    }
-  };
-
-  const handleSuggestionSelect = (suggestion: string) => {
-    setSearchQuery(suggestion);
-    setSuggestions([]);
-    Keyboard.dismiss();
-  };
-
   const handleTemplateSelect = (template: any) => {
     const selectedTemplate: Template = {
       title: template.title,
@@ -317,7 +301,6 @@ export default function CreateScreen() {
 
   const navigateToAI = () => {
     Keyboard.dismiss();
-    // This would be implemented to navigate to an AI assistant view
     console.log("Navigate to AI assistant");
   };
 
@@ -366,7 +349,6 @@ export default function CreateScreen() {
               onChangeText={handleSearchChange}
               onFocus={handleSearchFocus}
               onBlur={handleSearchBlur}
-              onSubmitEditing={handleSearchSubmit}
               returnKeyType="search"
             />
             {searchQuery.length > 0 && (
@@ -381,22 +363,6 @@ export default function CreateScreen() {
               <Ionicons name="chatbubble-ellipses" size={22} color="#4F46E5" />
             </TouchableOpacity>
           </View>
-
-          {/* Search Suggestions */}
-          {suggestions.length > 0 && (
-            <View style={styles.suggestionsContainer}>
-              {suggestions.map((suggestion, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.suggestionItem}
-                  onPress={() => handleSuggestionSelect(suggestion)}
-                >
-                  <Ionicons name="search-outline" size={16} color="#777" />
-                  <Text style={styles.suggestionText}>{suggestion}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
         </Animated.View>
 
         {/* Custom Goal Button */}
@@ -624,6 +590,78 @@ export default function CreateScreen() {
             </View>
           </View>
         </Modal>
+      </View>
+
+      <View style={styles.testButtonContainer}>
+        <TouchableOpacity
+          style={styles.testButton}
+          onPress={() => {
+            // Get today's date
+            const today = new Date();
+
+            // Set start date to 7 days in the past (for already started goal)
+            const pastDate = new Date(today);
+            pastDate.setDate(today.getDate() - 7);
+
+            // Set due date to 14 days in the future
+            const futureDate = new Date(today);
+            futureDate.setDate(today.getDate() + 14);
+
+            // Format dates as YYYY-MM-DD
+            const formattedPastDate = pastDate.toISOString().split("T")[0];
+            const formattedFutureDate = futureDate.toISOString().split("T")[0];
+
+            // Mock Data for custom goal test
+            const testGoalData = {
+              title: "Test Goal from Create Screen",
+              startDate: formattedPastDate,
+              dueDate: formattedFutureDate,
+              tasks: [
+                {
+                  title: "Task 1: Read a book",
+                  description: "Finish reading 'Atomic Habits' by James Clear",
+                  type: "normal",
+                  selectedDates: ["2025-03-02", "2025-03-05", "2025-03-07"],
+                  selectedDaysOfWeek: [],
+                  status: "pending",
+                },
+                {
+                  title: "Task 2: Daily Exercise",
+                  description: "Complete 30 minutes of cardio each day",
+                  type: "daily",
+                  selectedDates: [],
+                  selectedDaysOfWeek: [],
+                  status: "pending",
+                },
+                {
+                  title: "Task 3: Practice coding",
+                  description:
+                    "Work on React Native project for at least 1 hour",
+                  type: "weekly",
+                  selectedDates: [],
+                  selectedDaysOfWeek: [1, 3, 5],
+                  status: "completed",
+                },
+                {
+                  title: "Task 4: Plan the month",
+                  description: "Set up goals and budget for the month",
+                  type: "monthly",
+                  selectedDates: ["2025-03-16"],
+                  selectedDaysOfWeek: [],
+                  status: "failed",
+                },
+              ],
+            };
+
+            // Navigate to customGoal with test data
+            router.push({
+              pathname: "/(other)/customGoal",
+              params: { initialGoalData: JSON.stringify(testGoalData) },
+            });
+          }}
+        >
+          <Text style={styles.testButtonText}>Test Custom Goal</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Loading Indicator */}
@@ -946,5 +984,24 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: 16,
     fontWeight: "bold",
+  },
+
+  testButtonContainer: {
+    position: "absolute",
+    bottom: 20,
+    right: 20,
+    zIndex: 100,
+  },
+  testButton: {
+    backgroundColor: "#4F46E5",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    opacity: 0.8,
+  },
+  testButtonText: {
+    color: "#FFF",
+    fontWeight: "500",
+    fontSize: 14,
   },
 });
