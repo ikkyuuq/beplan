@@ -318,59 +318,67 @@ const TaskProgressSummary = ({ taskList }: { taskList: Task[] }) => {
   const failedWidth = (failedCount / taskList.length) * 100;
 
   return (
-    <View style={styles.progressSummary}>
-      <View style={styles.progressHeader}>
-        <Text style={styles.progressTitle}>Progress Summary</Text>
-        <Text style={styles.progressTotal}>{taskList.length} total tasks</Text>
-      </View>
-
-      <View style={styles.progressContainer}>
-        {/* Progress Bar */}
-        <View style={styles.progressBarContainer}>
-          <View style={styles.progressBarContent}>
-            {pendingCount > 0 && (
-              <View
-                style={[
-                  styles.progressBarSegment,
-                  styles.pendingSegment,
-                  { width: `${pendingWidth}%` },
-                ]}
-              />
-            )}
-            {completedCount > 0 && (
-              <View
-                style={[
-                  styles.progressBarSegment,
-                  styles.completedSegment,
-                  { width: `${completedWidth}%` },
-                ]}
-              />
-            )}
-            {failedCount > 0 && (
-              <View
-                style={[
-                  styles.progressBarSegment,
-                  styles.failedSegment,
-                  { width: `${failedWidth}%` },
-                ]}
-              />
-            )}
-          </View>
+    <View>
+      <View style={styles.progressSummary}>
+        <View style={styles.progressHeader}>
+          <Text style={styles.progressTitle}>Progress Summary</Text>
+          <Text style={styles.progressTotal}>
+            {taskList.length} total tasks
+          </Text>
         </View>
 
-        {/* Progress Legend */}
-        <View style={styles.progressLegend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendIndicator, styles.pendingIndicator]} />
-            <Text style={styles.legendText}>Pending ({pendingCount})</Text>
+        <View style={styles.progressContainer}>
+          {/* Progress Bar */}
+          <View style={styles.progressBarContainer}>
+            <View style={styles.progressBarContent}>
+              {pendingCount > 0 && (
+                <View
+                  style={[
+                    styles.progressBarSegment,
+                    styles.pendingSegment,
+                    { width: `${pendingWidth}%` },
+                  ]}
+                />
+              )}
+              {completedCount > 0 && (
+                <View
+                  style={[
+                    styles.progressBarSegment,
+                    styles.completedSegment,
+                    { width: `${completedWidth}%` },
+                  ]}
+                />
+              )}
+              {failedCount > 0 && (
+                <View
+                  style={[
+                    styles.progressBarSegment,
+                    styles.failedSegment,
+                    { width: `${failedWidth}%` },
+                  ]}
+                />
+              )}
+            </View>
           </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendIndicator, styles.completedIndicator]} />
-            <Text style={styles.legendText}>Completed ({completedCount})</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendIndicator, styles.failedIndicator]} />
-            <Text style={styles.legendText}>Failed ({failedCount})</Text>
+
+          {/* Progress Legend */}
+          <View style={styles.progressLegend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendIndicator, styles.pendingIndicator]} />
+              <Text style={styles.legendText}>Pending ({pendingCount})</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendIndicator, styles.completedIndicator]}
+              />
+              <Text style={styles.legendText}>
+                Completed ({completedCount})
+              </Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendIndicator, styles.failedIndicator]} />
+              <Text style={styles.legendText}>Failed ({failedCount})</Text>
+            </View>
           </View>
         </View>
       </View>

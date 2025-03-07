@@ -281,6 +281,71 @@ export default function CreateScreen() {
     }, 400);
   };
 
+  const handleTestGoal = () => {
+    setIsOptionModalVisible(false);
+    setIsLoading(true);
+
+    const today = new Date();
+
+    // Set start date to 7 days in the past (for already started goal)
+    const pastDate = new Date(today);
+    pastDate.setDate(today.getDate() - 7);
+
+    // Set due date to 14 days in the future
+    const futureDate = new Date(today);
+    futureDate.setDate(today.getDate() + 14);
+
+    const formattedPastDate = pastDate.toISOString().split("T")[0];
+    const formattedFutureDate = futureDate.toISOString().split("T")[0];
+    const testGoalData = {
+      title: "Test Goal from Create Screen",
+      startDate: formattedPastDate,
+      dueDate: formattedFutureDate,
+      tasks: [
+        {
+          title: "Task 1: Read a book",
+          description: "Finish reading 'Atomic Habits' by James Clear",
+          type: "normal",
+          selectedDates: ["2025-03-02", "2025-03-05", "2025-03-07"],
+          selectedDaysOfWeek: [],
+          status: "pending",
+        },
+        {
+          title: "Task 2: Daily Exercise",
+          description: "Complete 30 minutes of cardio each day",
+          type: "daily",
+          selectedDates: [],
+          selectedDaysOfWeek: [],
+          status: "pending",
+        },
+        {
+          title: "Task 3: Practice coding",
+          description: "Work on React Native project for at least 1 hour",
+          type: "weekly",
+          selectedDates: [],
+          selectedDaysOfWeek: [1, 3, 5],
+          status: "completed",
+        },
+        {
+          title: "Task 4: Plan the month",
+          description: "Set up goals and budget for the month",
+          type: "monthly",
+          selectedDates: ["2025-03-16"],
+          selectedDaysOfWeek: [],
+          status: "failed",
+        },
+      ],
+    };
+
+    setTimeout(() => {
+      router.push({
+        pathname: "/(other)/customGoal",
+        params: { initialGoalData: JSON.stringify(testGoalData) },
+      });
+      setIsLoading(false);
+    }, 400);
+  };
+
   const handleSearchFocus = () => {
     setIsSearchFocused(true);
     if (searchQuery.length > 0) {
@@ -293,7 +358,6 @@ export default function CreateScreen() {
 
   const handleSearchBlur = () => {
     setIsSearchFocused(false);
-    // Delay hiding suggestions to allow for tapping them
     setTimeout(() => {
       setSuggestions([]);
     }, 200);
@@ -305,7 +369,6 @@ export default function CreateScreen() {
   };
 
   // ====================== View All Handlers ======================
-  // Set templates based on which View All button was clicked
   useEffect(() => {
     if (isViewAllTemplatesVisible) {
       setFilteredTemplates(templateData);
@@ -502,6 +565,22 @@ export default function CreateScreen() {
               </View>
               <Feather name="chevron-right" size={22} color="#999" />
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={handleTestGoal}
+            >
+              <View style={[styles.optionIcon, { backgroundColor: "black" }]}>
+                <Ionicons name="happy-outline" size={22} color="#FFF" />
+              </View>
+              <View style={styles.optionContent}>
+                <Text style={styles.optionTitle}>Test Fucking Cutomize Goal</Text>
+                <Text style={styles.optionDescription}>
+                 Kuy  8====D  Kuy 
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={22} color="#999" />
+            </TouchableOpacity>
           </View>
         </Modal>
       </View>
@@ -591,79 +670,6 @@ export default function CreateScreen() {
           </View>
         </Modal>
       </View>
-
-      <View style={styles.testButtonContainer}>
-        <TouchableOpacity
-          style={styles.testButton}
-          onPress={() => {
-            // Get today's date
-            const today = new Date();
-
-            // Set start date to 7 days in the past (for already started goal)
-            const pastDate = new Date(today);
-            pastDate.setDate(today.getDate() - 7);
-
-            // Set due date to 14 days in the future
-            const futureDate = new Date(today);
-            futureDate.setDate(today.getDate() + 14);
-
-            // Format dates as YYYY-MM-DD
-            const formattedPastDate = pastDate.toISOString().split("T")[0];
-            const formattedFutureDate = futureDate.toISOString().split("T")[0];
-
-            // Mock Data for custom goal test
-            const testGoalData = {
-              title: "Test Goal from Create Screen",
-              startDate: formattedPastDate,
-              dueDate: formattedFutureDate,
-              tasks: [
-                {
-                  title: "Task 1: Read a book",
-                  description: "Finish reading 'Atomic Habits' by James Clear",
-                  type: "normal",
-                  selectedDates: ["2025-03-02", "2025-03-05", "2025-03-07"],
-                  selectedDaysOfWeek: [],
-                  status: "pending",
-                },
-                {
-                  title: "Task 2: Daily Exercise",
-                  description: "Complete 30 minutes of cardio each day",
-                  type: "daily",
-                  selectedDates: [],
-                  selectedDaysOfWeek: [],
-                  status: "pending",
-                },
-                {
-                  title: "Task 3: Practice coding",
-                  description:
-                    "Work on React Native project for at least 1 hour",
-                  type: "weekly",
-                  selectedDates: [],
-                  selectedDaysOfWeek: [1, 3, 5],
-                  status: "completed",
-                },
-                {
-                  title: "Task 4: Plan the month",
-                  description: "Set up goals and budget for the month",
-                  type: "monthly",
-                  selectedDates: ["2025-03-16"],
-                  selectedDaysOfWeek: [],
-                  status: "failed",
-                },
-              ],
-            };
-
-            // Navigate to customGoal with test data
-            router.push({
-              pathname: "/(other)/customGoal",
-              params: { initialGoalData: JSON.stringify(testGoalData) },
-            });
-          }}
-        >
-          <Text style={styles.testButtonText}>Test Custom Goal</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Loading Indicator */}
       {isLoading && (
         <View style={styles.overlay}>
@@ -909,30 +915,6 @@ const styles = StyleSheet.create({
     color: "#666",
   },
 
-  // Category Styles
-  categoryFilterContainer: {
-    paddingBottom: 16,
-    gap: 8,
-  },
-  categoryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#F5F5F5",
-    marginRight: 8,
-  },
-  categoryButtonActive: {
-    backgroundColor: "#4F46E5",
-  },
-  categoryButtonText: {
-    fontSize: 14,
-    color: "#666",
-  },
-  categoryButtonTextActive: {
-    color: "#FFF",
-    fontWeight: "500",
-  },
-
   // Template Grid Styles
   templatesScrollView: {
     flex: 1,
@@ -984,24 +966,5 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: 16,
     fontWeight: "bold",
-  },
-
-  testButtonContainer: {
-    position: "absolute",
-    bottom: 20,
-    right: 20,
-    zIndex: 100,
-  },
-  testButton: {
-    backgroundColor: "#4F46E5",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    opacity: 0.8,
-  },
-  testButtonText: {
-    color: "#FFF",
-    fontWeight: "500",
-    fontSize: 14,
   },
 });
