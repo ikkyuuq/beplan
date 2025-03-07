@@ -32,7 +32,7 @@ type CustomGoalUIProps = {
   isFormValid: boolean;
   isLoading: boolean;
   goalStarted: boolean;
-  isEditingGoal: boolean; // ✅ เพิ่มตัวแปรนี้
+  isEditingGoal: boolean;
 
   // Event Handlers
   setGoalTitle: (text: string) => void;
@@ -47,16 +47,16 @@ type CustomGoalUIProps = {
 
   // Debug Functions
   testLogData: () => void;
-  setIsEditingGoal: (isEditing: boolean) => void; // ✅ เพิ่มตัวแปรนี้
+  setIsEditingGoal: (isEditing: boolean) => void;
 };
 
 // Helper Functions
 const getTaskColor = (type: string) => {
   const taskColors: Record<string, string> = {
-    normal: "#4F46E5",
-    daily: "#4CAF50",
-    weekly: "#FFC107",
-    monthly: "#FF5733",
+    normal: "#D500F9",
+    daily: "#00BFA5",
+    weekly: "#FFC400",
+    monthly: "#FF7043",
   };
   return taskColors[type] || "#888";
 };
@@ -69,6 +69,16 @@ const getTaskLabel = (type: string) => {
     monthly: "Monthly",
   };
   return taskTypeLabels[type] || type;
+};
+
+// Status Color Helper
+const getStatusColor = (status: string) => {
+  const statusColors: Record<string, string> = {
+    pending: "#4F46E5",
+    completed: "#4CAF50",
+    failed: "#B71C1C",
+  };
+  return statusColors[status] || "#888";
 };
 
 // ====================== Main Component ======================
@@ -335,8 +345,10 @@ const TaskProgressSummary = ({ taskList }: { taskList: Task[] }) => {
                 <View
                   style={[
                     styles.progressBarSegment,
-                    styles.pendingSegment,
-                    { width: `${pendingWidth}%` },
+                    {
+                      backgroundColor: getStatusColor("pending"),
+                      width: `${pendingWidth}%`,
+                    },
                   ]}
                 />
               )}
@@ -344,8 +356,10 @@ const TaskProgressSummary = ({ taskList }: { taskList: Task[] }) => {
                 <View
                   style={[
                     styles.progressBarSegment,
-                    styles.completedSegment,
-                    { width: `${completedWidth}%` },
+                    {
+                      backgroundColor: getStatusColor("completed"),
+                      width: `${completedWidth}%`,
+                    },
                   ]}
                 />
               )}
@@ -353,8 +367,10 @@ const TaskProgressSummary = ({ taskList }: { taskList: Task[] }) => {
                 <View
                   style={[
                     styles.progressBarSegment,
-                    styles.failedSegment,
-                    { width: `${failedWidth}%` },
+                    {
+                      backgroundColor: getStatusColor("failed"),
+                      width: `${failedWidth}%`,
+                    },
                   ]}
                 />
               )}
@@ -364,19 +380,32 @@ const TaskProgressSummary = ({ taskList }: { taskList: Task[] }) => {
           {/* Progress Legend */}
           <View style={styles.progressLegend}>
             <View style={styles.legendItem}>
-              <View style={[styles.legendIndicator, styles.pendingIndicator]} />
+              <View
+                style={[
+                  styles.legendIndicator,
+                  { backgroundColor: getStatusColor("pending") },
+                ]}
+              />
               <Text style={styles.legendText}>Pending ({pendingCount})</Text>
             </View>
             <View style={styles.legendItem}>
               <View
-                style={[styles.legendIndicator, styles.completedIndicator]}
+                style={[
+                  styles.legendIndicator,
+                  { backgroundColor: getStatusColor("completed") },
+                ]}
               />
               <Text style={styles.legendText}>
                 Completed ({completedCount})
               </Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendIndicator, styles.failedIndicator]} />
+              <View
+                style={[
+                  styles.legendIndicator,
+                  { backgroundColor: getStatusColor("failed") },
+                ]}
+              />
               <Text style={styles.legendText}>Failed ({failedCount})</Text>
             </View>
           </View>
@@ -409,11 +438,7 @@ const TaskList = ({
               <View
                 style={[
                   styles.statusIndicator,
-                  status === "pending"
-                    ? styles.pendingIndicator
-                    : status === "completed"
-                    ? styles.completedIndicator
-                    : styles.failedIndicator,
+                  { backgroundColor: getStatusColor(status) },
                 ]}
               />
               <Text style={styles.statusTitle}>
@@ -828,15 +853,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginRight: 8,
   },
-  pendingIndicator: {
-    backgroundColor: "#4F46E5", // Blue for pending
-  },
-  completedIndicator: {
-    backgroundColor: "#4CAF50", // Green for completed
-  },
-  failedIndicator: {
-    backgroundColor: "#FF3B30", // Red for failed
-  },
   statusTitle: {
     color: "#FFF",
     fontSize: 16,
@@ -892,15 +908,6 @@ const styles = StyleSheet.create({
   },
   progressBarSegment: {
     height: "100%",
-  },
-  pendingSegment: {
-    backgroundColor: "#4F46E5",
-  },
-  completedSegment: {
-    backgroundColor: "#4CAF50",
-  },
-  failedSegment: {
-    backgroundColor: "#FF3B30",
   },
   progressLegend: {
     flexDirection: "row",
