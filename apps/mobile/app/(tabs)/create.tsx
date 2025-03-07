@@ -6,6 +6,7 @@ import {
   ScrollView,
   Platform,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 import Header from "@/components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -22,15 +23,20 @@ import { router } from "expo-router";
 import { Template } from "@/types/templateTypes";
 import TemplateModal from "@/components/TemplateModal";
 import Animated from "react-native-reanimated";
+import Modal from "react-native-modal";
 
 // ====================== Main Component ======================
 export default function CreateScreen() {
   // ====================== Animation Values ======================
   const scale = useSharedValue(1);
-  
+
   // ====================== State Management ======================
-  const [isModalVisible, setModalVisible] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isOptionModalVisible, setIsOptionModalVisible] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
+    null
+  );
+  const [isLoading, setIsLoading] = useState(false);
 
   // ====================== Animation Setup ======================
   useEffect(() => {
@@ -38,7 +44,7 @@ export default function CreateScreen() {
     scale.value = withRepeat(
       withTiming(1.03, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
       -1,
-      true,
+      true
     );
   }, []);
 
@@ -61,34 +67,38 @@ export default function CreateScreen() {
     {
       title: "Cristiano Ronaldo",
       category: "Travel",
-      description: "Embark on a transformative journey with Cristiano Ronaldo as your guide. This travel goal is designed to help you break free from the ordinary and explore the world with a refined sense of luxury and adventure. Discover hidden destinations, learn insider travel tips, and gain inspiration to craft your own unforgettable experiences. Whether planning a quick escape or a long vacation, let Cristiano's expertise lead you toward a richer, more adventurous life.",
+      description:
+        "Embark on a transformative journey with Cristiano Ronaldo as your guide. This travel goal is designed to help you break free from the ordinary and explore the world with a refined sense of luxury and adventure. Discover hidden destinations, learn insider travel tips, and gain inspiration to craft your own unforgettable experiences. Whether planning a quick escape or a long vacation, let Cristiano's expertise lead you toward a richer, more adventurous life.",
       image: "https://picsum.photos/seed/ronaldo/200/300",
       owner: "BePlan",
-      goals_id: ["goal_001", "goal_002"]
+      goals_id: ["goal_001", "goal_002"],
     },
     {
       title: "Lionel Messi",
       category: "Travel",
-      description: "Inspired by Lionel Messi's passion and creativity, this goal invites you to dive into vibrant cultures and dynamic cityscapes. It's all about exploring local traditions, savoring culinary delights, and uncovering unique experiences that make every journey memorable. With curated itineraries and practical tips, you'll transform ordinary trips into epic adventures that resonate with both heart and soul.",
+      description:
+        "Inspired by Lionel Messi's passion and creativity, this goal invites you to dive into vibrant cultures and dynamic cityscapes. It's all about exploring local traditions, savoring culinary delights, and uncovering unique experiences that make every journey memorable. With curated itineraries and practical tips, you'll transform ordinary trips into epic adventures that resonate with both heart and soul.",
       image: "https://picsum.photos/seed/messi/200/300",
       owner: "BePlan",
-      goals_id: ["goal_001", "goal_003"]
+      goals_id: ["goal_001", "goal_003"],
     },
     {
       title: "Neymar Jr",
       category: "Travel",
-      description: "Unleash your adventurous spirit with Neymar Jr's travel goal. Geared toward thrill-seekers and cultural explorers alike, this goal pushes you to discover exotic locales and embrace new experiences with energy and enthusiasm. Learn how to navigate unfamiliar territories while balancing excitement with practicality, ensuring that every trip becomes a memorable chapter in your travel story.",
+      description:
+        "Unleash your adventurous spirit with Neymar Jr's travel goal. Geared toward thrill-seekers and cultural explorers alike, this goal pushes you to discover exotic locales and embrace new experiences with energy and enthusiasm. Learn how to navigate unfamiliar territories while balancing excitement with practicality, ensuring that every trip becomes a memorable chapter in your travel story.",
       image: "https://picsum.photos/seed/neymarjr/200/300",
       owner: "BePlan",
-      goals_id: ["goal_002", "goal_004"]
+      goals_id: ["goal_002", "goal_004"],
     },
     {
       title: "Olivier Giroud",
       category: "Travel",
-      description: "Experience a harmonious blend of elegance and adventure with Olivier Giroud's travel goal. Tailored for those who appreciate sophisticated journeys, this goal provides a roadmap to explore luxurious destinations with precision and style. Gain access to exclusive tips, insider recommendations, and curated itineraries that make every adventure a perfect balance of leisure and cultural enrichment.",
+      description:
+        "Experience a harmonious blend of elegance and adventure with Olivier Giroud's travel goal. Tailored for those who appreciate sophisticated journeys, this goal provides a roadmap to explore luxurious destinations with precision and style. Gain access to exclusive tips, insider recommendations, and curated itineraries that make every adventure a perfect balance of leisure and cultural enrichment.",
       image: "https://picsum.photos/seed/giroud/200/300",
       owner: "BePlan",
-      goals_id: ["goal_001", "goal_005"]
+      goals_id: ["goal_001", "goal_005"],
     },
   ];
 
@@ -97,26 +107,29 @@ export default function CreateScreen() {
     {
       title: "Healthy Living",
       category: "Health",
-      description: "Healthy Living is more than just a goal—it's a community dedicated to transforming everyday habits into a lifestyle of wellness. This goal empowers you with scientifically-backed nutrition tips, dynamic workout routines, and mindfulness practices that nourish both body and mind. Join us to unlock the secrets of holistic well-being, develop sustainable healthy habits, and become the best version of yourself.",
+      description:
+        "Healthy Living is more than just a goal—it's a community dedicated to transforming everyday habits into a lifestyle of wellness. This goal empowers you with scientifically-backed nutrition tips, dynamic workout routines, and mindfulness practices that nourish both body and mind. Join us to unlock the secrets of holistic well-being, develop sustainable healthy habits, and become the best version of yourself.",
       image: "https://picsum.photos/seed/health/200/300",
       owner: "John Doe",
-      goals_id: ["goal_001", "goal_002"]
+      goals_id: ["goal_001", "goal_002"],
     },
     {
       title: "Be Better Than Messi",
       category: "Workout",
-      description: "Set your sights on peak performance with the 'Be Better Than Messi' workout goal. This dynamic challenge is designed to push your limits through high-energy training routines, competitive challenges, and motivational community support. Whether you're building strength, agility, or endurance, this goal inspires you to surpass your personal bests and redefine what you thought was possible in your fitness journey.",
+      description:
+        "Set your sights on peak performance with the 'Be Better Than Messi' workout goal. This dynamic challenge is designed to push your limits through high-energy training routines, competitive challenges, and motivational community support. Whether you're building strength, agility, or endurance, this goal inspires you to surpass your personal bests and redefine what you thought was possible in your fitness journey.",
       image: "https://picsum.photos/seed/better_messi/200/300",
       owner: "Jane Doe",
-      goals_id: ["goal_002", "goal_003"]
+      goals_id: ["goal_002", "goal_003"],
     },
     {
       title: "One Punch Man",
       category: "Workout",
-      description: "Inspired by the unstoppable energy of anime heroes, the 'One Punch Man' workout goal challenges you to maximize impact with every session. Built around high-intensity interval training and power-packed exercises, this goal transforms your workout routine into an epic quest for strength and endurance. Embrace a philosophy of efficiency and relentless progress as you join a community of fighters dedicated to breaking barriers and achieving extraordinary results.",
+      description:
+        "Inspired by the unstoppable energy of anime heroes, the 'One Punch Man' workout goal challenges you to maximize impact with every session. Built around high-intensity interval training and power-packed exercises, this goal transforms your workout routine into an epic quest for strength and endurance. Embrace a philosophy of efficiency and relentless progress as you join a community of fighters dedicated to breaking barriers and achieving extraordinary results.",
       image: "https://picsum.photos/seed/anime/200/300",
       owner: "John Doe",
-      goals_id: ["goal_003", "goal_004"]
+      goals_id: ["goal_003", "goal_004"],
     },
   ];
 
@@ -129,16 +142,34 @@ export default function CreateScreen() {
       category: template.category,
       image: template.image,
       isFavorite: false, // Default value
-      goals_id: template.goals_id || []
+      goals_id: template.goals_id || [],
     };
-    
+
     setSelectedTemplate(selectedTemplate);
-    setModalVisible(true);
+    setIsModalVisible(true);
   };
 
   // ====================== Navigation Handlers ======================
+  const handleOpenOptionModal = () => {
+    setIsOptionModalVisible(true);
+  };
+
   const handleCreateCustomGoal = () => {
-    router.push("/customGoal");
+    setIsOptionModalVisible(false);
+    setIsLoading(true);
+    setTimeout(() => {
+      router.push("/customGoal");
+      setIsLoading(false);
+    }, 400);
+  };
+
+  const handleCreateTemplate = () => {
+    setIsOptionModalVisible(false);
+    setIsLoading(true);
+    setTimeout(() => {
+      router.push("/(other)/createTemplate");
+      setIsLoading(false);
+    }, 400);
   };
 
   // ====================== Render UI ======================
@@ -151,7 +182,7 @@ export default function CreateScreen() {
             Let's we help you make your dream come true.
           </Text>
         </View>
-        
+
         {/* Search Input */}
         <View style={styles.searchContainer}>
           <MaterialCommunityIcons
@@ -173,55 +204,52 @@ export default function CreateScreen() {
             />
           </TouchableOpacity>
         </View>
-        
+
         {/* Custom Goal Button */}
         <View style={styles.customGoalButtonContainer}>
           <Animated.View style={animatedStyle}>
             <TouchableOpacity
               activeOpacity={0.8}
               style={styles.customGoalButton}
-              onPress={handleCreateCustomGoal}
+              onPress={handleOpenOptionModal}
             >
-              <MaterialCommunityIcons name="home-plus" size={18} color="#16171F" style={styles.buttonIcon} />
-              <Text style={styles.customGoalButtonText}>
-                Build Your Own
-              </Text>
+              <MaterialCommunityIcons
+                name="home-plus"
+                size={18}
+                color="#16171F"
+                style={styles.buttonIcon}
+              />
+              <Text style={styles.customGoalButtonText}>Build Your Own</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
       </Header>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Template Section */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleContainer}>
-              <MaterialCommunityIcons name="book-open-page-variant" size={24} color="black" />
+              <MaterialCommunityIcons
+                name="book-open-page-variant"
+                size={24}
+                color="black"
+              />
               <Text style={styles.sectionTitle}>Template</Text>
             </View>
           </View>
-          <Slider 
-            data={templateData} 
-            onCardPress={handleTemplateSelect}
-          />
+          <Slider data={templateData} onCardPress={handleTemplateSelect} />
         </View>
-        
+
         {/* Most Popular Community Template */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleContainer}>
               <MaterialCommunityIcons name="heart" size={24} />
-              <Text style={styles.sectionTitle}>
-                Most Popular
-              </Text>
+              <Text style={styles.sectionTitle}>Most Popular</Text>
             </View>
           </View>
-          <Slider 
-            data={communityData} 
-            onCardPress={handleTemplateSelect}
-          />
+          <Slider data={communityData} onCardPress={handleTemplateSelect} />
         </View>
       </ScrollView>
 
@@ -229,13 +257,63 @@ export default function CreateScreen() {
       <TemplateModal
         visible={isModalVisible}
         template={selectedTemplate}
-        onClose={() => setModalVisible(false)}
+        onClose={() => setIsModalVisible(false)}
         onSelect={() => {
           console.log("Template selected:", selectedTemplate?.title);
-          setModalVisible(false);
+          setIsModalVisible(false);
         }}
         goals={mockGoals}
       />
+
+      {/* Options Modal */}
+      <View>
+        <Modal
+          isVisible={isOptionModalVisible}
+          onBackdropPress={() => setIsOptionModalVisible(false)}
+          onBackButtonPress={() => setIsOptionModalVisible(false)}
+          backdropTransitionOutTiming={0}
+          animationIn="fadeIn"
+          animationOut="fadeOut"
+        >
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Select an option</Text>
+
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={handleCreateCustomGoal}
+            >
+              <MaterialCommunityIcons name="target" size={24} color="#4CAF50" />
+              <Text style={styles.modalOptionText}>Create Custom Goal</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={handleCreateTemplate}
+            >
+              <MaterialCommunityIcons
+                name="file-document-outline"
+                size={24}
+                color="#4E5A94"
+              />
+              <Text style={styles.modalOptionText}>Create Template</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setIsOptionModalVisible(false)}
+            >
+              <Text style={styles.closeButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+      </View>
+
+      {/* Loading Indicator */}
+      {isLoading && (
+        <View style={styles.overlay}>
+          <ActivityIndicator size="large" color="#0000ff" />
+        </View>
+      )}
     </View>
   );
 }
@@ -253,7 +331,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     gap: 20,
   },
-  
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    zIndex: 999,
+  },
+
   // Header Styles
   headerTextContainer: {
     flexDirection: "row",
@@ -265,7 +354,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "white",
   },
-  
+
   // Search Styles
   searchContainer: {
     flexDirection: "row",
@@ -279,7 +368,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
   },
-  
+
   // Custom Goal Button Styles
   customGoalButtonContainer: {
     alignItems: "center",
@@ -307,7 +396,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 16,
   },
-  
+
   // Section Styles
   sectionContainer: {
     gap: 16,
@@ -326,5 +415,40 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: "bold",
+  },
+
+  // Modal Styles
+  modalContainer: {
+    backgroundColor: "white",
+    borderRadius: 10,
+    padding: 20,
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 20,
+  },
+  modalOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    padding: 15,
+    backgroundColor: "#F0F0F0",
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  modalOptionText: {
+    marginLeft: 10,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  closeButton: {
+    marginTop: 10,
+    padding: 10,
+  },
+  closeButtonText: {
+    color: "#666",
+    fontWeight: "500",
   },
 });
