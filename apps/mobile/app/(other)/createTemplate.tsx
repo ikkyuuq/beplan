@@ -161,7 +161,7 @@ export default function createTemplate() {
       {/* Back Button Header */}
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#333" />
+          <Ionicons name="chevron-back" size={24} color="#fff" />
           <Text style={styles.backText}>Back</Text>
         </Pressable>
       </View>
@@ -209,6 +209,7 @@ export default function createTemplate() {
             <TextInput
               style={styles.input}
               placeholder="Enter a descriptive title"
+              placeholderTextColor="#777"
               value={title}
               onChangeText={setTitle}
               maxLength={50}
@@ -221,6 +222,7 @@ export default function createTemplate() {
             <TextInput
               style={[styles.input, styles.textArea]}
               placeholder="Describe what this template does"
+              placeholderTextColor="#777"
               value={description}
               onChangeText={setDescription}
               multiline
@@ -237,13 +239,14 @@ export default function createTemplate() {
                 selectedValue={category}
                 onValueChange={(itemValue) => setCategory(itemValue)}
                 style={styles.picker}
+                dropdownIconColor="#fff"
               >
-                <Picker.Item label="All" value="All" />
-                <Picker.Item label="Workout" value="Workout" />
-                <Picker.Item label="Finance" value="Finance" />
-                <Picker.Item label="Productivity" value="Productivity" />
-                <Picker.Item label="Education" value="Education" />
-                <Picker.Item label="Health" value="Health" />
+                <Picker.Item label="All" value="All" color="#fff" />
+                <Picker.Item label="Workout" value="Workout" color="#fff" />
+                <Picker.Item label="Finance" value="Finance" color="#fff" />
+                <Picker.Item label="Productivity" value="Productivity" color="#fff" />
+                <Picker.Item label="Education" value="Education" color="#fff" />
+                <Picker.Item label="Health" value="Health" color="#fff" />
               </Picker>
             </View>
           </View>
@@ -256,7 +259,7 @@ export default function createTemplate() {
             <Pressable
               style={styles.imagePicker}
               onPress={pickImage}
-              android_ripple={{ color: "rgba(0,0,0,0.1)" }}
+              android_ripple={{ color: "rgba(255,255,255,0.1)" }}
             >
               {image ? (
                 <>
@@ -269,7 +272,7 @@ export default function createTemplate() {
                     <Ionicons
                       name="cloud-upload-outline"
                       size={40}
-                      color="#555"
+                      color="#8B98D5"
                     />
                   </View>
                   <Text style={styles.imageText}>Upload Cover Image</Text>
@@ -309,7 +312,7 @@ export default function createTemplate() {
                         isGoalSelected(goal.id) && styles.goalSelected,
                       ]}
                       onPress={() => toggleGoalSelection(goal.id)}
-                      android_ripple={{ color: "rgba(0,0,0,0.1)" }}
+                      android_ripple={{ color: "rgba(255,255,255,0.1)" }}
                     >
                       <Ionicons
                         name={
@@ -318,7 +321,7 @@ export default function createTemplate() {
                             : "ellipse-outline"
                         }
                         size={22}
-                        color={isGoalSelected(goal.id) ? "#32CD32" : "#888"}
+                        color={isGoalSelected(goal.id) ? "#32CD32" : "#8B98D5"}
                       />
                       <Text
                         style={[
@@ -334,7 +337,7 @@ export default function createTemplate() {
               </ScrollView>
             </View>
             <View style={styles.scrollIndicator}>
-              <Ionicons name="chevron-down" size={16} color="#888" />
+              <Ionicons name="chevron-down" size={16} color="#8B98D5" />
               <Text style={styles.scrollText}>Scroll for more goals</Text>
             </View>
             <Text style={styles.goalsSelectionInfo}>
@@ -350,12 +353,12 @@ export default function createTemplate() {
           <Pressable
             style={styles.favoriteButton}
             onPress={() => setIsFavorite(!isFavorite)}
-            android_ripple={{ color: "rgba(0,0,0,0.05)" }}
+            android_ripple={{ color: "rgba(255,255,255,0.05)" }}
           >
             <Ionicons
               name={isFavorite ? "heart" : "heart-outline"}
               size={24}
-              color={isFavorite ? "red" : "#555"}
+              color={isFavorite ? "red" : "#8B98D5"}
             />
             <Text style={styles.favoriteText}>
               {isFavorite ? "Marked as Favorite" : "Mark as Favorite"}
@@ -392,7 +395,7 @@ const styles = StyleSheet.create({
   // Main Layout
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#16171F",
   },
   scrollContent: {
     flexGrow: 1,
@@ -401,9 +404,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: Platform.OS === "ios" ? 50 : 16,
     paddingBottom: 10,
-    backgroundColor: "#fff",
+    backgroundColor: "#16171F",
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: "#2A2C3A",
     zIndex: 10,
   },
   backButton: {
@@ -415,27 +418,27 @@ const styles = StyleSheet.create({
   backText: {
     marginLeft: 8,
     fontSize: 16,
-    color: "#333",
+    color: "#fff",
     fontWeight: "500",
   },
 
   // Preview Section
   previewContainer: {
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#1E1F29",
   },
   emptyPreview: {
     height: 200,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#2A2C3A",
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
+    color: "#fff",
   },
   previewText: {
-    color: "#777",
+    color: "#8B98D5",
     marginTop: 8,
   },
   heroContainer: {
@@ -485,6 +488,7 @@ const styles = StyleSheet.create({
   // Form Section
   formSection: {
     padding: 20,
+    backgroundColor: "#16171F",
   },
   inputGroup: {
     marginBottom: 20,
@@ -492,24 +496,25 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
+    color: "#fff",
     marginBottom: 8,
   },
   required: {
-    color: "red",
+    color: "#FF5733",
   },
   helpText: {
     fontSize: 14,
-    color: "#666",
+    color: "#8B98D5",
     marginBottom: 10,
   },
   input: {
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#2A2C3A",
     padding: 15,
     borderRadius: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: "#3A3F55",
+    color: "#fff",
   },
   textArea: {
     height: 120,
@@ -517,36 +522,38 @@ const styles = StyleSheet.create({
   },
   charCount: {
     textAlign: "right",
-    color: "#888",
+    color: "#8B98D5",
     fontSize: 12,
     marginTop: 5,
   },
 
   // Picker Styles
   pickerContainer: {
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#2A2C3A",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: "#3A3F55",
     overflow: "hidden",
   },
   picker: {
     height: 50,
+    color: "#fff",
+    backgroundColor: "#2A2C3A",
   },
 
   // Image Upload Styles
   imagePicker: {
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#2A2C3A",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: "#3A3F55",
     borderStyle: "dashed",
     padding: 20,
     alignItems: "center",
     justifyContent: "center",
   },
   uploadIconContainer: {
-    backgroundColor: "#e0e0e0",
+    backgroundColor: "#1E1F29",
     borderRadius: 50,
     width: 80,
     height: 80,
@@ -562,17 +569,17 @@ const styles = StyleSheet.create({
   imageText: {
     fontSize: 16,
     fontWeight: "500",
-    color: "#555",
+    color: "#fff",
     marginTop: 10,
   },
   imageSubText: {
     fontSize: 14,
-    color: "#888",
+    color: "#8B98D5",
     marginTop: 5,
   },
   changeImageText: {
     fontSize: 14,
-    color: "#2196F3",
+    color: "#4F46E5",
     marginTop: 10,
     fontWeight: "500",
   },
@@ -580,9 +587,9 @@ const styles = StyleSheet.create({
   // Goals Selection Styles
   goalsScrollOuterContainer: {
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: "#3A3F55",
     borderRadius: 12,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#1E1F29",
     marginVertical: 5,
   },
   goalsScrollContainer: {
@@ -605,24 +612,24 @@ const styles = StyleSheet.create({
   },
   scrollText: {
     fontSize: 12,
-    color: "#666",
+    color: "#8B98D5",
     marginLeft: 4,
   },
   goalsSelectionInfo: {
     textAlign: "center",
     fontSize: 14,
-    color: "#666",
+    color: "#8B98D5",
     marginTop: 5,
   },
   goalItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#2A2C3A",
     paddingVertical: 10,
     paddingHorizontal: 15,
     borderRadius: 25,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: "#3A3F55",
   },
   goalSelected: {
     backgroundColor: "rgba(50, 205, 50, 0.15)",
@@ -631,10 +638,10 @@ const styles = StyleSheet.create({
   goalText: {
     marginLeft: 8,
     fontSize: 14,
-    color: "#555",
+    color: "#fff",
   },
   goalTextSelected: {
-    color: "#228B22",
+    color: "#32CD32",
     fontWeight: "500",
   },
 
@@ -642,7 +649,7 @@ const styles = StyleSheet.create({
   favoriteButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 0, 0, 0.05)",
+    backgroundColor: "#2A2C3A",
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 12,
@@ -651,18 +658,18 @@ const styles = StyleSheet.create({
   favoriteText: {
     marginLeft: 10,
     fontSize: 16,
-    color: "#555",
+    color: "#fff",
   },
 
   // Create Button Styles
   createButton: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#4F46E5",
     borderRadius: 12,
     overflow: "hidden",
     marginBottom: 30,
   },
   createButtonDisabled: {
-    backgroundColor: "#A5D6A7",
+    backgroundColor: "#2A2C3A",
   },
   buttonContent: {
     flexDirection: "row",
