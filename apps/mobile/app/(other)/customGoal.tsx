@@ -77,7 +77,7 @@ const formatGoalForBackend = (
 
 // ====================== Task Type Helpers ======================
 const taskTypeLabels: Record<string, string> = {
-  normal: "One-time",
+  normal: "Normal",
   daily: "Daily",
   weekly: "Weekly",
   monthly: "Monthly",
