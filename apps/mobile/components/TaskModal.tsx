@@ -249,198 +249,204 @@ export default function TaskModal({
 
   // ====================== Render UI ======================
   return (
-    <Modal isVisible={visible} avoidKeyboard={true}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.overlay}>
-          <Animated.View style={[styles.container, modalAnimatedStyle]}>
-            {/* Restricted Editing Banner */}
-            {restrictEditing && (
-              <View style={styles.restrictedBanner}>
-                <Ionicons name="warning-outline" size={20} color="#FF5733" />
-                <Text style={styles.restrictedText}>
-                  Limited editing mode. You can only edit the task title and
-                  description.
-                </Text>
-              </View>
-            )}
-
-            {/* Form Inputs */}
-            <Text style={styles.title}>Title of Task</Text>
-            <View style={styles.inputContainer}>
-              <TextInput
-                value={taskTitle}
-                onChangeText={setTaskTitle}
-                placeholder="Enter task name"
-                placeholderTextColor="#AAA"
-                style={styles.input}
-                multiline={true}
-              />
-              <Text style={styles.title}>Description</Text>
-              <TextInput
-                value={taskDescription}
-                onChangeText={setTaskDescription}
-                placeholder="Enter task description"
-                placeholderTextColor="#AAA"
-                style={styles.description}
-                multiline={true}
-              />
-            </View>
-
-            {/* Repeat Settings - Disabled when restrictEditing is true */}
-            <View
-              style={[
-                styles.switchContainer,
-                restrictEditing && styles.disabledSection,
-              ]}
-            >
-              <Text style={styles.title_repeat}>Repeat</Text>
-              <Switch
-                value={isRepeat}
-                onValueChange={(value) => {
-                  if (!restrictEditing) {
-                    setIsRepeat(value);
-                    if (!value) {
-                      setTaskType("normal");
-                      setSelectedDates([]);
-                    }
-                  }
-                }}
-                trackColor={{ false: "#767577", true: "#4F46E5" }}
-                thumbColor={isRepeat ? "#fff" : "#ccc"}
-                disabled={restrictEditing}
-              />
-            </View>
-
-            {/* Date Picker - Hidden or Disabled when restrictEditing is true */}
-            {!isRepeat && !restrictEditing && (
-              <View style={styles.datePickerContainer}>
-                <Pressable
-                  style={styles.datePickerButton}
-                  onPress={() => setIsCalendarVisible(true)}
-                >
-                  <Text style={styles.datePickerButtonText}>Pick Dates</Text>
-                </Pressable>
-                <Text style={styles.selectedDatesText}>
-                  Selected: {selectedDates.length} days
-                </Text>
-              </View>
-            )}
-
-            {/* Display selected dates even in restricted mode, but not editable */}
-            {!isRepeat && restrictEditing && selectedDates.length > 0 && (
-              <View style={styles.datePickerContainer}>
-                <View style={styles.disabledDatePicker}>
-                  <Text style={styles.disabledText}>
-                    {selectedDates.length} day
-                    {selectedDates.length !== 1 ? "s" : ""} selected
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {/* Calendar Picker - Only shown if not in restricted mode */}
-            {!restrictEditing && (
-              <CalendarPicker
-                visible={isCalendarVisible}
-                onClose={() => setIsCalendarVisible(false)}
-                onConfirm={handleDateConfirm}
-                title="Select Task Dates"
-                initialDates={selectedDates}
-                highlightColor="#4F46E5"
-                singleSelect={false}
-                minDate={startDate}
-                maxDate={dueDate}
-              />
-            )}
-
-            {/* Task Type Segments - Disabled in restricted mode */}
-            <View
-              style={[
-                styles.segmentContainer,
-                (!isRepeat || restrictEditing) && styles.disabled,
-              ]}
-            >
-              {["Daily", "Weekly", "Monthly"].map((label) => {
-                const type = label.toLowerCase() as
-                  | "daily"
-                  | "weekly"
-                  | "monthly";
-                return (
-                  <Pressable
-                    key={type}
-                    onPress={() => !restrictEditing && handleSegmentPress(type)}
-                    style={[
-                      styles.segment,
-                      taskType === type && styles.segmentActive,
-                    ]}
-                    disabled={!isRepeat || restrictEditing}
-                  >
-                    <Text
-                      style={[
-                        styles.segmentText,
-                        taskType === type && styles.segmentTextActive,
-                        (!isRepeat || restrictEditing) && styles.disabledText,
-                      ]}
-                    >
-                      {label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            {/* Custom Selectors - Only shown when not in restricted mode */}
-            {!restrictEditing &&
-              taskType === "monthly" &&
-              renderMonthlySelector()}
-            {!restrictEditing &&
-              taskType === "weekly" &&
-              renderWeeklySelector()}
-
-            {/* Display selected days/options in restricted mode, but not editable */}
-            {restrictEditing &&
-              taskType === "weekly" &&
-              selectedDaysOfWeek.length > 0 && (
-                <View style={styles.restrictedInfoBox}>
-                  <Text style={styles.restrictedInfoText}>
-                    Repeats weekly on:{" "}
-                    {selectedDaysOfWeek
-                      .map(
-                        (day) =>
-                          ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day]
-                      )
-                      .join(", ")}
+    <View>
+      <Modal isVisible={visible} avoidKeyboard={true}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.overlay}>
+            <Animated.View style={[styles.container, modalAnimatedStyle]}>
+              {/* Restricted Editing Banner */}
+              {restrictEditing && (
+                <View style={styles.restrictedBanner}>
+                  <Ionicons name="warning-outline" size={20} color="#FF5733" />
+                  <Text style={styles.restrictedText}>
+                    Limited editing mode. You can only edit the task title and
+                    description.
                   </Text>
                 </View>
               )}
 
-            {restrictEditing && taskType === "monthly" && (
-              <View style={styles.restrictedInfoBox}>
-                <Text style={styles.restrictedInfoText}>
-                  Repeats monthly:{" "}
-                  {monthlyMode === "start"
-                    ? "Beginning"
-                    : monthlyMode === "mid"
-                    ? "Middle"
-                    : "End"}{" "}
-                  of each month
-                </Text>
+              {/* Form Inputs */}
+              <Text style={styles.title}>Title of Task</Text>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  value={taskTitle}
+                  onChangeText={setTaskTitle}
+                  placeholder="Enter task name"
+                  placeholderTextColor="#AAA"
+                  style={styles.input}
+                  multiline={true}
+                />
+                <Text style={styles.title}>Description</Text>
+                <TextInput
+                  value={taskDescription}
+                  onChangeText={setTaskDescription}
+                  placeholder="Enter task description"
+                  placeholderTextColor="#AAA"
+                  style={styles.description}
+                  multiline={true}
+                />
               </View>
-            )}
 
-            {/* Action Buttons */}
-            <View style={styles.buttonContainer}>
-              <Pressable style={styles.cancelButton} onPress={handleClose}>
-                <Text style={styles.buttonText}>Cancel</Text>
-              </Pressable>
-              <Pressable style={styles.confirmButton} onPress={handleSave}>
-                <Text style={styles.buttonText}>Confirm</Text>
-              </Pressable>
-            </View>
-          </Animated.View>
-        </View>
-      </TouchableWithoutFeedback>
-    </Modal>
+              {/* Repeat Settings - Disabled when restrictEditing is true */}
+              <View
+                style={[
+                  styles.switchContainer,
+                  restrictEditing && styles.disabledSection,
+                ]}
+              >
+                <Text style={styles.title_repeat}>Repeat</Text>
+                <Switch
+                  value={isRepeat}
+                  onValueChange={(value) => {
+                    if (!restrictEditing) {
+                      setIsRepeat(value);
+                      if (!value) {
+                        setTaskType("normal");
+                        setSelectedDates([]);
+                      }
+                    }
+                  }}
+                  trackColor={{ false: "#767577", true: "#4F46E5" }}
+                  thumbColor={isRepeat ? "#fff" : "#ccc"}
+                  disabled={restrictEditing}
+                />
+              </View>
+
+              {/* Date Picker - Hidden or Disabled when restrictEditing is true */}
+              {!isRepeat && !restrictEditing && (
+                <View style={styles.datePickerContainer}>
+                  <Pressable
+                    style={styles.datePickerButton}
+                    onPress={() => setIsCalendarVisible(true)}
+                  >
+                    <Text style={styles.datePickerButtonText}>Pick Dates</Text>
+                  </Pressable>
+                  <Text style={styles.selectedDatesText}>
+                    Selected: {selectedDates.length} days
+                  </Text>
+                </View>
+              )}
+
+              {/* Display selected dates even in restricted mode, but not editable */}
+              {!isRepeat && restrictEditing && selectedDates.length > 0 && (
+                <View style={styles.datePickerContainer}>
+                  <View style={styles.disabledDatePicker}>
+                    <Text style={styles.disabledText}>
+                      {selectedDates.length} day
+                      {selectedDates.length !== 1 ? "s" : ""} selected
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Calendar Picker - Only shown if not in restricted mode */}
+              {!restrictEditing && (
+                <CalendarPicker
+                  visible={isCalendarVisible}
+                  onClose={() => setIsCalendarVisible(false)}
+                  onConfirm={handleDateConfirm}
+                  title="Select Task Dates"
+                  initialDates={selectedDates}
+                  highlightColor="#4F46E5"
+                  singleSelect={false}
+                  minDate={startDate}
+                  maxDate={dueDate}
+                />
+              )}
+
+              {/* Task Type Segments - Disabled in restricted mode */}
+              <View
+                style={[
+                  styles.segmentContainer,
+                  (!isRepeat || restrictEditing) && styles.disabled,
+                ]}
+              >
+                {["Daily", "Weekly", "Monthly"].map((label) => {
+                  const type = label.toLowerCase() as
+                    | "daily"
+                    | "weekly"
+                    | "monthly";
+                  return (
+                    <Pressable
+                      key={type}
+                      onPress={() =>
+                        !restrictEditing && handleSegmentPress(type)
+                      }
+                      style={[
+                        styles.segment,
+                        taskType === type && styles.segmentActive,
+                      ]}
+                      disabled={!isRepeat || restrictEditing}
+                    >
+                      <Text
+                        style={[
+                          styles.segmentText,
+                          taskType === type && styles.segmentTextActive,
+                          (!isRepeat || restrictEditing) && styles.disabledText,
+                        ]}
+                      >
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Custom Selectors - Only shown when not in restricted mode */}
+              {!restrictEditing &&
+                taskType === "monthly" &&
+                renderMonthlySelector()}
+              {!restrictEditing &&
+                taskType === "weekly" &&
+                renderWeeklySelector()}
+
+              {/* Display selected days/options in restricted mode, but not editable */}
+              {restrictEditing &&
+                taskType === "weekly" &&
+                selectedDaysOfWeek.length > 0 && (
+                  <View style={styles.restrictedInfoBox}>
+                    <Text style={styles.restrictedInfoText}>
+                      Repeats weekly on:{" "}
+                      {selectedDaysOfWeek
+                        .map(
+                          (day) =>
+                            ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
+                              day
+                            ]
+                        )
+                        .join(", ")}
+                    </Text>
+                  </View>
+                )}
+
+              {restrictEditing && taskType === "monthly" && (
+                <View style={styles.restrictedInfoBox}>
+                  <Text style={styles.restrictedInfoText}>
+                    Repeats monthly:{" "}
+                    {monthlyMode === "start"
+                      ? "Beginning"
+                      : monthlyMode === "mid"
+                      ? "Middle"
+                      : "End"}{" "}
+                    of each month
+                  </Text>
+                </View>
+              )}
+
+              {/* Action Buttons */}
+              <View style={styles.buttonContainer}>
+                <Pressable style={styles.cancelButton} onPress={handleClose}>
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </Pressable>
+                <Pressable style={styles.confirmButton} onPress={handleSave}>
+                  <Text style={styles.buttonText}>Confirm</Text>
+                </Pressable>
+              </View>
+            </Animated.View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    </View>
   );
 }
 
