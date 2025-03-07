@@ -41,8 +41,6 @@ export default function UserSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
   const [profileImage, setProfileImage] = useState("");
   const [primaryEmail, setPrimaryEmail] = useState("");
@@ -115,8 +113,6 @@ export default function UserSettings() {
       const loadUserData = async () => {
         try {
           // Load user profile data
-          setFirstName(user.firstName || "");
-          setLastName(user.lastName || "");
           setUsername(user.username || getDefaultUsername());
           setProfileImage(user.imageUrl);
           setPrimaryEmail(user.primaryEmailAddress?.emailAddress || "");
@@ -417,13 +413,6 @@ export default function UserSettings() {
             )}
 
             <View style={styles.profileDetailsContainer}>
-              <View style={styles.profileInfoRow}>
-                <Text style={styles.profileInfoLabel}>Name</Text>
-                <Text style={styles.profileInfoValue}>
-                  {firstName} {lastName}
-                </Text>
-              </View>
-
               <View style={styles.profileInfoRow}>
                 <Text style={styles.profileInfoLabel}>Username</Text>
                 {isChangingUsername ? (
