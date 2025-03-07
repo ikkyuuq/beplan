@@ -223,7 +223,6 @@ def submit_question(request: SubmitRequest):
         if value is None:
             raise HTTPException(status_code=400, detail="Value cannot be None")
 
-        # Update the prediction result with the new value
         prediction_result.prediction[to_label] = [
             {
                 "text": value,
@@ -283,12 +282,9 @@ def generate_task(request: PredictionResult):
                             {{
                               "title": "Clear, action-oriented task title",
                               "description": "Brief description of what needs to be done",
-                              "task_date": "YYYY-MM-DD",
-                              "repeat_type": {{
-                                "type": "none|daily|weekly|monthly",
-                                "days": ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
-                                "monthly_timing": "START|MID|END"
-                              }}
+                              "repeat_type": "date|daily|weekly|monthly"
+                              "interval": "[0, 1, 2, 3, 4, 5, 6]" # For weekly task start from SUN = 0
+                              "dates": ["YYYY-MM-DD", "YYYY-MM-DD"] # For date and monthly task
                             }}
                           ]
                         }}
@@ -305,10 +301,10 @@ def generate_task(request: PredictionResult):
                            - For recurring tasks, set appropriate frequencies
 
                         3. Repeat Types:
-                           - "none": One-time task
+                           - "date": Task to be completed on a specific days and insert into dates
                            - "daily": Daily task with no specific days
-                           - "weekly": Select 1-3 specific days
-                           - "monthly": Choose START (1st-5th), MID (13th-17th), or END (25th-30th)
+                           - "weekly": Select specific days of the week to repeat and insert weekday into interval
+                           - "monthly": Set a specific days of the month to repeat and insert into dates
 
                         Example Input:
                         {{
@@ -330,28 +326,23 @@ def generate_task(request: PredictionResult):
                             {{
                               "title": "Track daily calorie intake",
                               "description": "Log all meals and snacks in fitness app, staying under 2000 calories",
-                              "task_date": "2024-03-15",
-                              "repeat_type": {{
-                                "type": "daily",
-                              }}
+                              "repeat_type": "daily"
+                              "interval": null, 
+                              "dates": null
                             }},
                             {{
                               "title": "30-minute cardio workout",
                               "description": "Complete either jogging, cycling, or swimming",
-                              "task_date": "2024-03-15",
-                              "repeat_type": {{
-                                "type": "weekly",
-                                "days": ["MON", "WED", "FRI"]
-                              }}
+                              "repeat_type": "weekly",
+                              "interval": [0, 2, 4],
+                              "dates": null
                             }},
                             {{
                               "title": "Monthly weight check and progress photo",
                               "description": "Record weight and take progress photos for tracking",
-                              "task_date": "2024-03-15",
-                              "repeat_type": {{
-                                "type": "monthly",
-                                "monthly_timing": "START"
-                              }}
+                              "repeat_type": "monthly",
+                              "interval": null,
+                              "dates": ["2024-04-15", "2024-05-15", "2024-06-15"]
                             }}
                           ]
                         }}
