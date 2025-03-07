@@ -296,13 +296,6 @@ const styles = StyleSheet.create({
     padding: 15,
     flexGrow: 1,
   },
-  gradientOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 180,
-  },
 
   // Filter Styles
   filterContainer: {

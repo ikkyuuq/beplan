@@ -41,13 +41,12 @@ type CustomGoalUIProps = {
   setDueDatePickerVisible: (visible: boolean) => void;
   handleEditTask: (index: number) => void;
   handleDeleteTask: (index: number) => void;
-  setEditingIndex: (index: number | null) => void;
+
   setTaskModalVisible: (visible: boolean) => void;
   handleSubmit: () => void;
 
   // Debug Functions
   testLogData: () => void;
-  setIsEditingGoal: (isEditing: boolean) => void;
 };
 
 // Helper Functions
@@ -107,7 +106,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
   setDueDatePickerVisible,
   handleEditTask,
   handleDeleteTask,
-  setEditingIndex,
+
   setTaskModalVisible,
   handleSubmit,
 
@@ -239,7 +238,6 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                 }
 
                 if (startDate && dueDate) {
-                  setEditingIndex(null);
                   setTaskModalVisible(true);
                 } else {
                   Alert.alert(
@@ -555,10 +553,6 @@ const EmptyTaskList = () => {
 // ====================== Styles ======================
 const styles = StyleSheet.create({
   // Main Layout
-  container: {
-    flex: 1,
-    backgroundColor: "#16171F",
-  },
   scrollView: {
     flex: 1,
   },

@@ -9,7 +9,6 @@ import {
   withDelay,
   Easing,
 } from "react-native-reanimated";
-
 import TaskModal from "@/components/TaskModal";
 import CalendarPicker from "@/components/CalendarPicker";
 import CustomGoalUI from "@/components/CustomGoalUI";
@@ -437,12 +436,10 @@ export default function CustomGoal() {
         setDueDatePickerVisible={setDueDatePickerVisible}
         handleEditTask={handleEditTask}
         handleDeleteTask={handleDeleteTask}
-        setEditingIndex={setEditingIndex}
         setTaskModalVisible={setTaskModalVisible}
         handleSubmit={handleSubmit}
         // Debug Functions
         testLogData={testLogData}
-        setIsEditingGoal={setIsEditingGoal} // ส่งไปยัง UI
       />
 
       {/* Modals */}

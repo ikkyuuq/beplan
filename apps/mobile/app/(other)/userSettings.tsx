@@ -640,10 +640,6 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: 20,
-    paddingBottom: 40,
-  },
 
   // Loading State
   loadingContainer: {

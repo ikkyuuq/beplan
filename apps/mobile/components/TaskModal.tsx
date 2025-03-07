@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   input: {
-    backgroundColor: "#fff",
+    backgroundColor: "#2A2C3A",
     padding: 14,
     borderRadius: 8,
     fontSize: 16,
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   description: {
-    backgroundColor: "#fff",
+    backgroundColor: "#2A2C3A",
     padding: 14,
     borderRadius: 8,
     fontSize: 16,
