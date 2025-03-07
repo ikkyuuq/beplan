@@ -22,6 +22,7 @@ interface VerificationScreenProps {
   onVerifyPress: () => Promise<void>;
   errorMessage?: string | null;
   onResendPress: () => void;
+  emailAddress: string;
 }
 
 // ====================== Main Component ======================
@@ -33,6 +34,7 @@ const VerificationScreen: React.FC<VerificationScreenProps> = ({
   onVerifyPress,
   errorMessage,
   onResendPress,
+  emailAddress,
 }) => {
   // ====================== Animation Values ======================
   const titleOpacity = useSharedValue(0);
@@ -104,6 +106,15 @@ const VerificationScreen: React.FC<VerificationScreenProps> = ({
         {description}
       </Animated.Text>
 
+      {/* Email Display */}
+      <Animated.View
+        style={[styles.emailContainer, descriptionAnimatedStyle]}
+        entering={FadeIn.delay(400).duration(300)}
+      >
+        <Text style={styles.emailLabel}>Verification code sent to:</Text>
+        <Text style={styles.emailValue}>{emailAddress}</Text>
+      </Animated.View>
+
       {/* Input Field */}
       <Animated.View style={[{ width: "100%" }, formAnimatedStyle]}>
         <InputField
@@ -173,6 +184,26 @@ const styles = StyleSheet.create({
     marginTop: 15,
     textDecorationLine: "underline",
     color: "#333",
+  },
+
+  // Email Display Styles
+  emailContainer: {
+    backgroundColor: "#f0f0f0",
+    padding: 12,
+    borderRadius: 8,
+    width: "100%",
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  emailLabel: {
+    fontSize: 14,
+    color: "#666",
+  },
+  emailValue: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#4E5A94",
+    marginTop: 4,
   },
 
   // Button Styles

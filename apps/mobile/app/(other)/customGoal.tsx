@@ -13,6 +13,55 @@ import TaskModal from "@/components/TaskModal";
 import CalendarPicker from "@/components/CalendarPicker";
 import { Task } from "@/types/taskTypes";
 import { useRouter } from "expo-router";
+import { useUser } from "@clerk/clerk-expo";
+
+const formatGoalForBackend = (
+  userId: string,
+  goalData: any,
+  taskList: any[]
+): any => {
+  const formattedTasks = taskList
+    .filter((task) => task.status !== "deleted")
+    .map((task) => {
+      let repeatType = task.type.toLowerCase();
+
+      if (repeatType === "normal") {
+        repeatType = "date";
+      }
+
+      let dateInterval: string[] = [];
+      let weekInterval: number[] = [];
+
+      if (repeatType === "date" || repeatType === "monthly") {
+        dateInterval = task.selectedDates || [];
+      }
+
+      if (repeatType === "weekly") {
+        weekInterval = task.selectedDaysOfWeek || [];
+      }
+
+      return {
+        title: task.title,
+        description: task.description || null,
+        repeat_type: repeatType,
+        date_interval: dateInterval,
+        week_interval: weekInterval,
+      };
+    });
+
+  const formattedGoal = {
+    user_id: userId,
+    goal: {
+      title: goalData.title,
+      type: "custom goal",
+      start_date: goalData.startDate,
+      due_date: goalData.dueDate,
+      tasks: formattedTasks,
+    },
+  };
+
+  return formattedGoal;
+};
 
 // ====================== Main Component ======================
 export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
@@ -26,6 +75,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isTaskModalVisible, setTaskModalVisible] = useState(false);
   const router = useRouter();
+  const { user, isLoaded, isSignedIn } = useUser();
 
   // ====================== Utility Functions ======================
   const taskColors: Record<string, string> = {
@@ -54,7 +104,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       description: "Read a book",
       type: "normal",
       selectedDates: ["2025-03-02", "2025-03-05", "2025-03-07"],
-      selectedDaysOfWeek: [] as number[], // 🛠 แก้ `never[]` เป็น `number[]`
+      selectedDaysOfWeek: [] as number[],
       status: "pending",
     },
     {
@@ -105,7 +155,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
             style: "destructive",
             onPress: () => updateDate(newDate, type, true),
           },
-        ],
+        ]
       );
     }
     updateDate(newDate, type);
@@ -114,15 +164,15 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   const handleDeleteTask = (index: number) => {
     setTaskList((prevTaskList) =>
       prevTaskList.map((task, i) =>
-        i === index ? { ...task, status: "deleted" } : task,
-      ),
+        i === index ? { ...task, status: "deleted" } : task
+      )
     );
   };
 
   const updateDate = (
     newDate: string,
     type: "start" | "due",
-    clearTasks = false,
+    clearTasks = false
   ) => {
     if (type === "start") {
       setStartDate(newDate);
@@ -143,7 +193,7 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
     setTaskList((prevTasks) =>
       editingIndex !== null
         ? prevTasks.map((t, index) => (index === editingIndex ? newTask : t))
-        : [...prevTasks, newTask],
+        : [...prevTasks, newTask]
     );
 
     setEditingIndex(null);
@@ -161,6 +211,11 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       return;
     }
 
+    if (!isLoaded || !isSignedIn) {
+      Alert.alert("Authentication Error", "Please sign in to save your goal.");
+      return;
+    }
+
     const newGoal = {
       title: goalTitle,
       startDate,
@@ -174,20 +229,30 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       JSON.stringify(
         taskList.filter((task) => task.status !== "deleted"),
         null,
-        2,
-      ),
+        2
+      )
     );
     console.log(
       "📌 Deleted Tasks:",
       JSON.stringify(
         taskList.filter((task) => task.status === "deleted"),
         null,
-        2,
-      ),
+        2
+      )
     );
 
-    // API request
-    // saveGoal(newGoal);
+    const userId = user?.id;
+
+    if (!userId) {
+      Alert.alert("Error", "Could not get user ID. Please try again later.");
+      return;
+    }
+
+    const formattedGoalData = formatGoalForBackend(userId, newGoal, taskList);
+    console.log(
+      "📌 Formatted for Backend:",
+      JSON.stringify(formattedGoalData, null, 2)
+    );
   };
 
   // ====================== Effects ======================
@@ -271,8 +336,8 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
                           (t, i) =>
                             t ===
                             taskList.filter(
-                              (task) => task.status !== "deleted",
-                            )[index],
+                              (task) => task.status !== "deleted"
+                            )[index]
                         );
                         setEditingIndex(actualIndex);
                         setTaskModalVisible(true);
@@ -288,9 +353,9 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
                             (t, i) =>
                               t ===
                               taskList.filter(
-                                (task) => task.status !== "deleted",
-                              )[index],
-                          ),
+                                (task) => task.status !== "deleted"
+                              )[index]
+                          )
                         )
                       }
                     >

@@ -84,7 +84,7 @@ export default function SignUpScreen() {
   const router = useRouter();
 
   // ====================== State Management ======================
-  const [name, setName] = React.useState("");
+  const [username, setUsername] = React.useState("");
   const [emailAddress, setEmailAddress] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -99,12 +99,40 @@ export default function SignUpScreen() {
     return emailRegex.test(email);
   };
 
+  const handleUsernameChange = (text: string) => {
+    setUsername(text);
+    if (errorMessage.toLowerCase().includes("username")) {
+      setErrorMessage("");
+    }
+  };
+
+  const handleEmailChange = (text: string) => {
+    setEmailAddress(text);
+    if (errorMessage.toLowerCase().includes("email")) {
+      setErrorMessage("");
+    }
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (errorMessage.toLowerCase().includes("password")) {
+      setErrorMessage("");
+    }
+  };
+
+  const handleConfirmPasswordChange = (text: string) => {
+    setConfirmPassword(text);
+    if (errorMessage.toLowerCase().includes("match")) {
+      setErrorMessage("");
+    }
+  };
+
   // ====================== Sign-Up Handler ======================
   const onSignUpPress = async () => {
     try {
       if (!isLoaded) return;
 
-      if (!name.trim() || !emailAddress.trim() || !password.trim()) {
+      if (!username.trim() || !emailAddress.trim() || !password.trim()) {
         setErrorMessage("All fields are required.");
         return;
       }
@@ -119,16 +147,40 @@ export default function SignUpScreen() {
         return;
       }
 
+      // เพิ่มการตรวจสอบ username
+      if (username.length < 3 || username.length > 20) {
+        setErrorMessage("Username must be between 3 and 20 characters.");
+        return;
+      }
+
+      // ตรวจสอบว่า username ไม่มีอักขระพิเศษ
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        setErrorMessage(
+          "Username can only contain letters, numbers, and underscores."
+        );
+        return;
+      }
+
       setIsSigningUp(true);
 
-      await signUp.create({ emailAddress, password });
+      // เพิ่ม username ในการสร้างบัญชี
+      await signUp.create({
+        emailAddress,
+        password,
+        username,
+      });
+
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
 
       setPendingVerification(true);
       setIsSigningUp(false);
     } catch (err: any) {
       setIsSigningUp(false);
-      if (err.code == "clerk_identifier_taken") {
+      console.error("Sign-up error:", err);
+
+      if (err.errors && err.errors.length > 0) {
+        setErrorMessage(err.errors[0].message);
+      } else if (err.code == "clerk_identifier_taken") {
         setErrorMessage("An account with this email already exists.");
       } else {
         setErrorMessage("Sign-up failed. Please try again.");
@@ -166,12 +218,14 @@ export default function SignUpScreen() {
         onVerifyPress={onVerifyPress}
         errorMessage={errorMessage}
         onResendPress={() => {
+          // โค้ดสำหรับการส่ง code ใหม่
           Alert.alert(
             "Verification Code",
             "We have resent the verification code to your email.",
             [{ text: "OK" }]
           );
         }}
+        emailAddress={emailAddress}
       />
     );
   }
@@ -194,34 +248,30 @@ export default function SignUpScreen() {
       <Animated.View style={[formAnimatedStyle, { width: "100%" }]}>
         <InputField
           iconName="person-outline"
-          placeholder="Enter your name"
-          value={name}
-          onChangeText={setName}
+          placeholder="Choose a username"
+          value={username}
+          onChangeText={handleUsernameChange}
         />
-
         <InputField
           iconName="mail-outline"
           placeholder="example@example.com"
           value={emailAddress}
-          onChangeText={setEmailAddress}
+          onChangeText={handleEmailChange}
         />
-
         <InputField
           iconName="lock-closed-outline"
           placeholder="Enter your password"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={handlePasswordChange}
           secureTextEntry
         />
-
         <InputField
           iconName="lock-closed-outline"
           placeholder="Confirm your password"
           value={confirmPassword}
-          onChangeText={setConfirmPassword}
+          onChangeText={handleConfirmPasswordChange}
           secureTextEntry
         />
-
         {/* Error Message */}
         {errorMessage && (
           <Animated.Text

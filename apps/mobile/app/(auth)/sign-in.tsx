@@ -71,7 +71,7 @@ export default function SignInScreen() {
     // Form animation
     formOpacity.value = withDelay(400, withTiming(1, { duration: 400 }));
 
-    // Button animation - now uses translateY instead of scale
+    // Button animation
     buttonOpacity.value = withDelay(500, withTiming(1, { duration: 300 }));
     buttonTranslateY.value = withDelay(
       500,
@@ -81,7 +81,6 @@ export default function SignInScreen() {
       })
     );
 
-    // Social buttons animation - now uses opacity instead of translateX
     socialButtonsOpacity.value = withDelay(
       600,
       withTiming(1, { duration: 300 })
@@ -110,20 +109,6 @@ export default function SignInScreen() {
     opacity: socialButtonsOpacity.value,
   }));
 
-  const handleEmailChange = (text: string) => {
-    setEmailAddress(text);
-    if (errorMessage.toLowerCase().includes("email")) {
-      setErrorMessage("");
-    }
-  };
-
-  const handlePasswordChange = (text: string) => {
-    setPassword(text);
-    if (errorMessage.toLowerCase().includes("password")) {
-      setErrorMessage("");
-    }
-  };
-
   // ====================== Authentication & Navigation Hooks ======================
   useWarmUpBrowser();
   const { signIn, isLoaded, setActive } = useSignIn();
@@ -141,15 +126,33 @@ export default function SignInScreen() {
     handleOAuthSignIn(startGitHubOAuth, "GitHub");
 
   // ====================== State Management ======================
-  const [emailAddress, setEmailAddress] = React.useState("");
+  const [identifier, setIdentifier] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [errorMessage, setErrorMessage] = React.useState("");
   const [isSigningIn, setIsSigningIn] = React.useState(false);
 
-  // ====================== Helper Functions ======================
-  const isValidEmail = (email: string): boolean => {
+  // ====================== Helper Functions ======================)
+  const isEmail = (text: string): boolean => {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    return emailRegex.test(email);
+    return emailRegex.test(text);
+  };
+
+  const handleIdentifierChange = (text: string) => {
+    setIdentifier(text);
+    if (
+      errorMessage.toLowerCase().includes("email") ||
+      errorMessage.toLowerCase().includes("username") ||
+      errorMessage.toLowerCase().includes("empty")
+    ) {
+      setErrorMessage("");
+    }
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (errorMessage.toLowerCase().includes("password")) {
+      setErrorMessage("");
+    }
   };
 
   // ====================== Sign-In Handlers ======================
@@ -157,21 +160,15 @@ export default function SignInScreen() {
     try {
       if (!isLoaded) return;
 
-      if (!emailAddress.trim() || !password.trim()) {
-        setErrorMessage("Email and password cannot be empty.");
-        return;
-      }
-
-      if (!isValidEmail(emailAddress)) {
-        setErrorMessage("Invalid email format. Please use a valid email.");
+      if (!identifier.trim() || !password.trim()) {
+        setErrorMessage("Email/Username and password cannot be empty.");
         return;
       }
 
       setIsSigningIn(true);
 
-      // Attempt sign-in with provided credentials
       const signInAttempt = await signIn.create({
-        identifier: emailAddress,
+        identifier,
         password,
       });
 
@@ -184,7 +181,14 @@ export default function SignInScreen() {
         setIsSigningIn(false);
       }
     } catch (err: any) {
-      setErrorMessage("Sign-in failed. Please try again.");
+      console.error("Sign-in error:", err);
+
+      if (err.errors && err.errors.length > 0) {
+        setErrorMessage(err.errors[0].message);
+      } else {
+        setErrorMessage("Sign-in failed. Please try again.");
+      }
+
       setIsSigningIn(false);
     }
   };
@@ -229,10 +233,10 @@ export default function SignInScreen() {
       <Animated.View style={[styles.inputWrapper, formAnimatedStyle]}>
         <Animated.View entering={FadeInDown.delay(450).duration(300)}>
           <InputField
-            iconName="mail-outline"
-            placeholder="example@example.com"
-            value={emailAddress}
-            onChangeText={handleEmailChange}
+            iconName="person-outline"
+            placeholder="Email or Username"
+            value={identifier}
+            onChangeText={handleIdentifierChange}
             marginBottom={15}
           />
         </Animated.View>
