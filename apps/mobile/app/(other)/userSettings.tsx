@@ -25,6 +25,7 @@ import Animated, {
   FadeInDown,
 } from "react-native-reanimated";
 import OccupationSelector from "@/components/OccupationSelector";
+import OccupationProfileIcon from "@/components/OccupationProfileIcon";
 
 // ====================== Main Component ======================
 export default function UserSettings() {
@@ -49,6 +50,8 @@ export default function UserSettings() {
   const [occupation, setOccupation] = useState("");
   const [externalAccounts, setExternalAccounts] = useState<any[]>([]);
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
+
+  const [useOccupationIcon, setUseOccupationIcon] = useState<boolean>(false);
 
   // ====================== Animation Values ======================
   const headerOpacity = useSharedValue(0);
@@ -120,6 +123,15 @@ export default function UserSettings() {
           setDescription((user.unsafeMetadata?.description as string) || "");
           setOccupation((user.unsafeMetadata?.occupation as string) || "");
           setExternalAccounts(user.externalAccounts || []);
+
+          const occupationValue =
+            (user.unsafeMetadata?.occupation as string) || "";
+          setOccupation(occupationValue);
+
+          const useOccupIcon = user.unsafeMetadata
+            ?.useOccupationIcon as boolean;
+          setUseOccupationIcon(useOccupIcon || false);
+          setProfileImage(user.imageUrl);
 
           if (user.getSessions) {
             const sessions = await user.getSessions();
@@ -258,6 +270,8 @@ export default function UserSettings() {
       setIsSaving(true);
 
       const currentMetadata = user.unsafeMetadata || {};
+      const prevOccupation = currentMetadata.occupation;
+      const occupationChanged = prevOccupation !== occupation;
 
       await user.update({
         unsafeMetadata: {
@@ -267,12 +281,66 @@ export default function UserSettings() {
       });
 
       setIsEditingOccupation(false);
-      Alert.alert("Success", "Occupation updated successfully!");
+
+      // ถ้ามีการเปลี่ยนอาชีพและอาชีพใหม่ไม่ว่างเปล่า ให้แนะนำการใช้ไอคอนตามอาชีพ
+      if (occupationChanged && occupation && !useOccupationIcon) {
+        Alert.alert(
+          "Occupation Updated",
+          "Would you like to use an occupation-based profile icon?",
+          [
+            {
+              text: "Yes",
+              onPress: toggleProfileIconType,
+            },
+            {
+              text: "No",
+              style: "cancel",
+            },
+          ]
+        );
+      } else {
+        Alert.alert("Success", "Occupation updated successfully!");
+      }
     } catch (error: any) {
       console.error("Occupation update error:", error);
       Alert.alert(
         "Error",
         error.message || "Failed to update occupation. Please try again."
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const toggleProfileIconType = async () => {
+    if (!user || !occupation) return;
+
+    try {
+      setIsSaving(true);
+
+      const newUseOccupationIcon = !useOccupationIcon;
+      const currentMetadata = user.unsafeMetadata || {};
+
+      await user.update({
+        unsafeMetadata: {
+          ...currentMetadata,
+          useOccupationIcon: newUseOccupationIcon,
+        },
+      });
+
+      setUseOccupationIcon(newUseOccupationIcon);
+
+      Alert.alert(
+        "Success",
+        newUseOccupationIcon
+          ? "Now using occupation-based profile icon!"
+          : "Now using default profile image!"
+      );
+    } catch (error: any) {
+      console.error("Profile icon update error:", error);
+      Alert.alert(
+        "Error",
+        error.message || "Failed to update profile icon preference."
       );
     } finally {
       setIsSaving(false);
@@ -316,13 +384,37 @@ export default function UserSettings() {
             </View>
 
             <View style={styles.profileImageContainer}>
-              <Image
-                source={{
-                  uri: profileImage || "https://picsum.photos/seed/profile/150",
-                }}
-                style={styles.profileImage}
-              />
+              {/* สร้าง Container ขนาดคงที่สำหรับรูปโปรไฟล์เพื่อป้องกันการขยับเมื่อเปลี่ยนรูปแบบไอคอน */}
+              <View style={styles.fixedSizeContainer}>
+                {useOccupationIcon && occupation ? (
+                  <OccupationProfileIcon
+                    occupation={occupation}
+                    size={100}
+                    showLabel={false}
+                  />
+                ) : (
+                  <Image
+                    source={{ uri: profileImage }}
+                    style={styles.profileImage}
+                  />
+                )}
+              </View>
             </View>
+
+            {/* แยกปุ่มออกมานอก profileImageContainer เพื่อให้ตำแหน่งคงที่ */}
+            {occupation && (
+              <TouchableOpacity
+                style={styles.iconToggleButton}
+                onPress={toggleProfileIconType}
+                disabled={isSaving}
+              >
+                <Text style={styles.iconToggleText}>
+                  {useOccupationIcon
+                    ? "Use Default Profile"
+                    : "Use Occupation Icon"}
+                </Text>
+              </TouchableOpacity>
+            )}
 
             <View style={styles.profileDetailsContainer}>
               <View style={styles.profileInfoRow}>
@@ -649,7 +741,7 @@ const styles = StyleSheet.create({
   // Profile Section
   profileImageContainer: {
     alignItems: "center",
-    marginBottom: 20,
+    marginTop: 10,
   },
   profileImage: {
     width: 100,
@@ -678,6 +770,28 @@ const styles = StyleSheet.create({
     color: "#333",
     flex: 1,
     textAlign: "right",
+  },
+
+  // Change Icon Button
+  fixedSizeContainer: {
+    width: 100,
+    height: 100,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  iconToggleButton: {
+    marginTop: 10,
+    marginBottom: 15,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: "#4E5A94",
+    borderRadius: 15,
+    alignSelf: "center",
+  },
+  iconToggleText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "500",
   },
 
   // Description styling
