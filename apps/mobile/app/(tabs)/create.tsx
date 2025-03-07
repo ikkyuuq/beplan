@@ -217,17 +217,19 @@ export default function CreateScreen() {
 
   const handleCreateCustomGoal = () => {
     setIsOptionModalVisible(false);
-    setIsLoading(true);
     setTimeout(() => {
-      router.push("/customGoal");
-      setIsLoading(false);
-    }, 400);
+      setIsLoading(true);
+      setTimeout(() => {
+        router.push("/customGoal");
+        setIsLoading(false);
+      }, 400);
+    }, 300);
   };
 
   const handleCreateTemplate = () => {
     setIsOptionModalVisible(false);
-    setIsLoading(true);
     setTimeout(() => {
+      setIsLoading(true);
       router.push("/(other)/createTemplate");
       setIsLoading(false);
     }, 400);
@@ -235,7 +237,6 @@ export default function CreateScreen() {
 
   const handleTestGoal = () => {
     setIsOptionModalVisible(false);
-    setIsLoading(true);
 
     const today = new Date();
 
@@ -290,12 +291,15 @@ export default function CreateScreen() {
     };
 
     setTimeout(() => {
-      router.push({
-        pathname: "/(other)/customGoal",
-        params: { initialGoalData: JSON.stringify(testGoalData) },
-      });
-      setIsLoading(false);
-    }, 400);
+      setIsLoading(true);
+      setTimeout(() => {
+        router.push({
+          pathname: "/(other)/customGoal",
+          params: { initialGoalData: JSON.stringify(testGoalData) },
+        });
+        setIsLoading(false);
+      }, 500);
+    }, 600);
   };
 
   // ====================== Render UI ======================
@@ -426,10 +430,13 @@ export default function CreateScreen() {
           onBackdropPress={() => setIsOptionModalVisible(false)}
           onBackButtonPress={() => setIsOptionModalVisible(false)}
           backdropTransitionOutTiming={0}
-          animationIn="fadeIn"
-          animationOut="fadeOut"
+          animationIn="zoomIn"
+          animationOut="zoomOut"
+          animationInTiming={300}
+          animationOutTiming={300}
+          useNativeDriver={true}
           statusBarTranslucent
-          style={styles.modalWrapper}
+          style={styles.centeredModalWrapper}
         >
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
@@ -721,12 +728,18 @@ const styles = StyleSheet.create({
     margin: 0,
     justifyContent: "flex-end",
   },
+  centeredModalWrapper: {
+    margin: 0,
+    justifyContent: "center", // เปลี่ยนเป็นตรงกลาง
+    alignItems: "center", // จัดให้อยู่กึ่งกลางแนวนอนด้วย
+  },
   modalContainer: {
     backgroundColor: "white",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
     padding: 20,
     paddingBottom: Platform.OS === "ios" ? 40 : 20,
+    width: "85%", // ปรับขนาดให้เหมาะสมเมื่ออยู่ตรงกลาง
+    maxWidth: 400, // จำกัดความกว้างสูงสุด
   },
   fullScreenModalContainer: {
     backgroundColor: "white",
@@ -753,6 +766,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: "#333",
+    textAlign: "center",
   },
   closeModalButton: {
     padding: 5,
