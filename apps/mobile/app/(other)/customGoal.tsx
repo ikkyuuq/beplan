@@ -7,8 +7,9 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  TouchableOpacity,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import TaskModal from "@/components/TaskModal";
 import CalendarPicker from "@/components/CalendarPicker";
 import { Task } from "@/types/taskTypes";
@@ -86,10 +87,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   };
 
   const getTaskColor = (type: string) => taskColors[type] || "#888";
-
-  const navigateToCreateTemplate = () => {
-    router.push("/(other)/createTemplate");
-  };
 
   // ====================== Mock-up Data ======================
   const mockGoalData = {
@@ -255,6 +252,11 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
     );
   };
 
+  // ====================== Back Button Handler ======================
+  const handleBack = () => {
+    router.back();
+  };
+
   // ====================== Effects ======================
   useEffect(() => {
     if (initialGoal) {
@@ -288,7 +290,15 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
   // ====================== Render UI ======================
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Header with Back Button */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <Ionicons name="arrow-back" size={24} color="white" />
+          <Text style={styles.backText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Title */}
       <Text style={styles.title}>Design Your Path</Text>
 
       {/* Goal Input */}
@@ -480,12 +490,6 @@ export default function CreateGoal({ initialGoal }: { initialGoal?: any }) {
       <Pressable onPress={loaddata} style={styles.loadButton}>
         <Text style={styles.logButtonText}>Load Test Data</Text>
       </Pressable>
-      <Pressable
-        onPress={navigateToCreateTemplate}
-        style={styles.templateButton}
-      >
-        <Text style={styles.templateButtonText}>Create Template</Text>
-      </Pressable>
     </View>
   );
 }
@@ -497,8 +501,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#16171F",
     padding: 20,
-    paddingTop: 80,
+    paddingTop: 100,
     paddingHorizontal: 40,
+  },
+
+  // Header Styles
+  header: {
+    position: "absolute",
+    top: 40,
+    left: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 8,
+  },
+  backText: {
+    color: "#fff",
+    marginLeft: 8,
+    fontSize: 16,
   },
 
   //  Typography
@@ -506,8 +530,9 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 40,
     fontWeight: "bold",
-    marginBottom: 16,
+    marginBottom: 20,
     marginLeft: -20,
+    textAlign: "center",
   },
   inputLabel: {
     color: "#fff",

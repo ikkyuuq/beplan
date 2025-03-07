@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
 import {
-  Text,
   View,
   Alert,
   StyleSheet,
@@ -21,7 +20,6 @@ import Animated, {
   withDelay,
   Easing,
   FadeInDown,
-  SlideInDown,
 } from "react-native-reanimated";
 
 // ====================== Main Component ======================
