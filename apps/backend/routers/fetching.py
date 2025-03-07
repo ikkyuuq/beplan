@@ -61,7 +61,7 @@ async def get_goals_today(
             FROM public.assigned_goal ag
             JOIN public.goal g ON ag.goal_id = g.id
             WHERE ag.user_id = $1
-            AND ag.status = 'pending'
+            AND ag.status IN ('pending','success')
             AND ag.start_date <= $2
             AND ag.due_date >= $2
             """,
@@ -117,63 +117,115 @@ async def get_goals_today(
         return goals  # Return the list of goals (filtered to include only those with tasks)
 
 # Implement update methods to set goal status to 'delete','completed' and 'failed'
-@router.put("/update_goal_status")
-async def update_goal_status(request: GoalUpdateRequest):
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        # Check if the goal exists for the user on that date
-        assigned_goal = await conn.fetchrow(
-            """
-            SELECT * FROM public.assigned_goal
-            WHERE id = $1
-            AND user_id = $2
-            AND start_date <= $3
-            AND due_date >= $3
-            """,
-            request.assigned_goal_id,
-            request.user_id,
-            request.today,
-        )
+# @router.put("/update_goal_status")
+# async def update_goal_status(request: GoalUpdateRequest):
+#     pool = await get_db_pool()
+#     async with pool.acquire() as conn:
+#         # Check if the goal exists for the user on that date
+#         assigned_goal = await conn.fetchrow(
+#             """
+#             SELECT * FROM public.assigned_goal
+#             WHERE id = $1
+#             AND user_id = $2
+#             AND start_date <= $3
+#             AND due_date >= $3
+#             """,
+#             request.assigned_goal_id,
+#             request.user_id,
+#             request.today,
+#         )
 
-        if not assigned_goal:
-            raise HTTPException(
-                status_code=404, detail="Goal not found for this user and date"
-            )
+#         if not assigned_goal:
+#             raise HTTPException(
+#                 status_code=404, detail="Goal not found for this user and date"
+#             )
 
-        # Update goal status
-        res = await conn.execute(
-            """
-            UPDATE public.assigned_goal
-            SET status = $1::status
-            WHERE id = $2
-            AND user_id = $3
-            AND due_date >= $4
-            """,
-            request.to,
-            request.assigned_goal_id,
-            request.user_id,
-            request.today,
-        )
+#         # Update goal status
+#         res = await conn.execute(
+#             """
+#             UPDATE public.assigned_goal
+#             SET status = $1::status
+#             WHERE id = $2
+#             AND user_id = $3
+#             AND due_date >= $4
+#             """,
+#             request.to,
+#             request.assigned_goal_id,
+#             request.user_id,
+#             request.today,
+#         )
 
-        if not res == "UPDATE 1":
-            raise HTTPException(
-                status_code=500, detail=f"Error updating goal status to '{request.to}'"
-            )
+#         if not res == "UPDATE 1":
+#             raise HTTPException(
+#                 status_code=500, detail=f"Error updating goal status to '{request.to}'"
+#             )
     
-        if request.to == Status.DELETED:
-            await conn.execute(
-            """
-            UPDATE public.assigned_task
-            SET status = 'deleted'
-            WHERE assigned_goal_id = $1
-            """,
-            request.assigned_goal_id,
+#         if request.to == Status.DELETED:
+#             await conn.execute(
+#             """
+#             UPDATE public.assigned_task
+#             SET status = 'deleted'
+#             WHERE assigned_goal_id = $1
+#             """,
+#             request.assigned_goal_id,
+#             )
+
+#     return {
+#         "message": f"Goal status updated to '{request.to}', and tasks updated if applicable.",
+#         "assigned_goal_id": request.assigned_goal_id,
+#     }
+
+#Implement function that check task status to update goal status
+def check_goal_status(goal_id:int):
+    "Check if the goal should be marked as success or failed based on task completion."
+    async def update_goal_status():
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            total_tasks = await conn.fetchval(
+                """
+                SELECT COUNT(*) FROM public.assigned_task
+                WHERE assigned_goal_id = $1
+                """,
+                goal_id,
+            )
+            completed_tasks = await conn.fetchval(
+                """
+                SELECT COUNT(*) FROM public.assigned_task
+                WHERE assigned_goal_id = $1 AND status = 'success'
+                """,
+                goal_id,
             )
 
-    return {
-        "message": f"Goal status updated to '{request.to}', and tasks updated if applicable.",
-        "assigned_goal_id": request.assigned_goal_id,
-    }
+            if completed_tasks >= total_tasks / 2:
+                # Mark goal as success
+                await conn.execute(
+                    """
+                    UPDATE public.assigned_goal
+                    SET status = 'success'
+                    WHERE id = $1
+                    """,
+                    goal_id,
+                )
+            else:
+                # Mark goal as failed and update remaining tasks (not completed ones)
+                await conn.execute(
+                    """
+                    UPDATE public.assigned_goal
+                    SET status = 'failed'
+                    WHERE id = $1
+                    """,
+                    goal_id,
+                )
+                await conn.execute(
+                    """
+                    UPDATE public.assigned_task
+                    SET status = 'failed'
+                    WHERE assigned_goal_id = $1 AND status = 'pending'
+                    """,
+                    goal_id,
+                )
+    return update_goal_status
+
              
 
 #Implement update task status
