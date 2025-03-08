@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from const import types as T
+from const.types import  Status,TaskType
 from database import get_db_pool
 from utils import date_calculation, goal_creation
 
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class TaskUpdate(BaseModel):
-    id: int
+    id: Optional[int] = None
     title: str
     description: Optional[str] = None
     repeat_type: Optional[T.RepeatType] = None
@@ -73,6 +74,7 @@ async def update_goal(req: GoalUpdateRequest):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
+            # update goal
             await conn.execute(
                 """
                 UPDATE goal
@@ -84,6 +86,7 @@ async def update_goal(req: GoalUpdateRequest):
                 req.goal.id,
             )
 
+            # update assigned_goal
             await conn.execute(
                 """
                 UPDATE assigned_goal
@@ -99,8 +102,8 @@ async def update_goal(req: GoalUpdateRequest):
                 req.assigned_goal_id,
             )
 
+            # delete tasks with status as deleted
             for task in req.goal.tasks:
-                # Delete task if status is deleted
                 if task.status == Status.DELETED:
                     await conn.execute(
                         """
@@ -110,83 +113,115 @@ async def update_goal(req: GoalUpdateRequest):
                         task.id,
                     )
 
+            # Update or add new tasks
             for task in req.goal.tasks:
                 if task.status != Status.DELETED:
-                    await conn.execute(
-                        """
-                        UPDATE task
-                        SET title = $1, description = $2, type = $3, interval = $4, updated_at = NOW()
-                        WHERE id = $5 AND goal_id = $6
-                        """,
-                        task.title,
-                        task.description,
-                        task.repeat_type,
-                        task.week_interval if task.week_interval else None,
-                        task.id,
-                        req.goal.id,
-                    )
+                    if task.id:  # If the id is an existing task
+                        await conn.execute(
+                            """
+                            UPDATE task
+                            SET title = $1, description = $2, type = $3, interval = $4, updated_at = NOW()
+                            WHERE id = $5 AND goal_id = $6
+                            """,
+                            task.title,
+                            task.description,
+                            task.repeat_type,
+                            task.week_interval if task.week_interval else None,
+                            task.id,
+                            req.goal.id,
+                        )
+                    else:  #If there is no id, it is a new task.
+                        task_id = await conn.fetchrow(
+                            """
+                            INSERT INTO task (title, description, goal_id, interval, type)
+                            VALUES ($1, $2, $3, $4, $5)
+                            RETURNING id
+                            """,
+                            task.title,
+                            task.description,
+                            req.goal.id,
+                            task.week_interval if task.week_interval else None,
+                            task.repeat_type,
+                        )
+                        task.id = task_id["id"]  # Set the new task id
 
-            # Delete all previous interval dates
+            # Delete old assigned_task and assigned_task_interval
+            await conn.execute(
+                """
+                DELETE FROM assigned_task
+                WHERE assigned_goal_id = $1
+                """,
+                req.assigned_goal_id,
+            )
+
             await conn.execute(
                 """
                 DELETE FROM assigned_task_interval
                 WHERE assigned_task_id IN (
-                    SELECT id FROM assigned_task WHERE assigned_goal_id IN (
-                        SELECT id FROM assigned_goal WHERE goal_id = $1 AND user_id = $2
-                    )
+                    SELECT id FROM assigned_task WHERE assigned_goal_id = $1
                 )
                 """,
-                req.goal.id,
-                req.user_id,
+                req.assigned_goal_id,
             )
 
-            # Insert new interval dates
+            #Create new assigned_task and assigned_task_interval
             for task in req.goal.tasks:
-                # Get all existing assigned task ids
-                assigned_task_ids = await conn.fetch(
-                    """
-                    SELECT id FROM assigned_task 
-                    WHERE task_id = $1
-                    AND status = 'pending'
-                    AND assigned_goal_id 
-                    IN (SELECT id FROM assigned_goal WHERE goal_id = $2 AND user_id = $3)
-                    """,
-                    task.id,
-                    req.goal.id,
-                    req.user_id,
-                )
-
-                # Re-Calculate interval dates from new start date to due date
-                if task.repeat_type == T.RepeatType.DAILY:
-                    interval_date = date_calculation.get_daily_range(
-                        req.goal.start_date, req.goal.due_date
+                if task.status != Status.DELETED:
+                    # Check if task_id exists in the task table.
+                    task_exists = await conn.fetchrow(
+                        """
+                        SELECT id FROM task WHERE id = $1
+                        """,
+                        task.id,
                     )
-                elif task.repeat_type == T.RepeatType.WEEKLY:
-                    if not task.week_interval:
-                        raise HTTPException(400, detail="Week interval is required")
-                    else:
-                        interval_date = date_calculation.get_weekly_range(
-                            req.goal.start_date,
-                            req.goal.due_date,
-                            task.week_interval,
+
+                    if not task_exists:
+                        raise HTTPException(status_code=404, detail=f"Task with id {task.id} not found")
+
+                    # Recalculate interval_date
+                    if task.repeat_type == TaskType.DAILY:
+                        interval_date = date_calculation.get_daily_range(
+                            req.goal.start_date, req.goal.due_date
                         )
-                elif (
-                    task.repeat_type == T.RepeatType.MONTHLY
-                    or task.repeat_type == T.RepeatType.DATE
-                ):
-                    if not task.date_interval:
-                        raise HTTPException(400, detail="Monthly interval is required")
+                    elif task.repeat_type == TaskType.WEEKLY:
+                        if not task.week_interval:
+                            raise HTTPException(400, detail="Week interval is required")
+                        else:
+                            interval_date = date_calculation.get_weekly_range(
+                                req.goal.start_date,
+                                req.goal.due_date,
+                                task.week_interval,
+                            )
+                    elif task.repeat_type == TaskType.MONTHLY:
+                        if not task.date_interval:
+                            raise HTTPException(400, detail="Monthly interval is required")
+                        else:
+                            interval_date = task.date_interval
+                    elif task.repeat_type == TaskType.DATE:
+                        if not task.date_interval:
+                            raise HTTPException(400, detail="Date interval is required for 'date' type tasks")
+                        else:
+                            interval_date = task.date_interval  # Use the date_interval passed directly.
                     else:
-                        interval_date = task.date_interval
-                else:
-                    raise HTTPException(
-                        400,
-                        detail="Invalid task type, must be daily, weekly, or monthly",
-                    )
+                        raise HTTPException(
+                            400,
+                            detail="Invalid task type, must be daily, weekly, monthly, or date",
+                        )
 
-                # Loop through assigned task ids and insert interval dates
-                for assigned_task_id in assigned_task_ids:
+                    # Create a new assigned_task and assigned_task_interval for each date.
                     for date in interval_date:
+                        # Create a new assigned_task
+                        assigned_task_id = await conn.fetchrow(
+                            """
+                            INSERT INTO assigned_task (assigned_goal_id, task_id)
+                            VALUES ($1, $2)
+                            RETURNING id
+                            """,
+                            req.assigned_goal_id,
+                            task.id,
+                        )
+
+                        # Create a new assigned_task_interval
                         await conn.execute(
                             """
                             INSERT INTO assigned_task_interval (assigned_task_id, interval_date)
@@ -203,11 +238,14 @@ async def update_goal(req: GoalUpdateRequest):
                 }
             )
 
+        except HTTPException as e:
+            raise e
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
             return JSONResponse(
                 content={"error": f"Unexpected error: {str(e)}"}, status_code=500
             )
+
 
 
 @router.get("/goal/{assigned_goal_id}")
