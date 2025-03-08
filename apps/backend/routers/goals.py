@@ -7,8 +7,12 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-
 from database import get_db_pool
+
+
+
+
+
 from utils import date_calculation
 
 load_dotenv()
@@ -109,14 +113,15 @@ async def create_goal(req: GoalCreateRequest):
             for task in req.goal.tasks:
                 task_id = await conn.fetchrow(
                     """
-                    INSERT INTO task (title, description, goal_id, interval)
-                    VALUES ($1, $2, $3, $4)
+                    INSERT INTO task (title, description, goal_id, interval,type)
+                    VALUES ($1, $2, $3, $4 ,$5)
                     RETURNING id
                     """,
                     task.title,
                     task.description,
                     goal_id["id"],
                     task.week_interval if task.week_interval else None,
+                    task.repeat_type,
                 )
 
                 task_ids.append(task_id["id"])
@@ -325,6 +330,71 @@ async def update_goal(req: GoalUpdateRequest):
                 }
             )
 
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
+            return JSONResponse(
+                content={"error": f"Unexpected error: {str(e)}"}, status_code=500
+            )
+    
+    
+@router.get("/goal/{assigned_goal_id}")
+async def get_goal(assigned_goal_id: int):
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        try:
+            
+            goal_data = await conn.fetchrow(
+                """
+                SELECT g.id, g.title, g.type, ag.start_date, ag.due_date
+                FROM goal g
+                JOIN assigned_goal ag ON g.id = ag.goal_id
+                WHERE ag.id = $1
+                """,
+                assigned_goal_id,
+            )
+
+            if not goal_data:
+                raise HTTPException(status_code=404, detail="Goal not found")
+
+            
+            tasks_data = await conn.fetch(
+                """
+                SELECT DISTINCT t.id, t.title, t.description, t.type as repeat_type, t.interval as week_interval, at.status
+                FROM task t
+                JOIN assigned_task at ON t.id = at.task_id
+                WHERE at.assigned_goal_id = $1
+                """,
+                assigned_goal_id,
+            )
+
+            tasks = []
+            for task in tasks_data:
+                tasks.append({
+                    "id": task["id"],
+                    "title": task["title"],
+                    "description": task["description"],
+                    "repeat_type": task["repeat_type"],
+                    "date_interval": [],  
+                    "week_interval": task["week_interval"],
+                    "status": task["status"],
+                })
+
+            
+            response = {
+                "goal": {
+                    "id": goal_data["id"],
+                    "title": goal_data["title"],
+                    "type": goal_data["type"],
+                    "start_date": goal_data["start_date"].isoformat(),  
+                    "due_date": goal_data["due_date"].isoformat(),  
+                    "tasks": tasks,
+                }
+            }
+
+            return JSONResponse(content=response)
+
+        except HTTPException as e:
+            raise e
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
             return JSONResponse(
