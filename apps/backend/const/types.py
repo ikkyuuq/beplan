@@ -14,9 +14,15 @@ class RepeatType(str, Enum):
 
 class Status(str, Enum):
     PENDING = "pending"
-    COMPLETED = "completed"
+    COMPLETED = "success"
     FAILED = "failed"
     DELETED = "deleted"
+
+class TaskType(str, Enum):
+    DATE = "date"
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
 
 
 class GoalType(str, Enum):
