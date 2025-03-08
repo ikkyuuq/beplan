@@ -108,7 +108,6 @@ class TemplateResponse(BaseModel):
     type: TemplateType
     status: TemplateStatus
     duration: int
-    duration_unit: str
 
 
 @router.get("")
@@ -128,14 +127,6 @@ async def fetch_template(req: FetchTemplateRequest):
             duration = (
                 (templates[0]["due_date"] - templates[0]["start_date"]) + timedelta(1)
             ).days
-            if duration > 365:
-                duration_unit = "year"
-                duration = duration // 365
-            elif duration > 30:
-                duration_unit = "month"
-                duration = duration // 30
-            else:
-                duration_unit = "day"
 
             template_ids = [tmpl["id"] for tmpl in templates]
 
@@ -221,7 +212,6 @@ async def fetch_template(req: FetchTemplateRequest):
                             else TemplateStatus.UNUSED
                         ),
                         duration=duration,
-                        duration_unit=duration_unit,
                     )
                 )
 
