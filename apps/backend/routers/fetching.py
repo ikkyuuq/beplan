@@ -176,55 +176,55 @@ async def get_goals_today(
 #     }
 
 #Implement function that check task status to update goal status
-def check_goal_status(goal_id:int):
-    "Check if the goal should be marked as success or failed based on task completion."
-    async def update_goal_status():
-        pool = await get_db_pool()
-        async with pool.acquire() as conn:
-            total_tasks = await conn.fetchval(
-                """
-                SELECT COUNT(*) FROM public.assigned_task
-                WHERE assigned_goal_id = $1
-                """,
-                goal_id,
-            )
-            completed_tasks = await conn.fetchval(
-                """
-                SELECT COUNT(*) FROM public.assigned_task
-                WHERE assigned_goal_id = $1 AND status = 'success'
-                """,
-                goal_id,
-            )
+# def check_goal_status(goal_id:int):
+#     "Check if the goal should be marked as success or failed based on task completion."
+#     async def update_goal_status():
+#         pool = await get_db_pool()
+#         async with pool.acquire() as conn:
+#             total_tasks = await conn.fetchval(
+#                 """
+#                 SELECT COUNT(*) FROM public.assigned_task
+#                 WHERE assigned_goal_id = $1
+#                 """,
+#                 goal_id,
+#             )
+#             completed_tasks = await conn.fetchval(
+#                 """
+#                 SELECT COUNT(*) FROM public.assigned_task
+#                 WHERE assigned_goal_id = $1 AND status = 'success'
+#                 """,
+#                 goal_id,
+#             )
 
-            if completed_tasks >= total_tasks / 2:
-                # Mark goal as success
-                await conn.execute(
-                    """
-                    UPDATE public.assigned_goal
-                    SET status = 'success'
-                    WHERE id = $1
-                    """,
-                    goal_id,
-                )
-            else:
-                # Mark goal as failed and update remaining tasks (not completed ones)
-                await conn.execute(
-                    """
-                    UPDATE public.assigned_goal
-                    SET status = 'failed'
-                    WHERE id = $1
-                    """,
-                    goal_id,
-                )
-                await conn.execute(
-                    """
-                    UPDATE public.assigned_task
-                    SET status = 'failed'
-                    WHERE assigned_goal_id = $1 AND status = 'pending'
-                    """,
-                    goal_id,
-                )
-    return update_goal_status
+#             if completed_tasks >= total_tasks / 2:
+#                 # Mark goal as success
+#                 await conn.execute(
+#                     """
+#                     UPDATE public.assigned_goal
+#                     SET status = 'success'
+#                     WHERE id = $1
+#                     """,
+#                     goal_id,
+#                 )
+#             else:
+#                 # Mark goal as failed and update remaining tasks (not completed ones)
+#                 await conn.execute(
+#                     """
+#                     UPDATE public.assigned_goal
+#                     SET status = 'failed'
+#                     WHERE id = $1
+#                     """,
+#                     goal_id,
+#                 )
+#                 await conn.execute(
+#                     """
+#                     UPDATE public.assigned_task
+#                     SET status = 'failed'
+#                     WHERE assigned_goal_id = $1 AND status = 'pending'
+#                     """,
+#                     goal_id,
+#                 )
+#     return update_goal_status
 
              
 
@@ -272,3 +272,57 @@ async def update_task_status(request: TaskUpdateRequest):
             "message": f"Task status updated to {request.to}",
             "assigned_task_id": request.assigned_task_id,
         }
+
+async def check_goal_status(conn, assigned_goal_id: int):
+    """
+    Check if the goal should be marked as 'success' or 'failed' 
+    based on the progress of its tasks.
+    """
+    # Fetch total tasks and completed tasks under the goal
+    task_stats = await conn.fetchrow(
+        """
+        SELECT 
+            COUNT(*) AS total_tasks,
+            SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS completed_tasks
+            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_tasks
+        FROM public.assigned_task
+        WHERE assigned_goal_id = $1
+        """,
+        assigned_goal_id,
+    )
+
+    total_tasks = task_stats["total_tasks"]
+    completed_tasks = task_stats["completed_tasks"] or 0
+    failed_tasks = failed_tasks["failed_tasks"] or 0
+
+    # Check if more than half the tasks are completed
+    if completed_tasks >= total_tasks / 2:
+        # Mark the goal as success
+        await conn.execute(
+            """
+            UPDATE public.assigned_goal
+            SET status = 'success'
+            WHERE id = $1
+            """,
+            assigned_goal_id,
+        )
+    elif failed_tasks >= total_tasks / 2:
+        # Mark the goal as failed and update only remaining pending tasks
+        await conn.execute(
+            """
+            UPDATE public.assigned_goal
+            SET status = 'failed'
+            WHERE id = $1
+            """,
+            assigned_goal_id,
+        )
+
+        await conn.execute(
+            """
+            UPDATE public.assigned_task
+            SET status = 'failed'
+            WHERE assigned_goal_id = $1
+            AND status = 'pending'
+            """,
+            assigned_goal_id,
+        )
