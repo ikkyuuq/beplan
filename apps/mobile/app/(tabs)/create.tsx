@@ -730,16 +730,16 @@ const styles = StyleSheet.create({
   },
   centeredModalWrapper: {
     margin: 0,
-    justifyContent: "center", 
-    alignItems: "center", 
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContainer: {
     backgroundColor: "white",
     borderRadius: 20,
     padding: 20,
     paddingBottom: Platform.OS === "ios" ? 40 : 20,
-    width: "85%", 
-    maxWidth: 400, 
+    width: "85%",
+    maxWidth: 400,
   },
   fullScreenModalContainer: {
     backgroundColor: "white",
