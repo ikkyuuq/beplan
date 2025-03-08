@@ -6,46 +6,18 @@ from asyncpg import UniqueViolationError
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from const import types as T
 from database import get_db_pool
 from utils import date_calculation
 
 router = APIRouter()
 
 
-class GoalType(str, Enum):
-    CUSTOM_GOAL = "custom goal"
-    SMART_GOAL = "smart goal"
-    TEMPLATE = "template"
-    COMMUNITY = "community"
-
-
-class TaskType(str, Enum):
-    DAILY = "daily"
-    WEEKLY = "weekly"
-    MONTHLY = "monthly"
-
-
-class Task(BaseModel):
-    title: str
-    description: Optional[str] = None
-    repeat_type: TaskType
-    date_interval: Optional[List[date]] = None
-    week_interval: Optional[List[int]] = None
-
-
-class Goal(BaseModel):
-    title: str
-    type: GoalType
-    start_date: date
-    due_date: date
-    tasks: List[Task]
-
-
 class AssignedTask(BaseModel):
     id: int
     title: str
     description: Optional[str] = None
-    repeat_type: TaskType
+    repeat_type: T.RepeatType
     date_interval: Optional[List[date]] = None
     week_interval: Optional[List[int]] = None
 
@@ -53,7 +25,7 @@ class AssignedTask(BaseModel):
 class AssingedGoal(BaseModel):
     id: int
     title: str
-    type: GoalType
+    type: T.GoalType
     start_date: date
     due_date: date
     tasks: List[AssignedTask]
@@ -87,16 +59,16 @@ class CreateTemplateRequest(BaseModel):
     created_by: Optional[str] = "BePlan"
     category: str
     type: Optional[TemplateType] = TemplateType.TEMPLATE
-    goals: List[Goal]
+    goals: List[T.Goal]
 
 
 class GoalUpdate(BaseModel):
     id: int
     title: str
-    type: GoalType
+    type: T.GoalType
     start_date: date
     due_date: date
-    tasks: List[Task]
+    tasks: List[T.Task]
 
 
 class UpdateTemplateRequest(BaseModel):
@@ -105,7 +77,7 @@ class UpdateTemplateRequest(BaseModel):
     description: Optional[str] = None
     image_url: str
     category: str
-    goals: List[Goal]
+    goals: List[T.Goal]
 
 
 class FetchTemplateRequest(BaseModel):
@@ -116,7 +88,7 @@ class FetchTemplateRequest(BaseModel):
 class TaskTemplate(BaseModel):
     title: str
     description: Optional[str] = None
-    type: TaskType
+    type: T.RepeatType
     week_interval: Optional[List[int]] = None
 
 
@@ -316,11 +288,11 @@ async def create_template(req: CreateTemplateRequest):
                     )
 
                     for task in goal.tasks:
-                        if task.repeat_type == TaskType.DAILY:
+                        if task.repeat_type == T.RepeatType.DAILY:
                             interval_dates = date_calculation.get_daily_range(
                                 goal.start_date, goal.due_date
                             )
-                        elif task.repeat_type == TaskType.WEEKLY:
+                        elif task.repeat_type == T.RepeatType.WEEKLY:
                             if not task.week_interval:
                                 raise HTTPException(
                                     400, detail="Week interval is required"
@@ -328,7 +300,7 @@ async def create_template(req: CreateTemplateRequest):
                             interval_dates = date_calculation.get_weekly_range(
                                 goal.start_date, goal.due_date, task.week_interval
                             )
-                        elif task.repeat_type == TaskType.MONTHLY:
+                        elif task.repeat_type == T.RepeatType.MONTHLY:
                             if not task.date_interval:
                                 raise HTTPException(
                                     400, detail="Monthly interval is required"

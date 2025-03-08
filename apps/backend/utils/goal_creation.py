@@ -2,21 +2,25 @@ from datetime import date
 
 import date_calculation
 from asyncpg import Connection
-from const import types as T
 from fastapi import HTTPException
+
+from const import types as T
 
 
 async def get_interval_dates(task: T.Task, start_date: date, due_date: date):
     """Determine the list of interval dates based on the task repeat type."""
-    if task.repeat_type == T.TaskType.DAILY:
+    if task.repeat_type == T.RepeatType.DAILY:
         return date_calculation.get_daily_range(start_date, due_date)
-    elif task.repeat_type == T.TaskType.WEEKLY:
+    elif task.repeat_type == T.RepeatType.WEEKLY:
         if not task.week_interval:
             raise HTTPException(400, detail="Week interval is required")
         return date_calculation.get_weekly_range(
             start_date, due_date, task.week_interval
         )
-    elif task.repeat_type == T.TaskType.MONTHLY:
+    elif (
+        task.repeat_type == T.RepeatType.MONTHLY
+        or task.repeat_type == T.RepeatType.DATE
+    ):
         if not task.date_interval:
             raise HTTPException(400, detail="Monthly interval is required")
         return task.date_interval

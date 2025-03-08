@@ -2,12 +2,13 @@ import logging
 from datetime import date
 from typing import List, Optional
 
-from const import types as T
-from database import get_db_pool
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+
+from const import types as T
+from database import get_db_pool
 from utils import date_calculation, goal_creation
 
 load_dotenv()
@@ -23,7 +24,7 @@ class TaskUpdate(BaseModel):
     id: int
     title: str
     description: Optional[str] = None
-    repeat_type: Optional[T.RepeatMode] = None
+    repeat_type: Optional[T.RepeatType] = None
     date_interval: Optional[List[date]] = None
     week_interval: Optional[List[int]] = None
     status: Optional[T.Status] = None
@@ -156,11 +157,11 @@ async def update_goal(req: GoalUpdateRequest):
                 )
 
                 # Re-Calculate interval dates from new start date to due date
-                if task.repeat_type == TaskType.DAILY:
+                if task.repeat_type == T.RepeatType.DAILY:
                     interval_date = date_calculation.get_daily_range(
                         req.goal.start_date, req.goal.due_date
                     )
-                elif task.repeat_type == TaskType.WEEKLY:
+                elif task.repeat_type == T.RepeatType.WEEKLY:
                     if not task.week_interval:
                         raise HTTPException(400, detail="Week interval is required")
                     else:
@@ -169,7 +170,7 @@ async def update_goal(req: GoalUpdateRequest):
                             req.goal.due_date,
                             task.week_interval,
                         )
-                elif task.repeat_type == TaskType.MONTHLY:
+                elif task.repeat_type == T.RepeatType.MONTHLY:
                     if not task.date_interval:
                         raise HTTPException(400, detail="Monthly interval is required")
                     else:

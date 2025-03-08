@@ -5,11 +5,11 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-class RepeatMode(str, Enum):
-    date = "date"
-    daily = "daily"
-    weekly = "weekly"
-    monthly = "monthly"
+class RepeatType(str, Enum):
+    DATE = "date"
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
 
 
 class Status(str, Enum):
@@ -19,15 +19,9 @@ class Status(str, Enum):
     DELETED = "deleted"
 
 
-class TaskType(str, Enum):
-    DAILY = "daily"
-    WEEKLY = "weekly"
-    MONTHLY = "monthly"
-
-
 class GoalType(str, Enum):
-    CUSTOM = "custom goal"
-    AI = "smart goal"
+    CUSTOM_GOAL = "custom goal"
+    SMART_GOAL = "smart goal"
     TEMPLATE = "template"
     COMMUNITY = "community"
 
@@ -35,14 +29,14 @@ class GoalType(str, Enum):
 class Task(BaseModel):
     title: str
     description: Optional[str] = None
-    repeat_type: RepeatMode
+    repeat_type: RepeatType
     date_interval: Optional[List[date]] = None
     week_interval: Optional[List[int]] = None
 
 
 class Goal(BaseModel):
     title: str
-    type: str = Field(default="custom goal")
+    type: GoalType = Field(default=GoalType.CUSTOM_GOAL)
     start_date: date
     due_date: date
     tasks: List[Task]
