@@ -170,7 +170,10 @@ async def update_goal(req: GoalUpdateRequest):
                             req.goal.due_date,
                             task.week_interval,
                         )
-                elif task.repeat_type == T.RepeatType.MONTHLY:
+                elif (
+                    task.repeat_type == T.RepeatType.MONTHLY
+                    or task.repeat_type == T.RepeatType.DATE
+                ):
                     if not task.date_interval:
                         raise HTTPException(400, detail="Monthly interval is required")
                     else:

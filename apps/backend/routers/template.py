@@ -300,7 +300,10 @@ async def create_template(req: CreateTemplateRequest):
                             interval_dates = date_calculation.get_weekly_range(
                                 goal.start_date, goal.due_date, task.week_interval
                             )
-                        elif task.repeat_type == T.RepeatType.MONTHLY:
+                        elif (
+                            task.repeat_type == T.RepeatType.MONTHLY
+                            or task.repeat_type == T.RepeatType.DATE
+                        ):
                             if not task.date_interval:
                                 raise HTTPException(
                                     400, detail="Monthly interval is required"
