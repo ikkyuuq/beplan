@@ -1,6 +1,6 @@
 from datetime import date
 
-import date_calculation
+from utils import date_calculation
 from asyncpg import Connection
 from fastapi import HTTPException
 
