@@ -730,16 +730,16 @@ const styles = StyleSheet.create({
   },
   centeredModalWrapper: {
     margin: 0,
-    justifyContent: "center", // เปลี่ยนเป็นตรงกลาง
-    alignItems: "center", // จัดให้อยู่กึ่งกลางแนวนอนด้วย
+    justifyContent: "center", 
+    alignItems: "center", 
   },
   modalContainer: {
     backgroundColor: "white",
     borderRadius: 20,
     padding: 20,
     paddingBottom: Platform.OS === "ios" ? 40 : 20,
-    width: "85%", // ปรับขนาดให้เหมาะสมเมื่ออยู่ตรงกลาง
-    maxWidth: 400, // จำกัดความกว้างสูงสุด
+    width: "85%", 
+    maxWidth: 400, 
   },
   fullScreenModalContainer: {
     backgroundColor: "white",
