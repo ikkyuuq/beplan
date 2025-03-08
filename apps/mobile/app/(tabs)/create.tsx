@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,6 @@ import {
   Platform,
   StyleSheet,
   ActivityIndicator,
-  Dimensions,
-  Keyboard,
   KeyboardAvoidingView,
   Image,
 } from "react-native";
@@ -77,11 +75,6 @@ export default function CreateScreen() {
     transform: [{ translateY: searchInputTranslateY.value }],
   }));
 
-  const customButtonAnimatedStyle = useAnimatedStyle(() => ({
-    // No animations
-    opacity: 1,
-  }));
-
   const templateSectionAnimatedStyle = useAnimatedStyle(() => ({
     opacity: templateSectionOpacity.value,
     transform: [
@@ -121,26 +114,9 @@ export default function CreateScreen() {
     null
   );
   const [isLoading, setIsLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [filteredTemplates, setFilteredTemplates] = useState<any[]>([]);
-  const searchInputRef = useRef<TextInput>(null);
-
   const router = useRouter();
-  const { width: screenWidth } = Dimensions.get("window");
 
   // ====================== Mock Data ======================
-  // Predefined suggestions
-  const predefinedSuggestions = [
-    "Save $5000 in 3 months",
-    "Run 5km every day for a month",
-    "Complete a coding project in 2 weeks",
-    "Read 12 books this year",
-    "Learn a new language in 6 months",
-  ];
-
-  // Mock goals data for the modal
   const mockGoals = [
     { id: "goal_001", title: "Visit 5 countries" },
     { id: "goal_002", title: "Learn a new language" },
@@ -220,46 +196,7 @@ export default function CreateScreen() {
     },
   ];
 
-  // Get available categories
-  const allCategories = ["All"];
-  templateData.forEach((template) => {
-    if (!allCategories.includes(template.category)) {
-      allCategories.push(template.category);
-    }
-  });
-  communityData.forEach((template) => {
-    if (!allCategories.includes(template.category)) {
-      allCategories.push(template.category);
-    }
-  });
-
   // ====================== Handlers ======================
-  const handleSearchChange = (text: string) => {
-    setSearchQuery(text);
-    if (text.length > 0) {
-      const filtered = predefinedSuggestions.filter((suggestion) =>
-        suggestion.toLowerCase().includes(text.toLowerCase())
-      );
-      setSuggestions(filtered);
-    } else {
-      setSuggestions([]);
-    }
-  };
-
-  const handleSearchSubmit = () => {
-    if (searchQuery.trim()) {
-      console.log("Searching for:", searchQuery);
-      Keyboard.dismiss();
-      setSuggestions([]);
-    }
-  };
-
-  const handleSuggestionSelect = (suggestion: string) => {
-    setSearchQuery(suggestion);
-    setSuggestions([]);
-    Keyboard.dismiss();
-  };
-
   const handleTemplateSelect = (template: any) => {
     const selectedTemplate: Template = {
       title: template.title,
@@ -275,61 +212,95 @@ export default function CreateScreen() {
   };
 
   const handleOpenOptionModal = () => {
-    Keyboard.dismiss();
     setIsOptionModalVisible(true);
   };
 
   const handleCreateCustomGoal = () => {
     setIsOptionModalVisible(false);
-    setIsLoading(true);
     setTimeout(() => {
-      router.push("/customGoal");
-      setIsLoading(false);
-    }, 400);
+      setIsLoading(true);
+      setTimeout(() => {
+        router.push("/customGoal");
+        setIsLoading(false);
+      }, 400);
+    }, 300);
   };
 
   const handleCreateTemplate = () => {
     setIsOptionModalVisible(false);
-    setIsLoading(true);
     setTimeout(() => {
+      setIsLoading(true);
       router.push("/(other)/createTemplate");
       setIsLoading(false);
     }, 400);
   };
 
-  const handleSearchFocus = () => {
-    setIsSearchFocused(true);
-    if (searchQuery.length > 0) {
-      const filtered = predefinedSuggestions.filter((suggestion) =>
-        suggestion.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setSuggestions(filtered);
-    }
-  };
+  const handleTestGoal = () => {
+    setIsOptionModalVisible(false);
 
-  const handleSearchBlur = () => {
-    setIsSearchFocused(false);
-    // Delay hiding suggestions to allow for tapping them
+    const today = new Date();
+
+    // Set start date to 7 days in the past (for already started goal)
+    const pastDate = new Date(today);
+    pastDate.setDate(today.getDate() - 7);
+
+    // Set due date to 14 days in the future
+    const futureDate = new Date(today);
+    futureDate.setDate(today.getDate() + 14);
+
+    const formattedPastDate = pastDate.toISOString().split("T")[0];
+    const formattedFutureDate = futureDate.toISOString().split("T")[0];
+    const testGoalData = {
+      title: "Test Goal from Create Screen",
+      startDate: formattedPastDate,
+      dueDate: formattedFutureDate,
+      tasks: [
+        {
+          title: "Task 1: Read a book",
+          description: "Finish reading 'Atomic Habits' by James Clear",
+          type: "normal",
+          selectedDates: ["2025-03-02", "2025-03-05", "2025-03-07"],
+          selectedDaysOfWeek: [],
+          status: "pending",
+        },
+        {
+          title: "Task 2: Daily Exercise",
+          description: "Complete 30 minutes of cardio each day",
+          type: "daily",
+          selectedDates: [],
+          selectedDaysOfWeek: [],
+          status: "pending",
+        },
+        {
+          title: "Task 3: Practice coding",
+          description: "Work on React Native project for at least 1 hour",
+          type: "weekly",
+          selectedDates: [],
+          selectedDaysOfWeek: [1, 3, 5],
+          status: "completed",
+        },
+        {
+          title: "Task 4: Plan the month",
+          description: "Set up goals and budget for the month",
+          type: "monthly",
+          selectedDates: ["2025-03-16"],
+          selectedDaysOfWeek: [],
+          status: "failed",
+        },
+      ],
+    };
+
     setTimeout(() => {
-      setSuggestions([]);
-    }, 200);
+      setIsLoading(true);
+      setTimeout(() => {
+        router.push({
+          pathname: "/(other)/customGoal",
+          params: { initialGoalData: JSON.stringify(testGoalData) },
+        });
+        setIsLoading(false);
+      }, 500);
+    }, 600);
   };
-
-  const navigateToAI = () => {
-    Keyboard.dismiss();
-    // This would be implemented to navigate to an AI assistant view
-    console.log("Navigate to AI assistant");
-  };
-
-  // ====================== View All Handlers ======================
-  // Set templates based on which View All button was clicked
-  useEffect(() => {
-    if (isViewAllTemplatesVisible) {
-      setFilteredTemplates(templateData);
-    } else if (isViewAllCommunityVisible) {
-      setFilteredTemplates(communityData);
-    }
-  }, [isViewAllTemplatesVisible, isViewAllCommunityVisible]);
 
   // ====================== Render UI ======================
   return (
@@ -358,70 +329,40 @@ export default function CreateScreen() {
               style={styles.searchIcon}
             />
             <TextInput
-              ref={searchInputRef}
               style={styles.searchInput}
               placeholder="Describe your goal..."
               placeholderTextColor="#999"
-              value={searchQuery}
-              onChangeText={handleSearchChange}
-              onFocus={handleSearchFocus}
-              onBlur={handleSearchBlur}
-              onSubmitEditing={handleSearchSubmit}
-              returnKeyType="search"
             />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity
-                style={styles.clearButton}
-                onPress={() => setSearchQuery("")}
-              >
-                <Ionicons name="close-circle" size={18} color="#777" />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity style={styles.aiButton} onPress={navigateToAI}>
+            <TouchableOpacity
+              style={styles.aiButton}
+              onPress={() => console.log("AI button pressed")}
+            >
               <Ionicons name="chatbubble-ellipses" size={22} color="#4F46E5" />
             </TouchableOpacity>
           </View>
-
-          {/* Search Suggestions */}
-          {suggestions.length > 0 && (
-            <View style={styles.suggestionsContainer}>
-              {suggestions.map((suggestion, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.suggestionItem}
-                  onPress={() => handleSuggestionSelect(suggestion)}
-                >
-                  <Ionicons name="search-outline" size={16} color="#777" />
-                  <Text style={styles.suggestionText}>{suggestion}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
         </Animated.View>
 
         {/* Custom Goal Button */}
-        <Animated.View style={customButtonAnimatedStyle}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.customGoalButton}
-            onPress={handleOpenOptionModal}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.customGoalButton}
+          onPress={handleOpenOptionModal}
+        >
+          <LinearGradient
+            colors={["#4F46E5", "#7C3AED"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.buttonGradient}
           >
-            <LinearGradient
-              colors={["#4F46E5", "#7C3AED"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.buttonGradient}
-            >
-              <Ionicons
-                name="add-circle"
-                size={20}
-                color="#FFF"
-                style={styles.buttonIcon}
-              />
-              <Text style={styles.customGoalButtonText}>Create Your Own</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
+            <Ionicons
+              name="add-circle"
+              size={20}
+              color="#FFF"
+              style={styles.buttonIcon}
+            />
+            <Text style={styles.customGoalButtonText}>Create Your Own</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </Header>
 
       <ScrollView
@@ -489,10 +430,13 @@ export default function CreateScreen() {
           onBackdropPress={() => setIsOptionModalVisible(false)}
           onBackButtonPress={() => setIsOptionModalVisible(false)}
           backdropTransitionOutTiming={0}
-          animationIn="fadeIn"
-          animationOut="fadeOut"
+          animationIn="zoomIn"
+          animationOut="zoomOut"
+          animationInTiming={300}
+          animationOutTiming={300}
+          useNativeDriver={true}
           statusBarTranslucent
-          style={styles.modalWrapper}
+          style={styles.centeredModalWrapper}
         >
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
@@ -536,6 +480,22 @@ export default function CreateScreen() {
               </View>
               <Feather name="chevron-right" size={22} color="#999" />
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={handleTestGoal}
+            >
+              <View style={[styles.optionIcon, { backgroundColor: "black" }]}>
+                <Ionicons name="happy-outline" size={22} color="#FFF" />
+              </View>
+              <View style={styles.optionContent}>
+                <Text style={styles.optionTitle}>
+                  Test Fucking Cutomize Goal
+                </Text>
+                <Text style={styles.optionDescription}>Kuy 8====D Kuy</Text>
+              </View>
+              <Feather name="chevron-right" size={22} color="#999" />
+            </TouchableOpacity>
           </View>
         </Modal>
       </View>
@@ -576,56 +536,56 @@ export default function CreateScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Templates Grid */}
             <View style={styles.fullScreenModalContent}>
-              {/* Templates Grid */}
-              <View style={styles.templatesContainer}>
-                <ScrollView style={styles.templatesScrollView}>
-                  <View style={styles.templatesGrid}>
-                    {filteredTemplates.map((template, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={styles.templateGridItem}
-                        onPress={() => {
-                          setSelectedTemplate({
-                            title: template.title,
-                            description: template.description,
-                            category: template.category,
-                            image: template.image,
-                            isFavorite: false,
-                            goals_id: template.goals_id || [],
-                          });
-                          setIsModalVisible(true);
-                        }}
-                      >
-                        <View style={styles.templateImageContainer}>
-                          <Image
-                            source={{ uri: template.image }}
-                            style={styles.templateGridImage}
-                            resizeMode="cover"
-                          />
-                          <LinearGradient
-                            colors={["transparent", "rgba(0,0,0,0.7)"]}
-                            style={styles.templateGradient}
-                          />
-                          <View style={styles.templateInfo}>
-                            <Text style={styles.templateCategory}>
-                              {template.category}
-                            </Text>
-                            <Text style={styles.templateTitle}>
-                              {template.title}
-                            </Text>
-                          </View>
+              <ScrollView style={styles.templatesScrollView}>
+                <View style={styles.templatesGrid}>
+                  {(isViewAllTemplatesVisible
+                    ? templateData
+                    : communityData
+                  ).map((template, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.templateGridItem}
+                      onPress={() => {
+                        setSelectedTemplate({
+                          title: template.title,
+                          description: template.description,
+                          category: template.category,
+                          image: template.image,
+                          isFavorite: false,
+                          goals_id: template.goals_id || [],
+                        });
+                        setIsModalVisible(true);
+                      }}
+                    >
+                      <View style={styles.templateImageContainer}>
+                        <Image
+                          source={{ uri: template.image }}
+                          style={styles.templateGridImage}
+                          resizeMode="cover"
+                        />
+                        <LinearGradient
+                          colors={["transparent", "rgba(0,0,0,0.7)"]}
+                          style={styles.templateGradient}
+                        />
+                        <View style={styles.templateInfo}>
+                          <Text style={styles.templateCategory}>
+                            {template.category}
+                          </Text>
+                          <Text style={styles.templateTitle}>
+                            {template.title}
+                          </Text>
                         </View>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
             </View>
           </View>
         </Modal>
       </View>
-
       {/* Loading Indicator */}
       {isLoading && (
         <View style={styles.overlay}>
@@ -707,34 +667,6 @@ const styles = StyleSheet.create({
   aiButton: {
     padding: 6,
   },
-  clearButton: {
-    padding: 6,
-  },
-  suggestionsContainer: {
-    backgroundColor: "#FFF",
-    borderRadius: 8,
-    marginTop: 5,
-    padding: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    maxHeight: 200,
-  },
-  suggestionItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  suggestionText: {
-    marginLeft: 10,
-    fontSize: 14,
-    color: "#444",
-  },
 
   // Custom Goal Button Styles
   customGoalButton: {
@@ -796,12 +728,18 @@ const styles = StyleSheet.create({
     margin: 0,
     justifyContent: "flex-end",
   },
+  centeredModalWrapper: {
+    margin: 0,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   modalContainer: {
     backgroundColor: "white",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
     padding: 20,
     paddingBottom: Platform.OS === "ios" ? 40 : 20,
+    width: "85%",
+    maxWidth: 400,
   },
   fullScreenModalContainer: {
     backgroundColor: "white",
@@ -814,9 +752,6 @@ const styles = StyleSheet.create({
   fullScreenModalContent: {
     flex: 1,
     marginTop: 10,
-  },
-  templatesContainer: {
-    flex: 1,
   },
   modalHeader: {
     flexDirection: "row",
@@ -831,6 +766,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: "#333",
+    textAlign: "center",
   },
   closeModalButton: {
     padding: 5,
@@ -869,30 +805,6 @@ const styles = StyleSheet.create({
   optionDescription: {
     fontSize: 13,
     color: "#666",
-  },
-
-  // Category Styles
-  categoryFilterContainer: {
-    paddingBottom: 16,
-    gap: 8,
-  },
-  categoryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#F5F5F5",
-    marginRight: 8,
-  },
-  categoryButtonActive: {
-    backgroundColor: "#4F46E5",
-  },
-  categoryButtonText: {
-    fontSize: 14,
-    color: "#666",
-  },
-  categoryButtonTextActive: {
-    color: "#FFF",
-    fontWeight: "500",
   },
 
   // Template Grid Styles

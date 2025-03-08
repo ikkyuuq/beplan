@@ -1,32 +1,18 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  TouchableOpacity,
-  ActivityIndicator,
-  Dimensions,
-  Platform,
-  KeyboardAvoidingView,
-} from "react-native";
-import { Feather, Ionicons } from "@expo/vector-icons";
-import TaskModal from "@/components/TaskModal";
-import CalendarPicker from "@/components/CalendarPicker";
-import { Task } from "@/types/taskTypes";
-import { useRouter } from "expo-router";
+import { Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useUser } from "@clerk/clerk-expo";
-import Animated, {
+import {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withDelay,
   Easing,
-  FadeInDown,
 } from "react-native-reanimated";
+import TaskModal from "@/components/TaskModal";
+import CalendarPicker from "@/components/CalendarPicker";
+import CustomGoalUI from "@/components/CustomGoalUI";
+import { Task } from "@/types/taskTypes";
 
 // ====================== Helper Functions ======================
 const formatGoalForBackend = (
@@ -34,34 +20,32 @@ const formatGoalForBackend = (
   goalData: any,
   taskList: any[]
 ): any => {
-  const formattedTasks = taskList
-    .filter((task) => task.status !== "deleted")
-    .map((task) => {
-      let repeatType = task.type.toLowerCase();
+  const formattedTasks = taskList.map((task) => {
+    let repeatType = task.type.toLowerCase();
 
-      if (repeatType === "normal") {
-        repeatType = "date";
-      }
+    if (repeatType === "normal") {
+      repeatType = "date";
+    }
 
-      let dateInterval: string[] = [];
-      let weekInterval: number[] = [];
+    let dateInterval: string[] = [];
+    let weekInterval: number[] = [];
 
-      if (repeatType === "date" || repeatType === "monthly") {
-        dateInterval = task.selectedDates || [];
-      }
+    if (repeatType === "date" || repeatType === "monthly") {
+      dateInterval = task.selectedDates || [];
+    }
 
-      if (repeatType === "weekly") {
-        weekInterval = task.selectedDaysOfWeek || [];
-      }
+    if (repeatType === "weekly") {
+      weekInterval = task.selectedDaysOfWeek || [];
+    }
 
-      return {
-        title: task.title,
-        description: task.description || null,
-        repeat_type: repeatType,
-        date_interval: dateInterval,
-        week_interval: weekInterval,
-      };
-    });
+    return {
+      title: task.title,
+      description: task.description || null,
+      repeat_type: repeatType,
+      date_interval: dateInterval,
+      week_interval: weekInterval,
+    };
+  });
 
   return {
     user_id: userId,
@@ -75,23 +59,17 @@ const formatGoalForBackend = (
   };
 };
 
-// ====================== Task Type Helpers ======================
-const taskTypeLabels: Record<string, string> = {
-  normal: "Normal",
-  daily: "Daily",
-  weekly: "Weekly",
-  monthly: "Monthly",
-};
-
-const taskColors: Record<string, string> = {
-  normal: "#4F46E5",
-  daily: "#4CAF50",
-  weekly: "#FFC107",
-  monthly: "#FF5733",
-};
-
 // ====================== Main Component ======================
-export default function CustomGoal({ initialGoal }: { initialGoal?: any }) {
+export default function CustomGoal() {
+  // ====================== State Management ======================
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  const [isEditingGoal, setIsEditingGoal] = useState(false);
+  // ====================== Get URL Parameters ======================
+  const params = useLocalSearchParams();
+  const initialGoalData = params.initialGoalData
+    ? JSON.parse(params.initialGoalData as string)
+    : null;
+
   // ====================== Animation Values ======================
   const headerOpacity = useSharedValue(0);
   const titleOpacity = useSharedValue(0);
@@ -182,10 +160,10 @@ export default function CustomGoal({ initialGoal }: { initialGoal?: any }) {
   const [isTaskModalVisible, setTaskModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
+  const [goalStarted, setGoalStarted] = useState(false); // Track if goal has started
 
   const router = useRouter();
   const { user, isLoaded, isSignedIn } = useUser();
-  const windowWidth = Dimensions.get("window").width;
 
   // ====================== Validation Effect ======================
   useEffect(() => {
@@ -193,17 +171,21 @@ export default function CustomGoal({ initialGoal }: { initialGoal?: any }) {
       goalTitle.trim() !== "" &&
         startDate !== "" &&
         dueDate !== "" &&
-        taskList.filter((task) => task.status !== "deleted").length > 0
+        taskList.length > 0
     );
   }, [goalTitle, startDate, dueDate, taskList]);
 
-  // ====================== Utility Functions ======================
-  const getTaskColor = (type: string) => taskColors[type] || "#888";
-  const getTaskLabel = (type: string) => taskTypeLabels[type] || type;
-
   // ====================== Date Handlers ======================
   const handleDateChange = (newDate: string, type: "start" | "due") => {
-    if (taskList.filter((task) => task.status !== "deleted").length > 0) {
+    // If goal has already started, don't allow date changes
+    if (goalStarted) {
+      return Alert.alert(
+        "Cannot Change Dates",
+        "This goal has already started. Dates cannot be modified."
+      );
+    }
+
+    if (taskList.length > 0) {
       return Alert.alert(
         "Clear Tasks",
         "Changing the date will remove all existing tasks. Continue?",
@@ -236,29 +218,58 @@ export default function CustomGoal({ initialGoal }: { initialGoal?: any }) {
 
   // ====================== Task Handlers ======================
   const handleDeleteTask = (index: number) => {
-    setTaskList((prevTaskList) =>
-      prevTaskList.map((task, i) =>
-        i === index ? { ...task, status: "deleted" } : task
-      )
-    );
+    // If goal has already started, prevent task deletion
+    if (goalStarted) {
+      Alert.alert(
+        "Cannot Delete Task",
+        "This goal has already started. Tasks cannot be deleted."
+      );
+      return;
+    }
+
+    // Remove the task directly from the array
+    setTaskList((prevTaskList) => prevTaskList.filter((_, i) => i !== index));
   };
 
   const handleEditTask = (index: number) => {
     setEditingIndex(index);
-    setTaskModalVisible(true);
+
+    // Show warning if goal has started - limited editing will be available
+    if (goalStarted) {
+      Alert.alert(
+        "Limited Editing",
+        "This goal has already started. You can only edit the task title.",
+        [{ text: "OK", onPress: () => setTaskModalVisible(true) }]
+      );
+    } else {
+      setTaskModalVisible(true);
+    }
   };
 
   const addTask = (task: Task) => {
-    const newTask = {
-      ...task,
-      status: task.status || "pending",
-    };
+    // If goal has started and we're editing an existing task,
+    // only update the title and preserve all other properties
+    if (goalStarted && editingIndex !== null) {
+      setTaskList((prevTasks) =>
+        prevTasks.map((t, index) =>
+          index === editingIndex
+            ? { ...t, title: task.title, description: task.description }
+            : t
+        )
+      );
+    } else {
+      // Normal task adding/editing when goal hasn't started
+      const newTask = {
+        ...task,
+        status: task.status || "pending",
+      };
 
-    setTaskList((prevTasks) =>
-      editingIndex !== null
-        ? prevTasks.map((t, index) => (index === editingIndex ? newTask : t))
-        : [...prevTasks, newTask]
-    );
+      setTaskList((prevTasks) =>
+        editingIndex !== null
+          ? prevTasks.map((t, index) => (index === editingIndex ? newTask : t))
+          : [...prevTasks, newTask]
+      );
+    }
 
     setEditingIndex(null);
   };
@@ -325,7 +336,7 @@ export default function CustomGoal({ initialGoal }: { initialGoal?: any }) {
       goalTitle.trim() !== "" ||
       startDate !== "" ||
       dueDate !== "" ||
-      taskList.filter((task) => task.status !== "deleted").length > 0
+      taskList.length > 0
     ) {
       Alert.alert(
         "Discard Changes",
@@ -344,679 +355,140 @@ export default function CustomGoal({ initialGoal }: { initialGoal?: any }) {
     }
   };
 
+  // ====================== Check if Goal Has Started ======================
+  useEffect(() => {
+    if (startDate) {
+      const today = new Date().toISOString().split("T")[0];
+      const hasStarted = today >= startDate;
+      setGoalStarted(hasStarted);
+    }
+  }, [startDate]);
+
   // ====================== Load Initial Data ======================
   useEffect(() => {
-    if (initialGoal) {
-      setGoalTitle(initialGoal.title);
-      setStartDate(initialGoal.startDate);
-      setDueDate(initialGoal.dueDate);
+    if (!initialDataLoaded && initialGoalData) {
+      console.log("📌 Loading initial goal data");
 
-      const updatedTasks = (initialGoal.tasks ?? []).map((task: Task) => ({
-        ...task,
-      }));
+      // Set basic goal info
+      setGoalTitle(initialGoalData.title || "");
+      setStartDate(initialGoalData.startDate || "");
+      setDueDate(initialGoalData.dueDate || "");
 
-      setTaskList(updatedTasks);
+      // Process tasks if they exist
+      if (initialGoalData.tasks && Array.isArray(initialGoalData.tasks)) {
+        const formattedTasks = initialGoalData.tasks.map((task: any) => ({
+          title: task.title || "",
+          description: task.description || "",
+          type: task.type || "normal",
+          selectedDates: task.selectedDates || [],
+          selectedDaysOfWeek: task.selectedDaysOfWeek || [],
+          status: task.status || "pending",
+          monthlyMode: task.monthlyMode || "start",
+        }));
+
+        setTaskList(formattedTasks);
+      }
+
+      setInitialDataLoaded(true);
+      setIsEditingGoal(true);
     }
-  }, [initialGoal]);
+  }, [initialGoalData, initialDataLoaded]);
+
+  // Helper functions for debug buttons
+  const testLogData = () => {
+    const goalData = {
+      title: goalTitle,
+      startDate: startDate || "Not Set",
+      dueDate: dueDate || "Not Set",
+    };
+    const taskData = taskList.map((task) => ({ ...task }));
+    console.log("📌 Current Goal Data:", JSON.stringify(goalData, null, 2));
+    console.log("📌 Task List:", JSON.stringify(taskData, null, 2));
+  };
 
   // ====================== Render UI ======================
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+      style={{ flex: 1, backgroundColor: "#16171F" }}
     >
-      {/* Header with Back Button */}
-      <Animated.View style={[styles.header, headerAnimatedStyle]}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color="white" />
-          <Text style={styles.backText}>Back</Text>
-        </TouchableOpacity>
-      </Animated.View>
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Title Section */}
-        <Animated.View entering={FadeInDown.delay(200).duration(500)}>
-          <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
-            <Text style={styles.title}>Create Custom Goal</Text>
-            <Text style={styles.subtitle}>
-              Design your path to success, one step at a time
-            </Text>
-          </Animated.View>
-        </Animated.View>
-
-        {/* Form Section */}
-        <Animated.View entering={FadeInDown.delay(400).duration(500)}>
-          <Animated.View style={[styles.formSection, formAnimatedStyle]}>
-            {/* Goal Title Input */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>
-                Goal Title <Text style={styles.required}>*</Text>
-              </Text>
-              <TextInput
-                value={goalTitle}
-                onChangeText={setGoalTitle}
-                placeholder="What do you want to achieve?"
-                placeholderTextColor="#AAA"
-                style={styles.input}
-                multiline={true}
-                maxLength={100}
-              />
-            </View>
-
-            {/* Date Pickers */}
-            <View style={styles.dateContainer}>
-              <View style={styles.dateBox}>
-                <Text style={styles.inputLabel}>
-                  Start Date <Text style={styles.required}>*</Text>
-                </Text>
-                <Pressable
-                  style={[
-                    styles.dateInput,
-                    startDate ? styles.dateInputSelected : {},
-                  ]}
-                  onPress={() => setStartDatePickerVisible(true)}
-                >
-                  <Text style={{ color: startDate ? "#fff" : "#AAA" }}>
-                    {startDate || "Select Date"}
-                  </Text>
-                  <Feather name="calendar" size={20} color="#fff" />
-                </Pressable>
-              </View>
-              <View style={styles.dateBox}>
-                <Text style={styles.inputLabel}>
-                  End Date <Text style={styles.required}>*</Text>
-                </Text>
-                <Pressable
-                  style={[
-                    styles.dateInput,
-                    dueDate ? styles.dateInputSelected : {},
-                  ]}
-                  onPress={() => setDueDatePickerVisible(true)}
-                >
-                  <Text style={{ color: dueDate ? "#fff" : "#AAA" }}>
-                    {dueDate || "Select Date"}
-                  </Text>
-                  <Feather name="calendar" size={20} color="#fff" />
-                </Pressable>
-              </View>
-            </View>
-          </Animated.View>
-        </Animated.View>
-
-        {/* Task Section */}
-        <Animated.View entering={FadeInDown.delay(600).duration(500)}>
-          <Animated.View style={[styles.taskSection, taskListAnimatedStyle]}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Tasks</Text>
-              <Text style={styles.sectionDescription}>
-                Break down your goal into manageable tasks
-              </Text>
-            </View>
-
-            {/* Task List */}
-            {taskList.filter((task) => task.status !== "deleted").length > 0 ? (
-              <View style={styles.taskListContainer}>
-                {taskList
-                  .filter((task) => task.status !== "deleted")
-                  .map((task, index) => (
-                    <View key={index} style={styles.taskItem}>
-                      <View
-                        style={[
-                          styles.taskTypeIndicator,
-                          { backgroundColor: getTaskColor(task.type) },
-                        ]}
-                      />
-                      <View style={styles.taskContent}>
-                        <View style={styles.taskHeader}>
-                          <Text style={styles.taskType}>
-                            {getTaskLabel(task.type)}
-                          </Text>
-                          <Text style={styles.taskTitle}>{task.title}</Text>
-                        </View>
-                        {task.description && (
-                          <Text
-                            style={styles.taskDescription}
-                            numberOfLines={2}
-                          >
-                            {task.description}
-                          </Text>
-                        )}
-                        <View style={styles.taskStats}>
-                          {task.type === "normal" && task.selectedDates && (
-                            <Text style={styles.taskDates}>
-                              {task.selectedDates.length} date
-                              {task.selectedDates.length !== 1 ? "s" : ""}
-                            </Text>
-                          )}
-                          {task.type === "weekly" &&
-                            task.selectedDaysOfWeek && (
-                              <Text style={styles.taskDates}>
-                                {task.selectedDaysOfWeek.length} day
-                                {task.selectedDaysOfWeek.length !== 1
-                                  ? "s"
-                                  : ""}
-                                /week
-                              </Text>
-                            )}
-                          {task.type === "monthly" && (
-                            <Text style={styles.taskDates}>Monthly task</Text>
-                          )}
-                        </View>
-                      </View>
-                      <View style={styles.taskActions}>
-                        <TouchableOpacity
-                          style={styles.taskAction}
-                          onPress={() => handleEditTask(index)}
-                        >
-                          <Ionicons name="pencil" size={20} color="#4F46E5" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.taskAction}
-                          onPress={() => handleDeleteTask(index)}
-                        >
-                          <Ionicons
-                            name="trash-outline"
-                            size={20}
-                            color="#FF3B30"
-                          />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
-              </View>
-            ) : (
-              <View style={styles.emptyTaskList}>
-                <Ionicons name="list" size={40} color="#CCC" />
-                <Text style={styles.emptyTaskText}>No tasks added yet</Text>
-                <Text style={styles.emptyTaskSubtext}>
-                  Add tasks to break down your goal
-                </Text>
-              </View>
-            )}
-
-            {/* Add Task Button */}
-            <TouchableOpacity
-              style={[
-                styles.addTaskButton,
-                !(startDate && dueDate) && styles.disabledButton,
-              ]}
-              onPress={() => {
-                if (startDate && dueDate) {
-                  setEditingIndex(null);
-                  setTaskModalVisible(true);
-                } else {
-                  Alert.alert(
-                    "Set Dates First",
-                    "Please set start and end dates before adding tasks."
-                  );
-                }
-              }}
-              disabled={!(startDate && dueDate)}
-            >
-              <Ionicons
-                name="add-circle-outline"
-                size={20}
-                color={startDate && dueDate ? "#FFF" : "#AAA"}
-              />
-              <Text
-                style={[
-                  styles.addTaskButtonText,
-                  !(startDate && dueDate) && styles.disabledButtonText,
-                ]}
-              >
-                Add Task
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </Animated.View>
-
-        {/* Create Button */}
-        <Animated.View style={[buttonAnimatedStyle, { width: "100%" }]}>
-          <TouchableOpacity
-            style={[
-              styles.createButton,
-              !isFormValid && styles.disabledCreateButton,
-            ]}
-            onPress={handleSubmit}
-            disabled={!isFormValid || isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <>
-                <Ionicons
-                  name="checkmark-circle-outline"
-                  size={20}
-                  color="#FFF"
-                />
-                <Text style={styles.createButtonText}>Create Goal</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </Animated.View>
-
-        {/* Test Buttons */}
-        <View style={styles.testButtonsContainer}>
-          <TouchableOpacity
-            style={styles.testButton}
-            onPress={() => {
-              const goalData = {
-                title: goalTitle,
-                startDate: startDate || "Not Set",
-                dueDate: dueDate || "Not Set",
-              };
-              const taskData = taskList.map((task) => ({ ...task }));
-              console.log(
-                "📌 Current Goal Data:",
-                JSON.stringify(goalData, null, 2)
-              );
-              console.log("📌 Task List:", JSON.stringify(taskData, null, 2));
-            }}
-          >
-            <Text style={styles.testButtonText}>Get Test Log</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.testButton}
-            onPress={() => {
-              // Mock Data
-              setGoalTitle("My New Goal");
-              setStartDate("2025-03-01");
-              setDueDate("2025-03-21");
-              setTaskList([
-                {
-                  title: "Task 1",
-                  description: "Read a book",
-                  type: "normal",
-                  selectedDates: ["2025-03-02", "2025-03-05", "2025-03-07"],
-                  selectedDaysOfWeek: [] as number[],
-                  status: "pending",
-                },
-                {
-                  title: "Task 2",
-                  description: "Exercise",
-                  type: "daily",
-                  selectedDates: [],
-                  selectedDaysOfWeek: [] as number[],
-                  status: "pending",
-                },
-                {
-                  title: "Task 3",
-                  description: "Practice coding",
-                  type: "weekly",
-                  selectedDates: [],
-                  selectedDaysOfWeek: [1, 3, 5],
-                  status: "pending",
-                },
-                {
-                  title: "Task 4",
-                  description: "Plan the month",
-                  type: "monthly",
-                  selectedDates: ["2025-03-16"],
-                  selectedDaysOfWeek: [] as number[],
-                  status: "pending",
-                },
-              ]);
-              console.log("📌 Mock Data Loaded!");
-            }}
-          >
-            <Text style={styles.testButtonText}>Load Test Data</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+      {/* Main UI Component */}
+      <CustomGoalUI
+        // Animation Styles
+        headerAnimatedStyle={headerAnimatedStyle}
+        titleAnimatedStyle={titleAnimatedStyle}
+        formAnimatedStyle={formAnimatedStyle}
+        taskListAnimatedStyle={taskListAnimatedStyle}
+        buttonAnimatedStyle={buttonAnimatedStyle}
+        // Data
+        goalTitle={goalTitle}
+        startDate={startDate}
+        dueDate={dueDate}
+        taskList={taskList}
+        isFormValid={isFormValid}
+        isLoading={isLoading}
+        goalStarted={goalStarted}
+        isEditingGoal={isEditingGoal} // ส่งไปยัง UI
+        // Event Handlers
+        setGoalTitle={setGoalTitle}
+        handleBack={handleBack}
+        setStartDatePickerVisible={setStartDatePickerVisible}
+        setDueDatePickerVisible={setDueDatePickerVisible}
+        handleEditTask={handleEditTask}
+        handleDeleteTask={handleDeleteTask}
+        setTaskModalVisible={setTaskModalVisible}
+        handleSubmit={handleSubmit}
+        // Debug Functions
+        testLogData={testLogData}
+      />
 
       {/* Modals */}
-      <View>
-        <TaskModal
-          visible={isTaskModalVisible}
-          onClose={() => {
-            setTaskModalVisible(false);
-            setEditingIndex(null);
-          }}
-          onSave={addTask}
-          initialTask={
-            editingIndex !== null ? taskList[editingIndex] : undefined
-          }
-          startDate={startDate}
-          dueDate={dueDate}
-        />
-      </View>
+      <TaskModal
+        visible={isTaskModalVisible}
+        onClose={() => {
+          setTaskModalVisible(false);
+          setEditingIndex(null);
+        }}
+        onSave={addTask}
+        initialTask={editingIndex !== null ? taskList[editingIndex] : undefined}
+        startDate={startDate}
+        dueDate={dueDate}
+        // Pass flag to restrict editing if goal has started
+        restrictEditing={goalStarted && editingIndex !== null}
+      />
 
-      <View>
-        <CalendarPicker
-          visible={isStartDatePickerVisible}
-          onClose={() => setStartDatePickerVisible(false)}
-          onConfirm={(dates) => {
-            handleDateChange(dates[0], "start");
-            setStartDatePickerVisible(false);
-          }}
-          title="Select Start Date"
-          initialDates={startDate ? [startDate] : []}
-          highlightColor="#4F46E5"
-          singleSelect
-          minDate={new Date().toISOString().split("T")[0]}
-          maxDate={dueDate}
-          otherSelectedDate={dueDate}
-          otherHighlightColor="#FF5733"
-        />
-      </View>
+      <CalendarPicker
+        visible={isStartDatePickerVisible}
+        onClose={() => setStartDatePickerVisible(false)}
+        onConfirm={(dates) => {
+          handleDateChange(dates[0], "start");
+          setStartDatePickerVisible(false);
+        }}
+        title="Select Start Date"
+        initialDates={startDate ? [startDate] : []}
+        highlightColor="#4F46E5"
+        singleSelect
+        minDate={new Date().toISOString().split("T")[0]}
+        maxDate={dueDate}
+        otherSelectedDate={dueDate}
+        otherHighlightColor="#FF5733"
+      />
 
-      <View>
-        <CalendarPicker
-          visible={isDueDatePickerVisible}
-          onClose={() => setDueDatePickerVisible(false)}
-          onConfirm={(dates) => {
-            handleDateChange(dates[0], "due");
-            setDueDatePickerVisible(false);
-          }}
-          title="Select End Date"
-          initialDates={dueDate ? [dueDate] : []}
-          highlightColor="#FF5733"
-          singleSelect
-          minDate={startDate || new Date().toISOString().split("T")[0]}
-          otherSelectedDate={startDate}
-          otherHighlightColor="#4F46E5"
-        />
-      </View>
-
-      {/* Loading Overlay */}
-      {isLoading && (
-        <View style={styles.overlay}>
-          <ActivityIndicator size="large" color="#4F46E5" />
-          <Text style={styles.loadingText}>Creating your goal...</Text>
-        </View>
-      )}
+      <CalendarPicker
+        visible={isDueDatePickerVisible}
+        onClose={() => setDueDatePickerVisible(false)}
+        onConfirm={(dates) => {
+          handleDateChange(dates[0], "due");
+          setDueDatePickerVisible(false);
+        }}
+        title="Select End Date"
+        initialDates={dueDate ? [dueDate] : []}
+        highlightColor="#FF5733"
+        singleSelect
+        minDate={startDate || new Date().toISOString().split("T")[0]}
+        otherSelectedDate={startDate}
+        otherHighlightColor="#4F46E5"
+      />
     </KeyboardAvoidingView>
   );
 }
-
-// ====================== Styles ======================
-const styles = StyleSheet.create({
-  // Main Layout
-  container: {
-    flex: 1,
-    backgroundColor: "#16171F",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingTop: 100,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
-  },
-
-  // Header Styles
-  header: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    paddingTop: Platform.OS === "ios" ? 60 : 30,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#16171F",
-    zIndex: 10,
-  },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 8,
-  },
-  backText: {
-    color: "#fff",
-    marginLeft: 8,
-    fontSize: 16,
-  },
-
-  // Title Styles
-  titleContainer: {
-    marginBottom: 24,
-  },
-  title: {
-    color: "#fff",
-    fontSize: 32,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: "#AAA",
-    fontSize: 16,
-  },
-
-  // Form Section
-  formSection: {
-    backgroundColor: "#1E1F29",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "500",
-    marginBottom: 8,
-  },
-  required: {
-    color: "#FF5733",
-  },
-  input: {
-    backgroundColor: "#2A2C3A",
-    borderRadius: 12,
-    padding: 16,
-    color: "#fff",
-    fontSize: 16,
-  },
-
-  // Date Pickers
-  dateContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  dateBox: {
-    flex: 1,
-    marginHorizontal: 4,
-  },
-  dateInput: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#2A2C3A",
-    padding: 16,
-    borderRadius: 12,
-  },
-  dateInputSelected: {
-    backgroundColor: "#4F46E5",
-  },
-
-  // Task Section
-  taskSection: {
-    backgroundColor: "#1E1F29",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
-  sectionDescription: {
-    color: "#AAA",
-    fontSize: 14,
-  },
-
-  // Task List
-  taskListContainer: {
-    marginBottom: 16,
-  },
-  taskItem: {
-    flexDirection: "row",
-    backgroundColor: "#2A2C3A",
-    borderRadius: 12,
-    marginBottom: 12,
-    overflow: "hidden",
-  },
-  taskTypeIndicator: {
-    width: 6,
-    height: "100%",
-  },
-  taskContent: {
-    flex: 1,
-    padding: 16,
-    paddingRight: 8,
-  },
-  taskHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  taskTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-    flex: 1,
-  },
-  taskType: {
-    color: "#AAA",
-    fontSize: 12,
-    backgroundColor: "#16171F",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 8,
-  },
-  taskDescription: {
-    color: "#BBB",
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  taskStats: {
-    flexDirection: "row",
-  },
-  taskDates: {
-    color: "#AAA",
-    fontSize: 12,
-  },
-  taskActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    paddingRight: 12,
-  },
-  taskAction: {
-    padding: 8,
-  },
-
-  // Empty State
-  emptyTaskList: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 32,
-  },
-  emptyTaskText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "500",
-    marginTop: 12,
-  },
-  emptyTaskSubtext: {
-    color: "#AAA",
-    fontSize: 14,
-    marginTop: 4,
-  },
-
-  // Add Task Button
-  addTaskButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#4F46E5",
-    padding: 14,
-    borderRadius: 12,
-  },
-  addTaskButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "500",
-    marginLeft: 8,
-  },
-  disabledButton: {
-    backgroundColor: "#2A2C3A",
-  },
-  disabledButtonText: {
-    color: "#AAA",
-  },
-
-  // Create Button
-  createButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#4CAF50",
-    padding: 16,
-    borderRadius: 12,
-    marginVertical: 8,
-  },
-  createButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  disabledCreateButton: {
-    backgroundColor: "#2A2C3A",
-  },
-
-  // Test Buttons
-  testButtonsContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 10,
-    marginBottom: 20,
-    gap: 10,
-  },
-  testButton: {
-    backgroundColor: "#4F46E5",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  testButtonText: {
-    color: "#FFF",
-    fontWeight: "500",
-    fontSize: 14,
-  },
-
-  // Loading Overlay
-  overlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(22, 23, 31, 0.9)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 100,
-  },
-  loadingText: {
-    color: "#fff",
-    fontSize: 16,
-    marginTop: 16,
-  },
-});

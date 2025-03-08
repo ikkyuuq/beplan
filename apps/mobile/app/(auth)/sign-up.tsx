@@ -90,39 +90,73 @@ export default function SignUpScreen() {
   const [code, setCode] = React.useState("");
   const [errorMessage, setErrorMessage] = React.useState("");
   const [isSigningUp, setIsSigningUp] = React.useState(false);
+  const [isResendingCode, setIsResendingCode] = React.useState(false);
 
   // ====================== Helper Functions ======================
   const isValidEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return emailRegex.test(email);
   };
 
-  const handleUsernameChange = (text: string) => {
-    setUsername(text);
-    if (errorMessage.toLowerCase().includes("username")) {
-      setErrorMessage("");
-    }
+  const isValidUsername = (username: string): boolean => {
+    // Username must be 3-20 characters and contain only letters, numbers, and underscores
+    return /^[a-zA-Z0-9_]{3,20}$/.test(username);
   };
 
-  const handleEmailChange = (text: string) => {
-    setEmailAddress(text);
-    if (errorMessage.toLowerCase().includes("email")) {
-      setErrorMessage("");
-    }
+  const isValidPassword = (password: string): boolean => {
+    // At least 8 characters long
+    if (password.length < 8) return false;
+
+    // At least one number
+    if (!/\d/.test(password)) return false;
+
+    // At least one uppercase letter
+    if (!/[A-Z]/.test(password)) return false;
+
+    // At least one lowercase letter
+    if (!/[a-z]/.test(password)) return false;
+
+    return true;
   };
 
-  const handlePasswordChange = (text: string) => {
-    setPassword(text);
-    if (errorMessage.toLowerCase().includes("password")) {
-      setErrorMessage("");
-    }
-  };
+  const validateForm = (): boolean => {
+    setErrorMessage("");
 
-  const handleConfirmPasswordChange = (text: string) => {
-    setConfirmPassword(text);
-    if (errorMessage.toLowerCase().includes("match")) {
-      setErrorMessage("");
+    if (
+      !username.trim() ||
+      !emailAddress.trim() ||
+      !password.trim() ||
+      !confirmPassword.trim()
+    ) {
+      setErrorMessage("All fields are required.");
+      return false;
     }
+
+    if (!isValidEmail(emailAddress)) {
+      setErrorMessage("Please enter a valid email address.");
+      return false;
+    }
+
+    if (!isValidUsername(username)) {
+      setErrorMessage(
+        "Username must be 3-20 characters long and contain only letters, numbers, and underscores."
+      );
+      return false;
+    }
+
+    if (!isValidPassword(password)) {
+      setErrorMessage(
+        "Password must be at least 8 characters long and include uppercase, lowercase, and numbers."
+      );
+      return false;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match.");
+      return false;
+    }
+
+    return true;
   };
 
   // ====================== Sign-Up Handler ======================
@@ -130,50 +164,23 @@ export default function SignUpScreen() {
     try {
       if (!isLoaded) return;
 
-      if (!username.trim() || !emailAddress.trim() || !password.trim()) {
-        setErrorMessage("All fields are required.");
-        return;
-      }
-
-      if (!isValidEmail(emailAddress)) {
-        setErrorMessage("Invalid email format.");
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        setErrorMessage("Passwords do not match.");
-        return;
-      }
-
-      // เพิ่มการตรวจสอบ username
-      if (username.length < 3 || username.length > 20) {
-        setErrorMessage("Username must be between 3 and 20 characters.");
-        return;
-      }
-
-      // ตรวจสอบว่า username ไม่มีอักขระพิเศษ
-      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-        setErrorMessage(
-          "Username can only contain letters, numbers, and underscores."
-        );
-        return;
-      }
+      // Validate the form
+      if (!validateForm()) return;
 
       setIsSigningUp(true);
 
-      // เพิ่ม username ในการสร้างบัญชี
+      // Create the user account
       await signUp.create({
         emailAddress,
         password,
         username,
       });
 
+      // Prepare verification
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
 
       setPendingVerification(true);
-      setIsSigningUp(false);
     } catch (err: any) {
-      setIsSigningUp(false);
       console.error("Sign-up error:", err);
 
       if (err.errors && err.errors.length > 0) {
@@ -183,6 +190,8 @@ export default function SignUpScreen() {
       } else {
         setErrorMessage("Sign-up failed. Please try again.");
       }
+    } finally {
+      setIsSigningUp(false);
     }
   };
 
@@ -191,6 +200,17 @@ export default function SignUpScreen() {
     try {
       if (!isLoaded) return;
 
+      if (!code.trim()) {
+        setErrorMessage("Please enter the verification code.");
+        return;
+      }
+
+      // Validate code format (6 digits)
+      if (!/^\d{6}$/.test(code)) {
+        setErrorMessage("Please enter a valid 6-digit code.");
+        return;
+      }
+
       const signUpAttempt = await signUp.attemptEmailAddressVerification({
         code,
       });
@@ -198,10 +218,44 @@ export default function SignUpScreen() {
       if (signUpAttempt.status === "complete") {
         await setActive({ session: signUpAttempt.createdSessionId });
         router.replace(routes.loggedInRedirect);
-        setIsSigningUp(false);
+      } else {
+        setErrorMessage("Verification incomplete. Please try again.");
       }
     } catch (err: any) {
-      setErrorMessage("Verification failed. Please try again.");
+      console.error("Verification error:", err);
+
+      if (err.errors && err.errors.length > 0) {
+        setErrorMessage(err.errors[0].message);
+      } else {
+        setErrorMessage("Verification failed. Please try again.");
+      }
+    }
+  };
+
+  // ====================== Resend Code Handler ======================
+  const handleResendCode = async () => {
+    try {
+      if (!isLoaded) return;
+
+      setIsResendingCode(true);
+
+      // Resend verification code
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+
+      Alert.alert(
+        "Verification Code Resent",
+        "We have sent a new verification code to your email.",
+        [{ text: "OK" }]
+      );
+    } catch (err: any) {
+      console.error("Failed to resend verification code:", err);
+
+      Alert.alert(
+        "Error",
+        "Failed to resend verification code. Please try again later."
+      );
+    } finally {
+      setIsResendingCode(false);
     }
   };
 
@@ -215,14 +269,8 @@ export default function SignUpScreen() {
         setCode={setCode}
         onVerifyPress={onVerifyPress}
         errorMessage={errorMessage}
-        onResendPress={() => {
-          // โค้ดสำหรับการส่ง code ใหม่
-          Alert.alert(
-            "Verification Code",
-            "We have resent the verification code to your email.",
-            [{ text: "OK" }]
-          );
-        }}
+        onResendPress={handleResendCode}
+        isResending={isResendingCode}
         emailAddress={emailAddress}
       />
     );
@@ -248,26 +296,29 @@ export default function SignUpScreen() {
           iconName="person-outline"
           placeholder="Choose a username"
           value={username}
-          onChangeText={handleUsernameChange}
+          onChangeText={setUsername}
+          autoCapitalize="none"
         />
         <InputField
           iconName="mail-outline"
           placeholder="example@example.com"
           value={emailAddress}
-          onChangeText={handleEmailChange}
+          onChangeText={setEmailAddress}
+          keyboardType="email-address"
+          autoCapitalize="none"
         />
         <InputField
           iconName="lock-closed-outline"
           placeholder="Enter your password"
           value={password}
-          onChangeText={handlePasswordChange}
+          onChangeText={setPassword}
           secureTextEntry
         />
         <InputField
           iconName="lock-closed-outline"
           placeholder="Confirm your password"
           value={confirmPassword}
-          onChangeText={handleConfirmPasswordChange}
+          onChangeText={setConfirmPassword}
           secureTextEntry
         />
         {/* Error Message */}
@@ -283,7 +334,11 @@ export default function SignUpScreen() {
 
       {/* Sign-Up Button */}
       <Animated.View style={[{ width: "100%" }, buttonAnimatedStyle]}>
-        <SignButton onPress={onSignUpPress} buttonText="Sign Up" />
+        <SignButton
+          onPress={onSignUpPress}
+          buttonText="Sign Up"
+          buttonStyle={isSigningUp ? styles.disabledButton : undefined}
+        />
       </Animated.View>
 
       {/* Loading Indicator */}
@@ -330,16 +385,17 @@ const styles = StyleSheet.create({
   errorText: {
     color: "red",
     fontSize: 14,
-    marginTop: 5,
+    marginTop: 10,
     marginBottom: 10,
     alignSelf: "center",
+    textAlign: "center",
   },
 
   // Separator/Divider
   divider: {
     height: 2,
     backgroundColor: "#000",
-    marginBottom: 80,
+    marginBottom: 40,
   },
 
   // Buttons
@@ -348,5 +404,9 @@ const styles = StyleSheet.create({
     top: 50,
     left: 20,
     padding: 10,
+  },
+  disabledButton: {
+    backgroundColor: "#CCC",
+    opacity: 0.7,
   },
 });

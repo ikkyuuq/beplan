@@ -17,10 +17,10 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
-import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import CategoryPicker from "@/components/CategoryPicker";
 
 // ====================== Main Component ======================
 export default function createTemplate() {
@@ -34,9 +34,6 @@ export default function createTemplate() {
   const [isFormValid, setIsFormValid] = useState(false);
   const [isScrollEnabled, setIsScrollEnabled] = useState(true);
   const router = useRouter();
-
-  // Ref for ScrollView
-  const mainScrollViewRef = React.useRef<ScrollView>(null);
 
   // Mock Data
   const mockGoals = [
@@ -166,7 +163,6 @@ export default function createTemplate() {
         </Pressable>
       </View>
       <ScrollView
-        ref={mainScrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         scrollEnabled={isScrollEnabled}
@@ -234,25 +230,18 @@ export default function createTemplate() {
           {/* Category Picker */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Category</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={category}
-                onValueChange={(itemValue) => setCategory(itemValue)}
-                style={styles.picker}
-                dropdownIconColor="#fff"
-              >
-                <Picker.Item label="All" value="All" color="#fff" />
-                <Picker.Item label="Workout" value="Workout" color="#fff" />
-                <Picker.Item label="Finance" value="Finance" color="#fff" />
-                <Picker.Item
-                  label="Productivity"
-                  value="Productivity"
-                  color="#fff"
-                />
-                <Picker.Item label="Education" value="Education" color="#fff" />
-                <Picker.Item label="Health" value="Health" color="#fff" />
-              </Picker>
-            </View>
+            <CategoryPicker
+              value={category}
+              onChange={setCategory}
+              categories={[
+                "All",
+                "Workout",
+                "Finance",
+                "Productivity",
+                "Education",
+                "Health",
+              ]}
+            />
           </View>
 
           {/* Image Upload */}
@@ -529,20 +518,6 @@ const styles = StyleSheet.create({
     color: "#8B98D5",
     fontSize: 12,
     marginTop: 5,
-  },
-
-  // Picker Styles
-  pickerContainer: {
-    backgroundColor: "#2A2C3A",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#3A3F55",
-    overflow: "hidden",
-  },
-  picker: {
-    height: 50,
-    color: "#fff",
-    backgroundColor: "#2A2C3A",
   },
 
   // Image Upload Styles

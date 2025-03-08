@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useSignIn, useClerk } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
@@ -83,41 +84,98 @@ export default function SetPasswordScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [isSettingPassword, setIsSettingPassword] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState<
+    "weak" | "medium" | "strong" | null
+  >(null);
 
   // ====================== Helper Functions ======================
-  const isValidPassword = (password: string) => password.length >= 8;
+  const calculatePasswordStrength = (
+    password: string
+  ): "weak" | "medium" | "strong" => {
+    let score = 0;
+
+    if (password.length >= 8) score += 1;
+    if (password.length >= 12) score += 1;
+
+    if (/[A-Z]/.test(password)) score += 1; // Uppercase
+    if (/[a-z]/.test(password)) score += 1; // Lowercase
+    if (/[0-9]/.test(password)) score += 1; // Numbers
+    if (/[^A-Za-z0-9]/.test(password)) score += 1; // Special characters
+
+    if (score < 3) return "weak";
+    if (score < 5) return "medium";
+    return "strong";
+  };
+
+  useEffect(() => {
+    if (password) {
+      setPasswordStrength(calculatePasswordStrength(password));
+    } else {
+      setPasswordStrength(null);
+    }
+  }, [password]);
+
+  const validatePasswords = (): boolean => {
+    setErrorMessage("");
+
+    if (!password.trim() || !confirmPassword.trim()) {
+      setErrorMessage("Both fields are required.");
+      return false;
+    }
+
+    if (password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters long.");
+      return false;
+    }
+
+    if (passwordStrength === "weak") {
+      setErrorMessage(
+        "Please create a stronger password with uppercase, lowercase, numbers, and special characters."
+      );
+      return false;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match.");
+      return false;
+    }
+
+    return true;
+  };
 
   // ====================== Password Reset Handler ======================
   const onSetPasswordPress = async () => {
     try {
       if (!isLoaded) return;
 
-      if (!password.trim() || !confirmPassword.trim()) {
-        setErrorMessage("Both fields are required.");
-        return;
-      }
+      // Validate passwords
+      if (!validatePasswords()) return;
 
-      if (!isValidPassword(password)) {
-        setErrorMessage("Password must be at least 8 characters long.");
-        return;
-      }
+      setIsProcessing(true);
 
-      if (password !== confirmPassword) {
-        setErrorMessage("Passwords do not match.");
-        return;
-      }
-
-      setIsSettingPassword(true);
-      await signOut();
-      await new Promise((resolve) => setTimeout(resolve, 1000));
       await signIn.resetPassword({ password });
-      await signOut();
-      router.replace(routes.signIn);
-      setIsSettingPassword(false);
+
+      Alert.alert(
+        "Password Reset Complete",
+        "Your password has been successfully reset. Please sign in with your new password.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace(routes.signIn),
+          },
+        ]
+      );
     } catch (err: any) {
-      setIsSettingPassword(false);
-      setErrorMessage("Failed to reset password. Please try again.");
+      console.error("Password reset error:", err);
+
+      if (err.errors && err.errors.length > 0) {
+        setErrorMessage(err.errors[0].message);
+      } else {
+        setErrorMessage("Failed to reset password. Please try again.");
+      }
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -142,11 +200,45 @@ export default function SetPasswordScreen() {
           value={password}
           onChangeText={setPassword}
         />
+
+        {/* Password Strength Indicator */}
+        {passwordStrength && (
+          <View style={styles.strengthContainer}>
+            <Text style={styles.strengthLabel}>Password Strength:</Text>
+            <View style={styles.strengthBarContainer}>
+              <View
+                style={[
+                  styles.strengthBar,
+                  passwordStrength === "weak"
+                    ? styles.weakBar
+                    : passwordStrength === "medium"
+                    ? styles.mediumBar
+                    : styles.strongBar,
+                ]}
+              />
+            </View>
+            <Text
+              style={[
+                styles.strengthText,
+                passwordStrength === "weak"
+                  ? styles.weakText
+                  : passwordStrength === "medium"
+                  ? styles.mediumText
+                  : styles.strongText,
+              ]}
+            >
+              {passwordStrength.charAt(0).toUpperCase() +
+                passwordStrength.slice(1)}
+            </Text>
+          </View>
+        )}
+
         <PasswordInput
           placeholder="Confirm new password"
           value={confirmPassword}
           onChangeText={setConfirmPassword}
         />
+
         {errorMessage && (
           <Animated.Text
             entering={FadeIn.duration(300)}
@@ -159,13 +251,19 @@ export default function SetPasswordScreen() {
 
       {/* Continue Button */}
       <Animated.View style={buttonAnimatedStyle}>
-        <TouchableOpacity style={styles.button} onPress={onSetPasswordPress}>
-          <Text style={styles.buttonText}>Continue</Text>
+        <TouchableOpacity
+          style={[styles.button, isProcessing && styles.disabledButton]}
+          onPress={onSetPasswordPress}
+          disabled={isProcessing}
+        >
+          <Text style={styles.buttonText}>
+            {isProcessing ? "Processing..." : "Continue"}
+          </Text>
         </TouchableOpacity>
       </Animated.View>
 
       {/* Loading Overlay */}
-      {isSettingPassword && (
+      {isProcessing && (
         <View style={styles.overlay}>
           <ActivityIndicator size="large" color="#0000ff" />
         </View>
@@ -209,13 +307,61 @@ const styles = StyleSheet.create({
     color: "red",
     fontSize: 14,
     textAlign: "center",
-    marginTop: 5,
+    marginTop: 10,
   },
 
   // Input Fields
   inputWrapper: {
     width: "100%",
     marginBottom: 15,
+  },
+
+  // Password Strength
+  strengthContainer: {
+    marginVertical: 12,
+    alignItems: "center",
+  },
+  strengthLabel: {
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 6,
+  },
+  strengthBarContainer: {
+    width: "100%",
+    height: 6,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 3,
+    marginBottom: 6,
+  },
+  strengthBar: {
+    height: "100%",
+    borderRadius: 3,
+    width: "33.33%",
+  },
+  weakBar: {
+    backgroundColor: "#FF5252",
+    width: "33.33%",
+  },
+  mediumBar: {
+    backgroundColor: "#FFD740",
+    width: "66.66%",
+  },
+  strongBar: {
+    backgroundColor: "#4CAF50",
+    width: "100%",
+  },
+  strengthText: {
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  weakText: {
+    color: "#FF5252",
+  },
+  mediumText: {
+    color: "#FFD740",
+  },
+  strongText: {
+    color: "#4CAF50",
   },
 
   // Button
@@ -226,6 +372,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     marginTop: 10,
+  },
+  disabledButton: {
+    backgroundColor: "#CCC",
+    opacity: 0.7,
   },
 
   // Overlay
