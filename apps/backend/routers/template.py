@@ -90,7 +90,6 @@ class TaskTemplate(BaseModel):
     description: Optional[str] = None
     repeat_type: Optional[T.RepeatType] = None
     week_interval: Optional[List[int]] = None
-    date_interval: Optional[List[date]] = None
 
 
 class GoalTemplate(BaseModel):
@@ -187,7 +186,7 @@ async def fetch_template(req: FetchTemplateRequest):
                                 TaskTemplate(
                                     title=task_rec["title"],
                                     description=task_rec.get("description"),
-                                    type=task_rec["type"],
+                                    repeat_type=task_rec["type"],
                                     week_interval=task_rec.get("interval"),
                                 )
                             )
