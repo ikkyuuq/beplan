@@ -88,8 +88,9 @@ class FetchTemplateRequest(BaseModel):
 class TaskTemplate(BaseModel):
     title: str
     description: Optional[str] = None
-    type: Optional[T.RepeatType] = None
+    repeat_type: Optional[T.RepeatType] = None
     week_interval: Optional[List[int]] = None
+    date_interval: Optional[List[date]] = None
 
 
 class GoalTemplate(BaseModel):
