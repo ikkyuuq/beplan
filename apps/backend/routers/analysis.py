@@ -267,7 +267,7 @@ async def compute_template_analysis(templates: List[Dict]) -> Dict:
     return analysis
 
 
-@router.get("")
+@router.get("/")
 async def read_analysis(user_id: str):
     pool = await get_db_pool()
     async with pool.acquire() as conn:

@@ -117,7 +117,7 @@ class TemplateResponse(BaseModel):
     duration: int
 
 
-@router.get("")
+@router.get("/")
 async def fetch_template(req: FetchTemplateRequest):
     pool = await get_db_pool()
     async with pool.acquire() as conn:

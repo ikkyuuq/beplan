@@ -1,20 +1,20 @@
-import os
 from datetime import date
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from dotenv import load_dotenv
+
 from database import get_db_pool
 
-load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL")
 router = APIRouter()
+
 
 class RescheduleTaskRequest(BaseModel):
     assigned_task_id: int
     user_id: str
     new_date: date
 
-@router.put("/reschedule_task")
+
+@router.put("/task")
 async def reschedule_task(request: RescheduleTaskRequest):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -30,7 +30,7 @@ async def reschedule_task(request: RescheduleTaskRequest):
             request.assigned_task_id,
             request.user_id,
         )
-        
+
         if not assigned_task:
             raise HTTPException(status_code=404, detail="Task not found for this user")
 

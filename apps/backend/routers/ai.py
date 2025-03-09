@@ -5,13 +5,14 @@ from enum import Enum
 from typing import Dict, List
 
 from anthropic import Anthropic
-from const import types as T
-from database import get_db_pool
 from fastapi import APIRouter, HTTPException
 from flair.data import Sentence
 from flair.models import SequenceTagger
 from huggingface_hub import hf_hub_download
 from pydantic import BaseModel
+
+from const import types as T
+from database import get_db_pool
 from utils import goal_creation
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
