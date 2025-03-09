@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useSignIn, useClerk } from "@clerk/clerk-expo";
+import { useSignIn } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
 import PasswordInput from "@/components/PasswordInput";
@@ -77,7 +77,6 @@ export default function SetPasswordScreen() {
 
   // ====================== Authentication & Navigation Hooks ======================
   const { signIn, isLoaded } = useSignIn();
-  const { signOut } = useClerk();
   const router = useRouter();
 
   // ====================== State Management ======================
@@ -149,7 +148,6 @@ export default function SetPasswordScreen() {
     try {
       if (!isLoaded) return;
 
-      // Validate passwords
       if (!validatePasswords()) return;
 
       setIsProcessing(true);

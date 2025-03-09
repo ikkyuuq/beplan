@@ -77,7 +77,6 @@ export default function SetPasswordScreen() {
 
   // ====================== Authentication & Navigation Hooks ======================
   const { signIn, isLoaded } = useSignIn();
-  const { signOut } = useClerk();
   const router = useRouter();
 
   // ====================== State Management ======================
@@ -149,7 +148,6 @@ export default function SetPasswordScreen() {
     try {
       if (!isLoaded) return;
 
-      // Validate passwords
       if (!validatePasswords()) return;
 
       setIsProcessing(true);
@@ -336,7 +334,7 @@ const styles = StyleSheet.create({
   strengthBar: {
     height: "100%",
     borderRadius: 3,
-    width: "33.33%", // Default width
+    width: "33.33%",
   },
   weakBar: {
     backgroundColor: "#FF5252",

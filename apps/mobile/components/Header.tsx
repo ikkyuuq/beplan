@@ -18,7 +18,7 @@ export default function Header({ children, containerStyle }: HeaderProps) {
 
   useEffect(() => {
     if (isLoaded && user) {
-      // Get user metadata for occupation and icon preference
+      // Get user metadata for occupation and icon
       const occupationValue = user.unsafeMetadata?.occupation as string;
       const useOccupIcon = user.unsafeMetadata?.useOccupationIcon as boolean;
 

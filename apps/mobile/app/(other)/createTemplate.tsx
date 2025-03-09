@@ -51,13 +51,13 @@ export default function createTemplate() {
     { id: "12", title: "Travel Planning" },
   ];
 
-  // ====================== Animation Setup ======================
+  // ====================== Animation Values ======================
   const createButtonScale = useSharedValue(1);
   const animatedButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: createButtonScale.value }],
   }));
 
-  // Animation Handlers
+  // ====================== Animation Setup ======================
   const handlePressIn = () => {
     createButtonScale.value = withSpring(0.95);
   };
@@ -143,7 +143,7 @@ export default function createTemplate() {
     setSelectedGoalIds([]);
   };
 
-  // Function to check if a goal is selected
+  // check if a goal is selected
   const isGoalSelected = (goalId: string) => {
     return selectedGoalIds.includes(goalId);
   };

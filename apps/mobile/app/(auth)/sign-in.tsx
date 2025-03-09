@@ -50,7 +50,7 @@ export default function SignInScreen() {
 
   // ====================== Animation Effects ======================
   useEffect(() => {
-    // Logo animation - simplified
+    // Logo animation
     logoOpacity.value = withTiming(1, { duration: 400 });
 
     // Title animation
@@ -127,7 +127,6 @@ export default function SignInScreen() {
   };
 
   const validateForm = (): boolean => {
-    // Reset error message
     setErrorMessage("");
 
     // Check for empty fields
@@ -150,7 +149,6 @@ export default function SignInScreen() {
     try {
       if (!isLoaded) return;
 
-      // Validate form before proceeding
       if (!validateForm()) return;
 
       setIsSigningIn(true);

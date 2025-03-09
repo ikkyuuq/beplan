@@ -160,7 +160,7 @@ export default function CustomGoal() {
   const [isTaskModalVisible, setTaskModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
-  const [goalStarted, setGoalStarted] = useState(false); // Track if goal has started
+  const [goalStarted, setGoalStarted] = useState(false);
 
   const router = useRouter();
   const { user, isLoaded, isSignedIn } = useUser();
@@ -177,12 +177,8 @@ export default function CustomGoal() {
 
   // ====================== Date Handlers ======================
   const handleDateChange = (newDate: string, type: "start" | "due") => {
-    // If goal has already started, don't allow date changes
     if (goalStarted) {
-      return Alert.alert(
-        "Cannot Change Dates",
-        "This goal has already started. Dates cannot be modified."
-      );
+      return;
     }
 
     if (taskList.length > 0) {
@@ -218,23 +214,16 @@ export default function CustomGoal() {
 
   // ====================== Task Handlers ======================
   const handleDeleteTask = (index: number) => {
-    // If goal has already started, prevent task deletion
     if (goalStarted) {
-      Alert.alert(
-        "Cannot Delete Task",
-        "This goal has already started. Tasks cannot be deleted."
-      );
       return;
     }
 
-    // Remove the task directly from the array
     setTaskList((prevTaskList) => prevTaskList.filter((_, i) => i !== index));
   };
 
   const handleEditTask = (index: number) => {
     setEditingIndex(index);
 
-    // Show warning if goal has started - limited editing will be available
     if (goalStarted) {
       Alert.alert(
         "Limited Editing",
@@ -247,8 +236,6 @@ export default function CustomGoal() {
   };
 
   const addTask = (task: Task) => {
-    // If goal has started and we're editing an existing task,
-    // only update the title and preserve all other properties
     if (goalStarted && editingIndex !== null) {
       setTaskList((prevTasks) =>
         prevTasks.map((t, index) =>
@@ -258,7 +245,6 @@ export default function CustomGoal() {
         )
       );
     } else {
-      // Normal task adding/editing when goal hasn't started
       const newTask = {
         ...task,
         status: task.status || "pending",
@@ -315,7 +301,6 @@ export default function CustomGoal() {
         JSON.stringify(formattedGoalData, null, 2)
       );
 
-      // Show success and navigate back
       Alert.alert(
         "Success!",
         "Your custom goal has been created successfully.",
@@ -394,7 +379,6 @@ export default function CustomGoal() {
     }
   }, [initialGoalData, initialDataLoaded]);
 
-  // Helper functions for debug buttons
   const testLogData = () => {
     const goalData = {
       title: goalTitle,
@@ -428,7 +412,7 @@ export default function CustomGoal() {
         isFormValid={isFormValid}
         isLoading={isLoading}
         goalStarted={goalStarted}
-        isEditingGoal={isEditingGoal} // ส่งไปยัง UI
+        isEditingGoal={isEditingGoal}
         // Event Handlers
         setGoalTitle={setGoalTitle}
         handleBack={handleBack}
@@ -438,7 +422,7 @@ export default function CustomGoal() {
         handleDeleteTask={handleDeleteTask}
         setTaskModalVisible={setTaskModalVisible}
         handleSubmit={handleSubmit}
-        // Debug Functions
+        // Debug
         testLogData={testLogData}
       />
 
@@ -453,7 +437,7 @@ export default function CustomGoal() {
         initialTask={editingIndex !== null ? taskList[editingIndex] : undefined}
         startDate={startDate}
         dueDate={dueDate}
-        // Pass flag to restrict editing if goal has started
+        // restrict editing if goal has started
         restrictEditing={goalStarted && editingIndex !== null}
       />
 

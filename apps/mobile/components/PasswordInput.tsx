@@ -8,10 +8,19 @@ interface PasswordInputProps {
   onChangeText: (text: string) => void;
 }
 
-const PasswordInput: React.FC<PasswordInputProps> = ({ placeholder, value, onChangeText }) => {
+export default function PasswordInput({
+  placeholder,
+  value,
+  onChangeText,
+}: PasswordInputProps) {
   return (
     <View style={styles.inputContainer}>
-      <Ionicons name="lock-closed-outline" size={20} color="#333" style={styles.icon} />
+      <Ionicons
+        name="lock-closed-outline"
+        size={20}
+        color="#333"
+        style={styles.icon}
+      />
       <TextInput
         style={styles.input}
         placeholder={placeholder}
@@ -22,7 +31,7 @@ const PasswordInput: React.FC<PasswordInputProps> = ({ placeholder, value, onCha
       />
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   inputContainer: {
@@ -46,5 +55,3 @@ const styles = StyleSheet.create({
     color: "#333",
   },
 });
-
-export default PasswordInput;

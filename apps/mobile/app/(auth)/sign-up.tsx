@@ -164,7 +164,6 @@ export default function SignUpScreen() {
     try {
       if (!isLoaded) return;
 
-      // Validate the form
       if (!validateForm()) return;
 
       setIsSigningUp(true);

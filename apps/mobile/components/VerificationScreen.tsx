@@ -33,7 +33,7 @@ interface VerificationScreenProps {
 }
 
 // ====================== Main Component ======================
-const VerificationScreen: React.FC<VerificationScreenProps> = ({
+export default function VerificationScreen({
   title = "Verification Code",
   description = "Please enter the 6-digit verification code we sent via Email.",
   code,
@@ -43,7 +43,7 @@ const VerificationScreen: React.FC<VerificationScreenProps> = ({
   onResendPress,
   emailAddress,
   isResending = false,
-}) => {
+}: VerificationScreenProps) {
   // ====================== Animation Values ======================
   const titleOpacity = useSharedValue(0);
   const titleTranslateY = useSharedValue(20);
@@ -169,7 +169,7 @@ const VerificationScreen: React.FC<VerificationScreenProps> = ({
       </Animated.View>
     </View>
   );
-};
+}
 
 // ====================== Styles ======================
 const styles = StyleSheet.create({
@@ -254,5 +254,3 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 });
-
-export default VerificationScreen;

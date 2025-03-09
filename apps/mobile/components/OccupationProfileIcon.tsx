@@ -9,13 +9,13 @@ type OccupationProfileIconProps = {
   showLabel?: boolean;
 };
 
-/**
- * Component that displays an icon based on the user's occupation
- */
-const OccupationProfileIcon: React.FC<OccupationProfileIconProps> = ({
+{
+  /* Component that displays an icon based on the user's occupation */
+}
+export default function OccupationProfileIcon({
   occupation,
   size = 100,
-}) => {
+}: OccupationProfileIconProps) {
   const iconData = getOccupationIconData(occupation);
   const iconSize = size * 0.5; // 50% of the size
 
@@ -34,7 +34,7 @@ const OccupationProfileIcon: React.FC<OccupationProfileIconProps> = ({
       <Ionicons name={iconData.icon as any} size={iconSize} color="#FFFFFF" />
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -42,5 +42,3 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 });
-
-export default OccupationProfileIcon;

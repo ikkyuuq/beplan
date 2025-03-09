@@ -8,7 +8,7 @@ import {
   FlatList,
   Modal,
   SafeAreaView,
-  ActivityIndicator
+  ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
@@ -28,7 +28,7 @@ const POPULAR_OCCUPATIONS = [
   "Freelancer",
   "Manager",
   "Healthcare Professional",
-  "Other"
+  "Other",
 ];
 
 type OccupationSelectorProps = {
@@ -39,13 +39,13 @@ type OccupationSelectorProps = {
   onCancel: () => void;
 };
 
-const OccupationSelector = ({
+export default function OccupationSelector({
   value,
   onValueChange,
   onSave,
   isSaving,
-  onCancel
-}: OccupationSelectorProps) => {
+  onCancel,
+}: OccupationSelectorProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedOccupation, setSelectedOccupation] = useState(value);
   const [customOccupation, setCustomOccupation] = useState("");
@@ -82,14 +82,14 @@ const OccupationSelector = ({
 
   const handleOpenSelector = () => {
     setSelectedOccupation(value);
-    
+
     if (value && !POPULAR_OCCUPATIONS.includes(value)) {
       setCustomOccupation(value);
       setShowCustomInput(true);
     } else {
       setShowCustomInput(value === "Other");
     }
-    
+
     setModalVisible(true);
   };
 
@@ -97,7 +97,7 @@ const OccupationSelector = ({
     <TouchableOpacity
       style={[
         styles.occupationItem,
-        selectedOccupation === item && styles.selectedItem
+        selectedOccupation === item && styles.selectedItem,
       ]}
       onPress={() => handleSelect(item)}
     >
@@ -159,15 +159,15 @@ const OccupationSelector = ({
             )}
 
             <View style={styles.modalActions}>
-              <TouchableOpacity 
-                style={styles.cancelButton} 
+              <TouchableOpacity
+                style={styles.cancelButton}
                 onPress={() => setModalVisible(false)}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.confirmButton} 
+
+              <TouchableOpacity
+                style={styles.confirmButton}
                 onPress={handleConfirm}
                 disabled={showCustomInput && !customOccupation}
               >
@@ -191,7 +191,7 @@ const OccupationSelector = ({
             <Text style={styles.saveButtonText}>Save</Text>
           )}
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={styles.cancelActionButton}
           onPress={onCancel}
@@ -202,7 +202,7 @@ const OccupationSelector = ({
       </View>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   selector: {
@@ -360,5 +360,3 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 });
-
-export default OccupationSelector;

@@ -13,7 +13,7 @@ type SliderProps = {
     image: string;
     owner: string;
   }[];
-  onCardPress?: (template: any) => void; // Add onCardPress callback prop
+  onCardPress?: (template: any) => void;
 };
 
 export default function Slider({ data, onCardPress }: SliderProps) {
@@ -43,7 +43,7 @@ export default function Slider({ data, onCardPress }: SliderProps) {
             image={item.image}
             scrollX={scrollX}
             owner={item.owner}
-            onPress={() => onCardPress && onCardPress(item)} // Pass the onPress handler
+            onPress={() => onCardPress && onCardPress(item)}
           />
         )}
       />

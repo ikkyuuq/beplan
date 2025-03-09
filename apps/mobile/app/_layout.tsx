@@ -64,7 +64,6 @@ export default function RootLayout() {
   return (
     <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
       <ClerkLoaded>
-        {/* แก้ไข: เพิ่ม `isLoaded` เพื่อลดปัญหาการ Redirect ผิดพลาด */}
         <ProtectedRoutes>
           <Stack screenOptions={{ headerShown: false }} />
         </ProtectedRoutes>
@@ -75,6 +74,6 @@ export default function RootLayout() {
 
 // ====================== Protected Routes Wrapper ======================
 function ProtectedRoutes({ children }: { children: ReactNode }) {
-  useProtectedRoute(); // Ensures authentication protection
+  useProtectedRoute();
   return children;
 }

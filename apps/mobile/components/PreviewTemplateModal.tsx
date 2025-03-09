@@ -1,5 +1,4 @@
 import {
-  AntDesign,
   Ionicons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
