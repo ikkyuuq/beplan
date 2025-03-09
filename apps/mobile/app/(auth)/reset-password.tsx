@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { Text, View, TouchableOpacity, StyleSheet, Alert } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useSignIn } from "@clerk/clerk-expo";
+import {
+  Text,
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
+import { useSignIn, useClerk } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
-import SignButton from "@/components/SignButton";
-import InputField from "@/components/InputField";
-import VerificationScreen from "@/components/VerificationScreen";
+import PasswordInput from "@/components/PasswordInput";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,11 +21,11 @@ import Animated, {
 } from "react-native-reanimated";
 
 // ====================== Main Component ======================
-export default function ResetPasswordScreen() {
+export default function SetPasswordScreen() {
   // ====================== Animation Values ======================
   const titleOpacity = useSharedValue(0);
   const titleTranslateY = useSharedValue(20);
-  const descriptionOpacity = useSharedValue(0);
+  const subtitleOpacity = useSharedValue(0);
   const formOpacity = useSharedValue(0);
   const buttonOpacity = useSharedValue(0);
   const buttonTranslateY = useSharedValue(15);
@@ -35,8 +39,8 @@ export default function ResetPasswordScreen() {
       easing: Easing.out(Easing.cubic),
     });
 
-    // Description animation
-    descriptionOpacity.value = withDelay(300, withTiming(1, { duration: 600 }));
+    // Subtitle animation
+    subtitleOpacity.value = withDelay(300, withTiming(1, { duration: 500 }));
 
     // Form animation
     formOpacity.value = withDelay(600, withTiming(1, { duration: 400 }));
@@ -58,8 +62,8 @@ export default function ResetPasswordScreen() {
     transform: [{ translateY: titleTranslateY.value }],
   }));
 
-  const descriptionAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: descriptionOpacity.value,
+  const subtitleAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: subtitleOpacity.value,
   }));
 
   const formAnimatedStyle = useAnimatedStyle(() => ({
@@ -71,136 +75,204 @@ export default function ResetPasswordScreen() {
     transform: [{ translateY: buttonTranslateY.value }],
   }));
 
-  // ====================== Hooks & State ======================
-  const { isLoaded, signIn } = useSignIn();
+  // ====================== Authentication & Navigation Hooks ======================
+  const { signIn, isLoaded } = useSignIn();
+  const { signOut } = useClerk();
   const router = useRouter();
-  const [emailAddress, setEmailAddress] = useState("");
-  const [pendingVerification, setPendingVerification] = useState(false);
-  const [code, setCode] = useState("");
+
+  // ====================== State Management ======================
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState<
+    "weak" | "medium" | "strong" | null
+  >(null);
 
-  // ====================== Handlers ======================
-  // Handle sending reset password request
-  const onResetPress = async () => {
+  // ====================== Helper Functions ======================
+  const calculatePasswordStrength = (
+    password: string
+  ): "weak" | "medium" | "strong" => {
+    let score = 0;
+
+    if (password.length >= 8) score += 1;
+    if (password.length >= 12) score += 1;
+
+    if (/[A-Z]/.test(password)) score += 1; // Uppercase
+    if (/[a-z]/.test(password)) score += 1; // Lowercase
+    if (/[0-9]/.test(password)) score += 1; // Numbers
+    if (/[^A-Za-z0-9]/.test(password)) score += 1; // Special characters
+
+    if (score < 3) return "weak";
+    if (score < 5) return "medium";
+    return "strong";
+  };
+
+  useEffect(() => {
+    if (password) {
+      setPasswordStrength(calculatePasswordStrength(password));
+    } else {
+      setPasswordStrength(null);
+    }
+  }, [password]);
+
+  const validatePasswords = (): boolean => {
     setErrorMessage("");
-    if (!isLoaded) return;
-    if (!emailAddress.trim()) {
-      setErrorMessage("Email address cannot be empty.");
-      return;
+
+    if (!password.trim() || !confirmPassword.trim()) {
+      setErrorMessage("Both fields are required.");
+      return false;
     }
 
-    try {
-      await signIn.create({
-        strategy: "reset_password_email_code",
-        identifier: emailAddress,
-      });
-      setPendingVerification(true);
-    } catch (err: any) {
-      console.error(err);
+    if (password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters long.");
+      return false;
+    }
+
+    if (passwordStrength === "weak") {
       setErrorMessage(
-        err.errors?.[0]?.message ||
-          "Failed to send reset link. Please try again.",
+        "Please create a stronger password with uppercase, lowercase, numbers, and special characters."
       );
+      return false;
     }
+
+    if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match.");
+      return false;
+    }
+
+    return true;
   };
 
-  // Handle verification of the reset code
-  const onVerifyPress = async () => {
-    if (!isLoaded) return;
-
+  // ====================== Password Reset Handler ======================
+  const onSetPasswordPress = async () => {
     try {
-      const verifyAttempt = await signIn.attemptFirstFactor({
-        strategy: "reset_password_email_code",
-        code,
-      });
+      if (!isLoaded) return;
 
-      if (verifyAttempt.status === "needs_new_password") {
-        console.log(
-          "Verification successful! Redirecting to set new password...",
-        );
-        router.replace(routes.setNewPassword);
-      } else {
-        console.error(
-          "Unexpected response:",
-          JSON.stringify(verifyAttempt, null, 2),
-        );
-        setErrorMessage("Unexpected error occurred. Please try again.");
-      }
+      // Validate passwords
+      if (!validatePasswords()) return;
+
+      setIsProcessing(true);
+
+      await signIn.resetPassword({ password });
+
+      Alert.alert(
+        "Password Reset Complete",
+        "Your password has been successfully reset. Please sign in with your new password.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace(routes.signIn),
+          },
+        ]
+      );
     } catch (err: any) {
-      setErrorMessage("Verification failed. Please try again.");
+      console.error("Password reset error:", err);
+
+      if (err.errors && err.errors.length > 0) {
+        setErrorMessage(err.errors[0].message);
+      } else {
+        setErrorMessage("Failed to reset password. Please try again.");
+      }
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  // ====================== Render Verification Screen ======================
-  if (pendingVerification) {
-    return (
-      <VerificationScreen
-        title="Verification Code"
-        description="Please enter the 6-digit verification code sent to your email."
-        code={code}
-        setCode={setCode}
-        onVerifyPress={onVerifyPress}
-        errorMessage={errorMessage}
-        onResendPress={() => {
-          console.log("Resend Code");
-          Alert.alert(
-            "Verification Code",
-            "We have resent the verification code to your email.",
-            [{ text: "OK" }],
-          );
-        }}
-      />
-    );
-  }
-
-  // ====================== Render Reset Password Form ======================
+  // ====================== Render UI ======================
   return (
     <View style={styles.container}>
-      {/* Back Button */}
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={24} color="black" />
-      </TouchableOpacity>
-
-      {/* Title & Description */}
+      {/* Title & Subtitle */}
       <Animated.Text style={[styles.title, titleAnimatedStyle]}>
-        Forgot your password?
+        Reset Password
       </Animated.Text>
 
-      <Animated.Text style={[styles.description, descriptionAnimatedStyle]}>
-        Don't worry. Just fill in your email and we'll send you a link to reset
-        your password.
+      <Animated.Text style={[styles.subtitle, subtitleAnimatedStyle]}>
+        Please enter your new password and confirm.
       </Animated.Text>
 
-      {/* Email Input */}
-      <Animated.View style={[formAnimatedStyle, { width: "100%" }]}>
-        <Text style={styles.label}>Recovery Email Address</Text>
-        <InputField
-          iconName="mail-outline"
-          placeholder="example@example.com"
-          value={emailAddress}
-          onChangeText={setEmailAddress}
+      {/* Input Fields */}
+      <Animated.View
+        style={[styles.inputWrapper, formAnimatedStyle, { width: "100%" }]}
+      >
+        <PasswordInput
+          placeholder="New password"
+          value={password}
+          onChangeText={setPassword}
         />
 
-        {/* Error Message */}
-        {errorMessage ? (
+        {/* Password Strength Indicator */}
+        {passwordStrength && (
+          <View style={styles.strengthContainer}>
+            <Text style={styles.strengthLabel}>Password Strength:</Text>
+            <View style={styles.strengthBarContainer}>
+              <View
+                style={[
+                  styles.strengthBar,
+                  passwordStrength === "weak"
+                    ? styles.weakBar
+                    : passwordStrength === "medium"
+                    ? styles.mediumBar
+                    : styles.strongBar,
+                ]}
+              />
+            </View>
+            <Text
+              style={[
+                styles.strengthText,
+                passwordStrength === "weak"
+                  ? styles.weakText
+                  : passwordStrength === "medium"
+                  ? styles.mediumText
+                  : styles.strongText,
+              ]}
+            >
+              {passwordStrength.charAt(0).toUpperCase() +
+                passwordStrength.slice(1)}
+            </Text>
+          </View>
+        )}
+
+        <PasswordInput
+          placeholder="Confirm new password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+        />
+
+        {errorMessage && (
           <Animated.Text
             entering={FadeIn.duration(300)}
             style={styles.errorText}
           >
             {errorMessage}
           </Animated.Text>
-        ) : null}
+        )}
       </Animated.View>
 
-      {/* Send Reset Link Button */}
-      <Animated.View style={[buttonAnimatedStyle, { width: "100%" }]}>
-        <SignButton onPress={onResetPress} buttonText="Send Reset Link" />
+      {/* Continue Button */}
+      <Animated.View style={buttonAnimatedStyle}>
+        <TouchableOpacity
+          style={[styles.button, isProcessing && styles.disabledButton]}
+          onPress={onSetPasswordPress}
+          disabled={isProcessing}
+        >
+          <Text style={styles.buttonText}>
+            {isProcessing ? "Processing..." : "Continue"}
+          </Text>
+        </TouchableOpacity>
       </Animated.View>
+
+      {/* Loading Overlay */}
+      {isProcessing && (
+        <View style={styles.overlay}>
+          <ActivityIndicator size="large" color="#0000ff" />
+        </View>
+      )}
     </View>
   );
 }
 
-// Styles
+// ====================== Styles ======================
 const styles = StyleSheet.create({
   // Main Layout
   container: {
@@ -208,7 +280,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    backgroundColor: "#F8F8F8",
+    backgroundColor: "#F5F5F5",
   },
 
   // Typography
@@ -217,42 +289,105 @@ const styles = StyleSheet.create({
     fontSize: 60,
     fontWeight: "normal",
     textAlign: "center",
-    color: "#2D4A2E",
+    color: "#000",
   },
-  description: {
-    fontSize: 15,
-    color: "#333",
+  subtitle: {
+    fontSize: 16,
+    color: "#555",
     textAlign: "center",
-    marginVertical: 20,
+    marginTop: 10,
+    marginBottom: 30,
   },
-  label: {
+  buttonText: {
+    color: "#FFF",
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 10,
   },
   errorText: {
     color: "red",
     fontSize: 14,
-    marginTop: 5,
+    textAlign: "center",
+    marginTop: 10,
+  },
+
+  // Input Fields
+  inputWrapper: {
+    width: "100%",
+    marginBottom: 15,
+  },
+
+  // Password Strength
+  strengthContainer: {
+    marginVertical: 12,
+    alignItems: "center",
+  },
+  strengthLabel: {
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 6,
+  },
+  strengthBarContainer: {
+    width: "100%",
+    height: 6,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 3,
+    marginBottom: 6,
+  },
+  strengthBar: {
+    height: "100%",
+    borderRadius: 3,
+    width: "33.33%", // Default width
+  },
+  weakBar: {
+    backgroundColor: "#FF5252",
+    width: "33.33%",
+  },
+  mediumBar: {
+    backgroundColor: "#FFD740",
+    width: "66.66%",
+  },
+  strongBar: {
+    backgroundColor: "#4CAF50",
+    width: "100%",
+  },
+  strengthText: {
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  weakText: {
+    color: "#FF5252",
+  },
+  mediumText: {
+    color: "#FFD740",
+  },
+  strongText: {
+    color: "#4CAF50",
   },
 
   // Button
-  backButton: {
-    position: "absolute",
-    top: 50,
-    left: 20,
-    padding: 10,
+  button: {
+    backgroundColor: "#000",
+    paddingVertical: 16,
+    width: 200,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  disabledButton: {
+    backgroundColor: "#CCC",
+    opacity: 0.7,
   },
 
-  // Loading/Error States
-  loadingContainer: {
-    flex: 1,
+  // Overlay
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: "center",
     alignItems: "center",
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    zIndex: 999,
   },
 });

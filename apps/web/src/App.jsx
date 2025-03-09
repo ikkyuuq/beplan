@@ -1,9 +1,17 @@
-import { BrowserRouter as Router, Route, Routes, Link, Outlet } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Link,
+  Outlet,
+} from "react-router-dom";
 import Home from "./Home";
 import AboutMe from "./AboutMe";
 import Donate from "./Donate";
-import "./Home.css";
 import FAQ from "./FAQ";
+import Login from "./Login";
+import "./Home.css";
+import AdminDashboard from "./AdminDashboard";
 
 const Layout = () => {
   return (
@@ -12,21 +20,30 @@ const Layout = () => {
         <nav>
           <ul>
             <div className="logo-container">
-            <img src="https://img2.pic.in.th/pic/Screenshot-2025-02-11-215739.png" alt="Logo" border="0" />
-            <a href="/">SMART GOAL</a>
+              <img
+                src="https://img2.pic.in.th/pic/Screenshot-2025-02-11-215739.png"
+                alt="Logo"
+              />
+              <a href="/">SMART GOAL</a>
             </div>
-            <li><Link to="/">Home</Link></li>
-            <li><Link to="/aboutme">About Me</Link></li>
-            <li><Link to="/donate">Donate</Link></li>
-            <li><Link to="/faq">FAQ</Link></li>
-            <button className="start">GET STARTED!</button>
-            </ul>
+            <li>
+              <Link to="/">Home</Link>
+            </li>
+            <li>
+              <Link to="/aboutme">About Me</Link>
+            </li>
+            <li>
+              <Link to="/donate">Donate</Link>
+            </li>
+            <li>
+              <Link to="/faq">FAQ</Link>
+            </li>
+          </ul>
         </nav>
       </header>
       <main>
         <Outlet />
       </main>
-    
     </div>
   );
 };
@@ -41,6 +58,8 @@ function App() {
           <Route path="donate" element={<Donate />} />
           <Route path="faq" element={<FAQ />} />
         </Route>
+        <Route path="login" element={<Login />} />
+        <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
     </Router>
   );

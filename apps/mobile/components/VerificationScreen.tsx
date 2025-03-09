@@ -1,5 +1,11 @@
 import React, { useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
@@ -21,7 +27,9 @@ interface VerificationScreenProps {
   setCode: React.Dispatch<React.SetStateAction<string>>;
   onVerifyPress: () => Promise<void>;
   errorMessage?: string | null;
-  onResendPress: () => void;
+  onResendPress: () => Promise<void>;
+  emailAddress: string;
+  isResending?: boolean;
 }
 
 // ====================== Main Component ======================
@@ -33,6 +41,8 @@ const VerificationScreen: React.FC<VerificationScreenProps> = ({
   onVerifyPress,
   errorMessage,
   onResendPress,
+  emailAddress,
+  isResending = false,
 }) => {
   // ====================== Animation Values ======================
   const titleOpacity = useSharedValue(0);
@@ -104,6 +114,15 @@ const VerificationScreen: React.FC<VerificationScreenProps> = ({
         {description}
       </Animated.Text>
 
+      {/* Email Display */}
+      <Animated.View
+        style={[styles.emailContainer, descriptionAnimatedStyle]}
+        entering={FadeIn.delay(400).duration(300)}
+      >
+        <Text style={styles.emailLabel}>Verification code sent to:</Text>
+        <Text style={styles.emailValue}>{emailAddress}</Text>
+      </Animated.View>
+
       {/* Input Field */}
       <Animated.View style={[{ width: "100%" }, formAnimatedStyle]}>
         <InputField
@@ -131,8 +150,21 @@ const VerificationScreen: React.FC<VerificationScreenProps> = ({
 
       {/* Resend Link */}
       <Animated.View style={resendAnimatedStyle}>
-        <TouchableOpacity onPress={onResendPress}>
-          <Text style={styles.resendText}>Resend Verification Code</Text>
+        <TouchableOpacity
+          onPress={onResendPress}
+          disabled={isResending}
+          style={
+            isResending ? styles.resendButtonDisabled : styles.resendButton
+          }
+        >
+          {isResending ? (
+            <View style={styles.resendingContainer}>
+              <ActivityIndicator size="small" color="#4E5A94" />
+              <Text style={styles.resendingText}>Sending...</Text>
+            </View>
+          ) : (
+            <Text style={styles.resendText}>Resend Verification Code</Text>
+          )}
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -170,9 +202,34 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   resendText: {
-    marginTop: 15,
     textDecorationLine: "underline",
     color: "#333",
+    fontSize: 15,
+  },
+  resendingText: {
+    color: "#777",
+    fontSize: 15,
+    marginLeft: 8,
+  },
+
+  // Email Display Styles
+  emailContainer: {
+    backgroundColor: "#f0f0f0",
+    padding: 12,
+    borderRadius: 8,
+    width: "100%",
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  emailLabel: {
+    fontSize: 14,
+    color: "#666",
+  },
+  emailValue: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#4E5A94",
+    marginTop: 4,
   },
 
   // Button Styles
@@ -181,6 +238,20 @@ const styles = StyleSheet.create({
     top: 50,
     left: 20,
     padding: 10,
+  },
+  resendButton: {
+    marginTop: 15,
+    padding: 8,
+  },
+  resendButtonDisabled: {
+    marginTop: 15,
+    padding: 8,
+    opacity: 0.7,
+  },
+  resendingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

@@ -71,14 +71,13 @@ async def get_goals_today(
 
         goals: List[Goal] = []
         for ag in assigned_goals:
-            # Fetch tasks for the assigned goal and interval date
             tasks = await conn.fetch(
                 """
-                SELECT at.*, ati.interval_date
+                SELECT at.*, ati.*
                 FROM public.assigned_task at
                 JOIN public.assigned_task_interval ati ON at.id = ati.assigned_task_id
                 WHERE at.assigned_goal_id = $1 
-                AND at.status = 'pending'
+                AND at.status = 'pending'::task_status
                 AND ati.interval_date = $2
                 """,
                 ag["id"],
@@ -155,6 +154,7 @@ async def get_goals_today(
 #             request.today,
 #         )
 
+
 #         if not res == "UPDATE 1":
 #             raise HTTPException(
 #                 status_code=500, detail=f"Error updating goal status to '{request.to}'"
@@ -170,72 +170,14 @@ async def get_goals_today(
 #             request.assigned_goal_id,
 #             )
 
-#     return {
-#         "message": f"Goal status updated to '{request.to}', and tasks updated if applicable.",
-#         "assigned_goal_id": request.assigned_goal_id,
-#     }
-
-#Implement function that check task status to update goal status
-# def check_goal_status(goal_id:int):
-#     "Check if the goal should be marked as success or failed based on task completion."
-#     async def update_goal_status():
-#         pool = await get_db_pool()
-#         async with pool.acquire() as conn:
-#             total_tasks = await conn.fetchval(
-#                 """
-#                 SELECT COUNT(*) FROM public.assigned_task
-#                 WHERE assigned_goal_id = $1
-#                 """,
-#                 goal_id,
-#             )
-#             completed_tasks = await conn.fetchval(
-#                 """
-#                 SELECT COUNT(*) FROM public.assigned_task
-#                 WHERE assigned_goal_id = $1 AND status = 'success'
-#                 """,
-#                 goal_id,
-#             )
-
-#             if completed_tasks >= total_tasks / 2:
-#                 # Mark goal as success
-#                 await conn.execute(
-#                     """
-#                     UPDATE public.assigned_goal
-#                     SET status = 'success'
-#                     WHERE id = $1
-#                     """,
-#                     goal_id,
-#                 )
-#             else:
-#                 # Mark goal as failed and update remaining tasks (not completed ones)
-#                 await conn.execute(
-#                     """
-#                     UPDATE public.assigned_goal
-#                     SET status = 'failed'
-#                     WHERE id = $1
-#                     """,
-#                     goal_id,
-#                 )
-#                 await conn.execute(
-#                     """
-#                     UPDATE public.assigned_task
-#                     SET status = 'failed'
-#                     WHERE assigned_goal_id = $1 AND status = 'pending'
-#                     """,
-#                     goal_id,
-#                 )
-#     return update_goal_status
-
-             
-
-#Implement update task status
+# Implement update task status
 @router.put("/update_task_status")
 async def update_task_status(request: TaskUpdateRequest):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         # Check if the task exists for the user in the assigned goal
         assigned_task = await conn.fetchrow(
-        """
+            """
             SELECT at.* 
             FROM public.assigned_task at
             JOIN public.assigned_goal ag ON at.assigned_goal_id = ag.id
@@ -247,11 +189,8 @@ async def update_task_status(request: TaskUpdateRequest):
         request.assigned_task_id,
         request.user_id,
     )
-        
         if not assigned_task:
-            raise HTTPException(
-                status_code=404, detail = "Task not found for this user"
-            )
+            raise HTTPException(status_code=404, detail="Task not found for this user")
 
         res = await conn.execute(
             """
@@ -268,7 +207,7 @@ async def update_task_status(request: TaskUpdateRequest):
                 status_code=500, detail=f"Error updating task status to {request.to}"
             )
         
-        return{
+        return {
             "message": f"Task status updated to {request.to}",
             "assigned_task_id": request.assigned_task_id,
         }

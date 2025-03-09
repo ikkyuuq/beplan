@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 import {
   Text,
   View,
-  Platform,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
@@ -27,15 +26,13 @@ import Animated, {
 } from "react-native-reanimated";
 
 // ====================== Browser Warm-Up Utility ======================
-// Preloads the browser for Android devices to reduce authentication load time
+// Preloads the browser for all platforms to reduce authentication load time
 export const useWarmUpBrowser = () => {
   useEffect(() => {
-    if (Platform.OS === "android") {
-      void WebBrowser.warmUpAsync();
-      return () => {
-        void WebBrowser.coolDownAsync();
-      };
-    }
+    void WebBrowser.warmUpAsync();
+    return () => {
+      void WebBrowser.coolDownAsync();
+    };
   }, []);
 };
 
@@ -47,11 +44,8 @@ export default function SignInScreen() {
   const logoOpacity = useSharedValue(0);
   const titleTranslateY = useSharedValue(30);
   const formOpacity = useSharedValue(0);
-
-  // ใช้ translateY สำหรับปุ่มแทนการย่อขยาย
   const buttonTranslateY = useSharedValue(20);
   const buttonOpacity = useSharedValue(0);
-
   const socialButtonsOpacity = useSharedValue(0);
 
   // ====================== Animation Effects ======================
@@ -71,7 +65,7 @@ export default function SignInScreen() {
     // Form animation
     formOpacity.value = withDelay(400, withTiming(1, { duration: 400 }));
 
-    // Button animation - now uses translateY instead of scale
+    // Button animation
     buttonOpacity.value = withDelay(500, withTiming(1, { duration: 300 }));
     buttonTranslateY.value = withDelay(
       500,
@@ -81,7 +75,6 @@ export default function SignInScreen() {
       })
     );
 
-    // Social buttons animation - now uses opacity instead of translateX
     socialButtonsOpacity.value = withDelay(
       600,
       withTiming(1, { duration: 300 })
@@ -110,20 +103,6 @@ export default function SignInScreen() {
     opacity: socialButtonsOpacity.value,
   }));
 
-  const handleEmailChange = (text: string) => {
-    setEmailAddress(text);
-    if (errorMessage.toLowerCase().includes("email")) {
-      setErrorMessage("");
-    }
-  };
-
-  const handlePasswordChange = (text: string) => {
-    setPassword(text);
-    if (errorMessage.toLowerCase().includes("password")) {
-      setErrorMessage("");
-    }
-  };
-
   // ====================== Authentication & Navigation Hooks ======================
   useWarmUpBrowser();
   const { signIn, isLoaded, setActive } = useSignIn();
@@ -135,21 +114,35 @@ export default function SignInScreen() {
     strategy: "oauth_github",
   });
 
-  const onGoogleSignInPress = async () =>
-    handleOAuthSignIn(startGoogleOAuth, "Google");
-  const onGitHubSignInPress = async () =>
-    handleOAuthSignIn(startGitHubOAuth, "GitHub");
-
   // ====================== State Management ======================
-  const [emailAddress, setEmailAddress] = React.useState("");
+  const [identifier, setIdentifier] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [errorMessage, setErrorMessage] = React.useState("");
   const [isSigningIn, setIsSigningIn] = React.useState(false);
 
   // ====================== Helper Functions ======================
-  const isValidEmail = (email: string): boolean => {
+  const isEmail = (text: string): boolean => {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    return emailRegex.test(email);
+    return emailRegex.test(text);
+  };
+
+  const validateForm = (): boolean => {
+    // Reset error message
+    setErrorMessage("");
+
+    // Check for empty fields
+    if (!identifier.trim() || !password.trim()) {
+      setErrorMessage("Email/Username and password cannot be empty.");
+      return false;
+    }
+
+    // If input contains @ symbol, validate as email
+    if (identifier.includes("@") && !isEmail(identifier)) {
+      setErrorMessage("Please enter a valid email address.");
+      return false;
+    }
+
+    return true;
   };
 
   // ====================== Sign-In Handlers ======================
@@ -157,34 +150,31 @@ export default function SignInScreen() {
     try {
       if (!isLoaded) return;
 
-      if (!emailAddress.trim() || !password.trim()) {
-        setErrorMessage("Email and password cannot be empty.");
-        return;
-      }
-
-      if (!isValidEmail(emailAddress)) {
-        setErrorMessage("Invalid email format. Please use a valid email.");
-        return;
-      }
+      // Validate form before proceeding
+      if (!validateForm()) return;
 
       setIsSigningIn(true);
 
-      // Attempt sign-in with provided credentials
       const signInAttempt = await signIn.create({
-        identifier: emailAddress,
+        identifier,
         password,
       });
 
       if (signInAttempt.status === "complete") {
         await setActive({ session: signInAttempt.createdSessionId });
         router.replace(routes.loggedInRedirect);
-        setIsSigningIn(false);
       } else {
         setErrorMessage("Sign-in is incomplete. Please try again.");
-        setIsSigningIn(false);
       }
     } catch (err: any) {
-      setErrorMessage("Sign-in failed. Please try again.");
+      console.error("Sign-in error:", err);
+
+      if (err.errors && err.errors.length > 0) {
+        setErrorMessage(err.errors[0].message);
+      } else {
+        setErrorMessage("Sign-in failed. Please try again.");
+      }
+    } finally {
       setIsSigningIn(false);
     }
   };
@@ -202,16 +192,21 @@ export default function SignInScreen() {
       if (result?.createdSessionId) {
         await setActive({ session: result.createdSessionId });
         router.replace(routes.loggedInRedirect);
-        setIsSigningIn(false);
       } else {
         setErrorMessage(`${provider} Sign-in failed. Please try again.`);
-        setIsSigningIn(false);
       }
     } catch (err: any) {
       setErrorMessage(`${provider} OAuth failed. Please check your settings.`);
+    } finally {
       setIsSigningIn(false);
     }
   };
+
+  const onGoogleSignInPress = async () =>
+    handleOAuthSignIn(startGoogleOAuth, "Google");
+
+  const onGitHubSignInPress = async () =>
+    handleOAuthSignIn(startGitHubOAuth, "GitHub");
 
   // ====================== Render UI ======================
   return (
@@ -229,11 +224,15 @@ export default function SignInScreen() {
       <Animated.View style={[styles.inputWrapper, formAnimatedStyle]}>
         <Animated.View entering={FadeInDown.delay(450).duration(300)}>
           <InputField
-            iconName="mail-outline"
-            placeholder="example@example.com"
-            value={emailAddress}
-            onChangeText={handleEmailChange}
+            iconName="person-outline"
+            placeholder="Email or Username"
+            value={identifier}
+            onChangeText={setIdentifier}
             marginBottom={15}
+            autoCapitalize="none"
+            keyboardType={
+              identifier.includes("@") ? "email-address" : "default"
+            }
           />
         </Animated.View>
 
@@ -251,7 +250,7 @@ export default function SignInScreen() {
             iconName="lock-closed-outline"
             placeholder="Enter your password"
             value={password}
-            onChangeText={handlePasswordChange}
+            onChangeText={setPassword}
             secureTextEntry
             marginBottom={2}
           />
@@ -287,12 +286,14 @@ export default function SignInScreen() {
         <TouchableOpacity
           style={styles.socialButton}
           onPress={onGoogleSignInPress}
+          disabled={isSigningIn}
         >
           <Ionicons name="logo-google" size={40} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.socialButton}
           onPress={onGitHubSignInPress}
+          disabled={isSigningIn}
         >
           <Ionicons name="logo-github" size={40} color="#fff" />
         </TouchableOpacity>
@@ -380,9 +381,8 @@ const styles = StyleSheet.create({
   errorText: {
     color: "red",
     fontSize: 14,
-    textAlign: "right",
-    marginTop: -10,
-    marginBottom: 15,
+    textAlign: "center",
+    marginVertical: 8,
   },
   separatorText: {
     marginHorizontal: 10,

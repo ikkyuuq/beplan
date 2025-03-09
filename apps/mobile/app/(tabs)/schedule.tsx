@@ -1,8 +1,6 @@
-import { Feather } from "@expo/vector-icons";
 import {
   View,
   Text,
-  Image,
   Pressable,
   LayoutChangeEvent,
   ScrollView,
@@ -26,18 +24,9 @@ import Animated, {
 } from "react-native-reanimated";
 import CollapseItem from "@/components/CollapseItem";
 import Collapsable from "@/components/Collapsable";
-import { useClerk } from "@clerk/clerk-expo";
-import { useRouter } from "expo-router";
-import { routes } from "@/routesConfig";
+import Header from "@/components/Header";
 
 export default function schedule() {
-  const { signOut } = useClerk();
-  const router = useRouter();
-
-  const handleSignOut = async () => {
-    await signOut();
-    router.replace(routes.signIn);
-  };
   const [currentMonth, setCurrentMonth] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [latestIndex, setLatestIndex] = useState(0);
@@ -46,7 +35,7 @@ export default function schedule() {
   const startDate = startOfWeek(subDays(today, 60), { weekStartsOn: 0 });
   const endDate = addDays(
     startOfWeek(addDays(today, 60), { weekStartsOn: 0 }),
-    6,
+    6
   );
 
   const dates = eachWeekOfInterval(
@@ -54,7 +43,7 @@ export default function schedule() {
       start: startDate,
       end: endDate,
     },
-    { weekStartsOn: 0 },
+    { weekStartsOn: 0 }
   ).reduce((acc: Date[][], curr) => {
     const allDays = eachDayOfInterval({
       start: curr,
@@ -77,7 +66,7 @@ export default function schedule() {
   const datePosX = useSharedValue((dimensions.width / 7) * todayIndex);
 
   const initialPage = dates.findIndex((week) =>
-    week.some((day) => isSameDay(day, today)),
+    week.some((day) => isSameDay(day, today))
   );
 
   useEffect(() => {
@@ -138,7 +127,7 @@ export default function schedule() {
           repeat: {
             type: "daily",
             interval: [],
-            interval_date: ["2025-02-23", "2025-02-24", "2025-02-25"],
+            interval_date: ["2025-02-28", "2025-03-02", "2025-03-05"],
           },
         },
         {
@@ -150,7 +139,7 @@ export default function schedule() {
           repeat: {
             type: "weekly",
             interval: [1, 3, 5], // Monday, Wednesday, Friday
-            interval_date: ["2025-02-23", "2025-02-25", "2025-02-27"],
+            interval_date: ["2025-02-28", "2025-03-02", "2025-03-05"],
           },
         },
       ],
@@ -173,10 +162,10 @@ export default function schedule() {
             type: "daily",
             interval: [],
             interval_date: [
-              "2025-02-23",
-              "2025-02-24",
-              "2025-02-25",
-              "2025-02-26",
+              "2025-02-28",
+              "2025-03-01",
+              "2025-03-02",
+              "2025-03-03",
             ],
           },
         },
@@ -190,10 +179,10 @@ export default function schedule() {
             type: "weekly",
             interval: [1, 3, 5],
             interval_date: [
-              "2025-02-23",
-              "2025-02-25",
-              "2025-02-27",
+              "2025-02-28",
               "2025-03-01",
+              "2025-03-02",
+              "2025-03-03",
             ],
           },
         },
@@ -204,14 +193,14 @@ export default function schedule() {
   const handleFailAllTasks = (goalId: string) => {
     setTimeout(
       () => setData((prev) => prev.filter((goal) => goal.id !== goalId)),
-      300,
+      300
     );
   };
 
   const handleCompleteAllTasks = (goalId: string) => {
     setTimeout(
       () => setData((prev) => prev.filter((goal) => goal.id !== goalId)),
-      300,
+      300
     );
   };
 
@@ -223,8 +212,8 @@ export default function schedule() {
               ...goal,
               tasks: goal.tasks.filter((t) => t.id !== taskId),
             }
-          : goal,
-      ),
+          : goal
+      )
     );
   };
 
@@ -236,8 +225,8 @@ export default function schedule() {
               ...goal,
               tasks: goal.tasks.filter((t) => t.id !== taskId),
             }
-          : goal,
-      ),
+          : goal
+      )
     );
   };
 
@@ -256,11 +245,11 @@ export default function schedule() {
                         interval_date: [...task.repeat.interval_date, date],
                       },
                     }
-                  : task,
+                  : task
               ),
             }
-          : goal,
-      ),
+          : goal
+      )
     );
     console.log("Reschedule", goalId, taskId, date);
     // Re-fetch data from the server using react query
@@ -268,40 +257,7 @@ export default function schedule() {
 
   return (
     <View style={{ flex: 1 }}>
-      <View
-        style={{
-          height: 320,
-          backgroundColor: "#16171F",
-          borderBottomLeftRadius: 30,
-          borderBottomRightRadius: 30,
-          padding: 24,
-          gap: 18,
-          shadowColor: "#000",
-          shadowOffset: {
-            width: 0,
-            height: 10,
-          },
-          shadowRadius: 10,
-          shadowOpacity: 0.1,
-          elevation: 5,
-        }}
-      >
-        <View
-          style={{
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexDirection: "row",
-          }}
-        >
-          <Feather name="menu" size={24} color="#fff" />
-          <Pressable onPress={handleSignOut} style={{ alignItems: "center" }}>
-            <Image
-              source={{ uri: "https://picsum.photos/200/300" }}
-              style={{ width: 35, height: 35, borderRadius: 100 }}
-              resizeMode="cover"
-            />
-          </Pressable>
-        </View>
+      <Header>
         <View
           style={{ gap: 10, justifyContent: "center", alignItems: "center" }}
         >
@@ -319,7 +275,9 @@ export default function schedule() {
             {currentMonth || format(today, "MMMM")}
           </Text>
         </View>
+
         <View onLayout={onDateLayout}>
+          {/* Animated Selected Date Indicator */}
           <Animated.View
             style={[
               animateDateSelected,
@@ -333,6 +291,8 @@ export default function schedule() {
               },
             ]}
           />
+
+          {/* Day Names */}
           <View
             style={{
               flexDirection: "row",
@@ -341,17 +301,17 @@ export default function schedule() {
               marginBottom: 10,
             }}
           >
-            {dayNames.map((day, i) => {
-              return (
-                <Text
-                  key={i}
-                  style={{ color: "white", width: 48, textAlign: "center" }}
-                >
-                  {day}
-                </Text>
-              );
-            })}
+            {dayNames.map((day, i) => (
+              <Text
+                key={i}
+                style={{ color: "white", width: 48, textAlign: "center" }}
+              >
+                {day}
+              </Text>
+            ))}
           </View>
+
+          {/* Date Pager View */}
           <PagerView
             style={{ height: 80 }}
             initialPage={initialPage}
@@ -362,64 +322,61 @@ export default function schedule() {
               setSelectedDate(visibleWeek[latestIndex]);
             }}
           >
-            {dates.map((week, i) => {
-              return (
-                <View key={i} style={{ flex: 1 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    {week.map((day, i) => {
-                      return (
-                        <View key={i} style={{ alignItems: "center", gap: 10 }}>
-                          <Pressable
-                            onPress={(e) => {
-                              e.preventDefault();
-                              setSelectedDate(day);
-                            }}
-                            style={{
-                              width: 48,
-                              height: 48,
-                              borderRadius: 100,
-                              justifyContent: "space-around",
-                              alignItems: "center",
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: isSameDay(day, selectedDate)
-                                  ? "#fff"
-                                  : isSameDay(day, today)
-                                    ? "#8B98D5"
-                                    : "#B7B7B7",
-                                fontWeight:
-                                  isSameDay(day, selectedDate) ||
-                                  isSameDay(day, today)
-                                    ? "bold"
-                                    : "normal",
-                                textDecorationLine:
-                                  isSameDay(day, today) &&
-                                  !isSameDay(day, selectedDate)
-                                    ? "underline"
-                                    : "none",
-                              }}
-                            >
-                              {day.getDate()}
-                            </Text>
-                          </Pressable>
-                        </View>
-                      );
-                    })}
-                  </View>
+            {dates.map((week, i) => (
+              <View key={i} style={{ flex: 1 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  {week.map((day, i) => (
+                    <View key={i} style={{ alignItems: "center", gap: 10 }}>
+                      <Pressable
+                        onPress={(e) => {
+                          e.preventDefault();
+                          setSelectedDate(day);
+                        }}
+                        style={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: 100,
+                          justifyContent: "space-around",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: isSameDay(day, selectedDate)
+                              ? "#fff"
+                              : isSameDay(day, today)
+                              ? "#8B98D5"
+                              : "#B7B7B7",
+                            fontWeight:
+                              isSameDay(day, selectedDate) ||
+                              isSameDay(day, today)
+                                ? "bold"
+                                : "normal",
+                            textDecorationLine:
+                              isSameDay(day, today) &&
+                              !isSameDay(day, selectedDate)
+                                ? "underline"
+                                : "none",
+                          }}
+                        >
+                          {day.getDate()}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ))}
                 </View>
-              );
-            })}
+              </View>
+            ))}
           </PagerView>
         </View>
-      </View>
+      </Header>
 
+      {/* Task List */}
       <ScrollView>
         <Animated.View style={{ marginTop: 20, marginBottom: 120 }}>
           {data.map((goal) => {
@@ -439,7 +396,7 @@ export default function schedule() {
                   setTimeout(
                     () =>
                       setData((prev) => prev.filter((g) => g.id !== goal.id)),
-                    300,
+                    300
                   );
                 }}
               >

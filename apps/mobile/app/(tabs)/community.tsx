@@ -1,26 +1,21 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import {
   View,
   Text,
-  Image,
   Pressable,
   StyleSheet,
   TextInput,
   FlatList,
 } from "react-native";
-import { useClerk } from "@clerk/clerk-expo";
-import { useRouter } from "expo-router";
-import { routes } from "@/routesConfig";
 import { useState } from "react";
 import TemplateCard from "@/components/TemplateCard";
 import { Template } from "@/types/templateTypes";
 import TemplateModal from "@/components/TemplateModal";
+import Header from "@/components/Header";
 
 // ====================== Main Component ======================
 export default function Community() {
   // ====================== Hooks & State ======================
-  const { signOut } = useClerk();
-  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
     null
@@ -104,11 +99,6 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
   ];
 
   // ====================== Handlers ======================
-  const handleSignOut = async () => {
-    await signOut();
-    router.replace(routes.signIn);
-  };
-
   const openModal = (template: Template) => {
     setSelectedTemplate(template);
     setModalVisible(true);
@@ -161,18 +151,7 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Feather name="menu" size={24} color="#fff" />
-          <Pressable onPress={handleSignOut} style={styles.profileButton}>
-            <Image
-              source={{ uri: "https://picsum.photos/200/300" }}
-              style={styles.profileImage}
-              resizeMode="cover"
-            />
-          </Pressable>
-        </View>
-
+      <Header>
         {/* Title */}
         <View style={styles.titleContainer}>
           <Text style={styles.title}>Community</Text>
@@ -238,7 +217,7 @@ Stick to a structured workout plan and stay motivated to reach your fitness goal
             <Ionicons name="cash" size={20} color="#fff" />
           </Pressable>
         </View>
-      </View>
+      </Header>
 
       {/* Template List */}
       <View style={styles.templateContainer}>
@@ -275,34 +254,6 @@ const styles = StyleSheet.create({
   // Main Layout
   container: {
     flex: 1,
-  },
-
-  // Header Styles
-  header: {
-    height: 320,
-    backgroundColor: "#16171F",
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    padding: 24,
-    gap: 18,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 10,
-    shadowOpacity: 0.1,
-    elevation: 5,
-  },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  profileButton: {
-    alignItems: "center",
-  },
-  profileImage: {
-    width: 35,
-    height: 35,
-    borderRadius: 100,
   },
 
   // Title Styles
@@ -344,13 +295,6 @@ const styles = StyleSheet.create({
   cardContainer: {
     padding: 15,
     flexGrow: 1,
-  },
-  gradientOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 180,
   },
 
   // Filter Styles
