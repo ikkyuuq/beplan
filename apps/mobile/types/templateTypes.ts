@@ -1,9 +1,10 @@
 export type Template = {
   title: string;
-  description: string;
   category: string;
+  description: string;
   image: string;
+  owner: string;
   isFavorite: boolean;
-  goals_id: string[];
   duration?: number;
+  goals_id: string[];
 };

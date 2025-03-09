@@ -24,8 +24,9 @@ import Header from "@/components/Header";
 import Slider from "@/components/Slider";
 import Modal from "react-native-modal";
 import { LinearGradient } from "expo-linear-gradient";
-import { Template } from "@/types/templateTypes";
+import TemplateCard from "@/components/TemplateCard";
 import TemplateModal from "@/components/TemplateModal";
+import { Template } from "@/types/templateTypes";
 
 // ====================== Main Component ======================
 export default function CreateScreen() {
@@ -110,101 +111,134 @@ export default function CreateScreen() {
     useState(false);
   const [isViewAllCommunityVisible, setIsViewAllCommunityVisible] =
     useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
-    null
-  );
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  // ====================== Mock Data ======================
+  // ====================== Mock Data Management ======================
+  // Updated Mock Goals
   const mockGoals = [
-    { id: "goal_001", title: "Visit 5 countries" },
-    { id: "goal_002", title: "Learn a new language" },
-    { id: "goal_003", title: "Travel to SE Asia" },
-    { id: "goal_004", title: "Try local cuisines" },
-    { id: "goal_005", title: "Meet new people" },
+    { id: "goal_001", title: "Build Muscle Strength" },
+    { id: "goal_002", title: "Improve Cardiovascular Health" },
+    { id: "goal_003", title: "Achieve Financial Independence" },
+    { id: "goal_004", title: "Increase Physical Flexibility" },
+    { id: "goal_005", title: "Create Emergency Savings Fund" },
+    { id: "goal_006", title: "Complete 24 Books This Year" },
+    { id: "goal_007", title: "Master Conversational Spanish" },
+    { id: "goal_008", title: "Launch Successful Side Business" },
+    { id: "goal_009", title: "Reduce Daily Stress Levels" },
+    { id: "goal_010", title: "Improve Sleep Quality" },
+    { id: "goal_011", title: "Maintain Balanced Nutrition" },
+    { id: "goal_012", title: "Practice Daily Meditation" },
+    { id: "goal_013", title: "Visit 3 New Countries" },
+    { id: "goal_014", title: "Complete First Marathon" },
+    { id: "goal_015", title: "Develop Public Speaking Skills" },
   ];
 
   // Template data
-  const templateData = [
+  const [templateData, setTemplateData] = useState<Template[]>([
     {
-      title: "Cristiano Ronaldo",
-      category: "Travel",
+      title: "Complete Fitness Transformation",
+      category: "Fitness",
       description:
-        "Embark on a transformative journey with Cristiano Ronaldo as your guide. This travel goal is designed to help you break free from the ordinary and explore the world with a refined sense of luxury and adventure.",
-      image: "https://picsum.photos/seed/ronaldo/200/300",
+        "Transform your physique with this comprehensive fitness regimen inspired by elite athletes. This goal combines progressive strength training, strategic cardio intervals, and recovery protocols designed for maximum muscle development and fat loss. Perfect for beginners and intermediate fitness enthusiasts looking to make significant physical changes in 90 days.",
+      image: "https://picsum.photos/seed/fitness101/400/600",
       owner: "BePlan",
-      goals_id: ["goal_001", "goal_002"],
+      duration: 90, // 90 days
+      isFavorite: false,
+      goals_id: ["goal_001", "goal_002", "goal_004"],
     },
     {
-      title: "Lionel Messi",
-      category: "Travel",
+      title: "Financial Freedom Blueprint",
+      category: "Finance",
       description:
-        "Inspired by Lionel Messi's passion and creativity, this goal invites you to dive into vibrant cultures and dynamic cityscapes. It's all about exploring local traditions and savoring culinary delights.",
-      image: "https://picsum.photos/seed/messi/200/300",
+        "Master your finances with this strategic roadmap to financial independence. Based on principles from top wealth advisors, this template helps you build smart saving habits, optimize investments, and develop passive income streams. Includes budgeting frameworks, investment strategies, and debt elimination techniques that work for any income level.",
+      image: "https://picsum.photos/seed/finance101/400/600",
       owner: "BePlan",
-      goals_id: ["goal_001", "goal_003"],
+      duration: 365, // 1 year
+      isFavorite: false,
+      goals_id: ["goal_003", "goal_005", "goal_008"],
     },
     {
-      title: "Neymar Jr",
-      category: "Travel",
+      title: "Mindfulness & Meditation Journey",
+      category: "Health",
       description:
-        "Unleash your adventurous spirit with Neymar Jr's travel goal. Geared toward thrill-seekers and cultural explorers alike, this goal pushes you to discover exotic locales and embrace new experiences.",
-      image: "https://picsum.photos/seed/neymarjr/200/300",
+        "Cultivate inner peace and mental clarity with this progressive meditation program. Designed for busy professionals, this template helps you build a consistent practice starting with just 5 minutes daily and gradually expanding to deeper meditative states. Includes guided sessions, breathing techniques, and mindfulness exercises to reduce stress and enhance overall wellbeing.",
+      image: "https://picsum.photos/seed/meditation101/400/600",
       owner: "BePlan",
+      duration: 30, // 30 days
+      isFavorite: false,
+      goals_id: ["goal_009", "goal_010", "goal_012"],
+    },
+    {
+      title: "Ultimate Language Learning System",
+      category: "Education",
+      description:
+        "Become conversational in any language within 6 months using this comprehensive language acquisition strategy. Following proven polyglot methods, this system combines daily practice routines with strategic immersion techniques. Perfect for travelers, professionals, and lifelong learners who want to develop practical language skills efficiently.",
+      image: "https://picsum.photos/seed/language101/400/600",
+      owner: "BePlan",
+      duration: 180, // 180 days
+      isFavorite: false,
+      goals_id: ["goal_007", "goal_015"],
+    },
+  ]);
+
+  // Community data
+  const [communityData, setCommunityData] = useState<Template[]>([
+    {
+      title: "30-Day Healthy Habits Challenge",
+      category: "Health",
+      description:
+        "Transform your daily routine with this community-favorite health challenge. This template guides you through establishing 10 essential healthy habits that boost energy, improve sleep quality, and enhance overall vitality. Each habit is introduced gradually with specific action steps, making this perfect for health beginners and veterans alike.",
+      image: "https://picsum.photos/seed/health101/400/600",
+      owner: "John Doe",
+      duration: 30, // 30 days
+      isFavorite: false,
+      goals_id: ["goal_010", "goal_011"],
+    },
+    {
+      title: "Ultimate HIIT Workout Series",
+      category: "Workout",
+      description:
+        "Maximize fat burning and muscle definition with this high-intensity interval training series. Created by a certified fitness trainer, this program features 24 unique workouts that progressively challenge your cardiovascular system and major muscle groups. Ideal for intermediate fitness enthusiasts who want maximum results in minimum time.",
+      image: "https://picsum.photos/seed/hiit101/400/600",
+      owner: "Jane Smith",
+      duration: 56, // 8 weeks
+      isFavorite: true,
       goals_id: ["goal_002", "goal_004"],
     },
     {
-      title: "Olivier Giroud",
-      category: "Travel",
+      title: "Productivity Powerhouse System",
+      category: "Productivity",
       description:
-        "Experience a harmonious blend of elegance and adventure with Olivier Giroud's travel goal. Tailored for those who appreciate sophisticated journeys with precision and style.",
-      image: "https://picsum.photos/seed/giroud/200/300",
-      owner: "BePlan",
-      goals_id: ["goal_001", "goal_005"],
+        "Double your productivity while working fewer hours with this science-backed system. Drawing from the practices of top performers across industries, this template helps you implement time blocking, deep work sessions, and strategic rest periods. Perfect for entrepreneurs, professionals, and students who want to accomplish more without burnout.",
+      image: "https://picsum.photos/seed/productivity101/400/600",
+      owner: "Alex Johnson",
+      duration: 42, // 6 weeks
+      isFavorite: false,
+      goals_id: ["goal_006", "goal_008"],
     },
-  ];
+  ]);
 
-  // Community data
-  const communityData = [
-    {
-      title: "Healthy Living",
-      category: "Health",
-      description:
-        "Healthy Living is more than just a goal—it's a community dedicated to transforming everyday habits into a lifestyle of wellness. This goal empowers you with scientifically-backed nutrition tips and workout routines.",
-      image: "https://picsum.photos/seed/health/200/300",
-      owner: "John Doe",
-      goals_id: ["goal_001", "goal_002"],
-    },
-    {
-      title: "Be Better Than Messi",
-      category: "Workout",
-      description:
-        "Set your sights on peak performance with the 'Be Better Than Messi' workout goal. This dynamic challenge is designed to push your limits through high-energy training routines.",
-      image: "https://picsum.photos/seed/better_messi/200/300",
-      owner: "Jane Doe",
-      goals_id: ["goal_002", "goal_003"],
-    },
-    {
-      title: "One Punch Man",
-      category: "Workout",
-      description:
-        "Inspired by the unstoppable energy of anime heroes, the 'One Punch Man' workout goal challenges you to maximize impact with every session. Built around high-intensity interval training.",
-      image: "https://picsum.photos/seed/anime/200/300",
-      owner: "John Doe",
-      goals_id: ["goal_003", "goal_004"],
-    },
-  ];
-
-  // ====================== Handlers ======================
+  // ====================== Event Handlers ======================
   const handleTemplateSelect = (template: any) => {
-    const selectedTemplate: Template = {
+    const selectedTemplate = {
       title: template.title,
       description: template.description,
       category: template.category,
       image: template.image,
-      isFavorite: false,
-      goals_id: template.goals_id || [],
+      isFavorite: template.isFavorite || false,
+      isListed: template.isFavorite || false, // For the modal's listed state
+      owner: template.owner || "BePlan",
+      duration: template.duration || null,
+      goals:
+        template.goals_id?.map(
+          (id: string) =>
+            mockGoals.find((goal) => goal.id === id) || {
+              id,
+              title: `Goal ${id}`,
+            }
+        ) || [],
     };
 
     setSelectedTemplate(selectedTemplate);
@@ -412,14 +446,26 @@ export default function CreateScreen() {
       {/* Template Modal */}
       <View>
         <TemplateModal
-          visible={isModalVisible}
-          template={selectedTemplate}
+          isVisible={isModalVisible}
           onClose={() => setIsModalVisible(false)}
-          onSelect={() => {
-            console.log("Template selected:", selectedTemplate?.title);
-            setIsModalVisible(false);
+          onAddToList={() => {
+            if (selectedTemplate) {
+              setSelectedTemplate({
+                ...selectedTemplate,
+                isListed: !selectedTemplate.isListed,
+              });
+            }
           }}
-          goals={mockGoals}
+          data={
+            selectedTemplate || {
+              isListed: false,
+              title: "",
+              category: "",
+              image: "",
+              description: "",
+              owner: "BePlan",
+            }
+          }
         />
       </View>
 
@@ -536,7 +582,7 @@ export default function CreateScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Templates Grid */}
+            {/* Templates Grid using TemplateCard */}
             <View style={styles.fullScreenModalContent}>
               <ScrollView style={styles.templatesScrollView}>
                 <View style={styles.templatesGrid}>
@@ -544,41 +590,60 @@ export default function CreateScreen() {
                     ? templateData
                     : communityData
                   ).map((template, index) => (
-                    <TouchableOpacity
+                    <TemplateCard
                       key={index}
-                      style={styles.templateGridItem}
-                      onPress={() => {
-                        setSelectedTemplate({
+                      template={{
+                        title: template.title,
+                        category: template.category,
+                        description: template.description || "",
+                        image: template.image,
+                        owner: template.owner || "BePlan",
+                        isFavorite: template.isFavorite || false,
+                        goals_id: template.goals_id || [],
+                        duration: template.duration || 0,
+                      }}
+                      onSelect={() => {
+                        const selectedTemplate = {
                           title: template.title,
                           description: template.description,
                           category: template.category,
                           image: template.image,
-                          isFavorite: false,
-                          goals_id: template.goals_id || [],
-                        });
+                          isListed: template.isFavorite || false,
+                          owner: template.owner || "BePlan",
+                          duration: template.duration || null,
+                          goals:
+                            template.goals_id?.map(
+                              (id: string) =>
+                                mockGoals.find((goal) => goal.id === id) || {
+                                  id,
+                                  title: `Goal ${id}`,
+                                }
+                            ) || [],
+                        };
+                        setSelectedTemplate(selectedTemplate);
                         setIsModalVisible(true);
                       }}
-                    >
-                      <View style={styles.templateImageContainer}>
-                        <Image
-                          source={{ uri: template.image }}
-                          style={styles.templateGridImage}
-                          resizeMode="cover"
-                        />
-                        <LinearGradient
-                          colors={["transparent", "rgba(0,0,0,0.7)"]}
-                          style={styles.templateGradient}
-                        />
-                        <View style={styles.templateInfo}>
-                          <Text style={styles.templateCategory}>
-                            {template.category}
-                          </Text>
-                          <Text style={styles.templateTitle}>
-                            {template.title}
-                          </Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
+                      onToggleFavorite={() => {
+                        // Determine which data source to update based on which modal is visible
+                        if (isViewAllTemplatesVisible) {
+                          setTemplateData((prev) =>
+                            prev.map((item) =>
+                              item.title === template.title
+                                ? { ...item, isFavorite: !item.isFavorite }
+                                : item
+                            )
+                          );
+                        } else {
+                          setCommunityData((prev) =>
+                            prev.map((item) =>
+                              item.title === template.title
+                                ? { ...item, isFavorite: !item.isFavorite }
+                                : item
+                            )
+                          );
+                        }
+                      }}
+                    />
                   ))}
                 </View>
               </ScrollView>
@@ -586,6 +651,7 @@ export default function CreateScreen() {
           </View>
         </Modal>
       </View>
+
       {/* Loading Indicator */}
       {isLoading && (
         <View style={styles.overlay}>

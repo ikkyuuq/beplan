@@ -17,14 +17,15 @@ import Animated, {
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
-// ====================== Types ======================
+// ====================== Type Definitions ======================
 type TemplateCardProps = {
   template: Template;
   onSelect: () => void;
   onToggleFavorite: () => void;
 };
 
-// format duration
+// ====================== Helper Functions ======================
+// Format duration helper
 const formatDuration = (days: number): string => {
   if (days >= 365) {
     return "1 Year";
@@ -36,18 +37,25 @@ const formatDuration = (days: number): string => {
   }
 };
 
-// ====================== Component ======================
+// ====================== Main Component ======================
 export default function TemplateCard({
   template,
   onSelect,
   onToggleFavorite,
 }: TemplateCardProps) {
-  // ====================== Animation ======================
+  // ====================== Animation Values ======================
   const scale = useSharedValue(1);
+  const favoriteScale = useSharedValue(1);
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
+  const animatedFavoriteStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: favoriteScale.value }],
+  }));
+
+  // ====================== Animation Handlers ======================
   const handlePressIn = () => {
     scale.value = withSpring(0.97, { damping: 10, stiffness: 100 });
   };
@@ -56,9 +64,20 @@ export default function TemplateCard({
     scale.value = withSpring(1, { damping: 10, stiffness: 100 });
   };
 
-  // ====================== Category Icon Management ======================
+  const handleToggleFavorite = () => {
+    favoriteScale.value = withSpring(0.8, { damping: 10 }, () => {
+      favoriteScale.value = withSpring(1, { damping: 10 });
+    });
+
+    if (onToggleFavorite) {
+      onToggleFavorite();
+    }
+  };
+
+  // ====================== Helper Functions ======================
+  // Get appropriate icon for category
   const getCategoryIcon = (): keyof typeof Ionicons.glyphMap => {
-    switch (template.category) {
+    switch (template.category.toLowerCase()) {
       case "fitness":
         return "barbell-outline";
       case "health":
@@ -128,13 +147,14 @@ export default function TemplateCard({
             {/* Favorite Button */}
             <TouchableOpacity
               style={styles.favoriteButton}
-              onPress={onToggleFavorite}
+              onPress={handleToggleFavorite}
               activeOpacity={0.8}
             >
               <Animated.View
                 style={[
                   styles.favoriteIconContainer,
                   template.isFavorite && styles.favoriteActive,
+                  animatedFavoriteStyle,
                 ]}
               >
                 <Ionicons
@@ -175,6 +195,7 @@ export default function TemplateCard({
   );
 }
 
+// ====================== Styles ======================
 const styles = StyleSheet.create({
   // Card Container
   cardContainer: {

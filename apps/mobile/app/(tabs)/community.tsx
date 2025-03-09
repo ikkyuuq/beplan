@@ -16,22 +16,21 @@ import Header from "@/components/Header";
 
 // ====================== Main Component ======================
 export default function Community() {
-  // ====================== Hooks & State ======================
+  // ====================== State Management ======================
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
-    null
-  );
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>("ALL");
-  const [isModalVisible, setModalVisible] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([
     {
       title: "Arnold Schwarzenegger Workout",
-      description: `A comprehensive fitness regimen inspired by Arnold's classic bodybuilding approach. Includes progressive strength training, strategic cardio, and recovery protocols for maximum muscle development.`,
       category: "fitness",
+      description: `A comprehensive fitness regimen inspired by Arnold's classic bodybuilding approach. Includes progressive strength training, strategic cardio, and recovery protocols for maximum muscle development.`,
       image: "https://picsum.photos/seed/arnold/400/600",
+      owner: "John",
       isFavorite: false,
-      goals_id: ["goal_001", "goal_002", "goal_004", "goal_010"],
       duration: 90,
+      goals_id: ["goal_001", "goal_002", "goal_004", "goal_010"],
     },
     {
       title: "Warren Buffett Investment",
@@ -39,9 +38,10 @@ export default function Community() {
         "Value investing strategy based on Warren Buffett's principles. Focus on long-term growth, company fundamentals, and patient capital allocation.",
       category: "work",
       image: "https://picsum.photos/seed/buffett/400/600",
+      owner: "Ben",
       isFavorite: false,
-      goals_id: ["goal_003", "goal_005", "goal_008"],
       duration: 365,
+      goals_id: ["goal_003", "goal_005", "goal_008"],
     },
     {
       title: "Yoga for Flexibility",
@@ -49,9 +49,10 @@ export default function Community() {
         "Daily yoga practice focused on improving overall flexibility, mobility, and mind-body connection. Perfect for beginners and intermediate practitioners.",
       category: "health",
       image: "https://picsum.photos/seed/yoga/400/600",
+      owner: "Adison",
       isFavorite: true,
-      goals_id: ["goal_004", "goal_009", "goal_010", "goal_012"],
       duration: 30,
+      goals_id: ["goal_004", "goal_009", "goal_010", "goal_012"],
     },
     {
       title: "Marathon Training Plan",
@@ -59,9 +60,10 @@ export default function Community() {
         "16-week progressive training plan to prepare for a full marathon. Includes run scheduling, nutrition guidance, and recovery techniques.",
       category: "fitness",
       image: "https://picsum.photos/seed/marathon/400/600",
+      owner: "Ryu",
       isFavorite: false,
-      goals_id: ["goal_002", "goal_010", "goal_011", "goal_014"],
       duration: 112,
+      goals_id: ["goal_002", "goal_010", "goal_011", "goal_014"],
     },
     {
       title: "Mindfulness Meditation",
@@ -69,9 +71,10 @@ export default function Community() {
         "Daily meditation practice to reduce stress, improve focus, and enhance overall wellbeing. Includes guided sessions and breathing techniques.",
       category: "health",
       image: "https://picsum.photos/seed/meditation/400/600",
+      owner: "Boss",
       isFavorite: true,
-      goals_id: ["goal_009", "goal_010", "goal_012"],
       duration: 21,
+      goals_id: ["goal_009", "goal_010", "goal_012"],
     },
     {
       title: "Reading Challenge",
@@ -79,9 +82,10 @@ export default function Community() {
         "Structured approach to reading 24 books in a year. Includes genre diversification, reading schedules, and comprehension techniques.",
       category: "education",
       image: "https://picsum.photos/seed/books/400/600",
+      owner: "David",
       isFavorite: false,
-      goals_id: ["goal_006", "goal_015"],
       duration: 365,
+      goals_id: ["goal_006", "goal_015"],
     },
     {
       title: "Language Learning",
@@ -89,9 +93,10 @@ export default function Community() {
         "Comprehensive language acquisition strategy following proven polyglot methods. Daily practice routine with listening, speaking, reading, and writing.",
       category: "education",
       image: "https://picsum.photos/seed/language/400/600",
+      owner: "King",
       isFavorite: false,
-      goals_id: ["goal_007", "goal_015"],
       duration: 180,
+      goals_id: ["goal_007", "goal_015"],
     },
     {
       title: "World Traveler",
@@ -99,9 +104,10 @@ export default function Community() {
         "Strategic approach to visiting multiple countries within a year. Includes budgeting, itinerary planning, and cultural immersion techniques.",
       category: "travel",
       image: "https://picsum.photos/seed/travel/400/600",
+      owner: "John",
       isFavorite: false,
-      goals_id: ["goal_013", "goal_007"],
       duration: 60,
+      goals_id: ["goal_013", "goal_007"],
     },
     {
       title: "Side Hustle Blueprint",
@@ -109,9 +115,10 @@ export default function Community() {
         "Step-by-step framework for launching and growing a profitable side business while maintaining work-life balance.",
       category: "work",
       image: "https://picsum.photos/seed/business/400/600",
+      owner: "Emma",
       isFavorite: false,
-      goals_id: ["goal_003", "goal_005", "goal_008", "goal_015"],
       duration: 90,
+      goals_id: ["goal_003", "goal_005", "goal_008", "goal_015"],
     },
     {
       title: "Healthy Eating Plan",
@@ -119,9 +126,10 @@ export default function Community() {
         "Balanced nutrition program focusing on whole foods, meal planning, and sustainable eating habits without restrictive dieting.",
       category: "health",
       image: "https://picsum.photos/seed/nutrition/400/600",
+      owner: "Vunsen",
       isFavorite: true,
-      goals_id: ["goal_010", "goal_011"],
       duration: 42,
+      goals_id: ["goal_010", "goal_011"],
     },
     {
       title: "Public Speaking Mastery",
@@ -129,9 +137,10 @@ export default function Community() {
         "Progressive system to overcome speech anxiety and develop compelling presentation skills for professional and personal growth.",
       category: "personal_development",
       image: "https://picsum.photos/seed/speaking/400/600",
+      owner: "Nobita",
       isFavorite: false,
-      goals_id: ["goal_015", "goal_009"],
       duration: 56,
+      goals_id: ["goal_015", "goal_009"],
     },
     {
       title: "Retirement Planning",
@@ -139,9 +148,10 @@ export default function Community() {
         "Comprehensive financial strategy for securing retirement through smart investments, tax optimization, and long-term wealth building.",
       category: "work",
       image: "https://picsum.photos/seed/retirement/400/600",
+      owner: "Taki",
       isFavorite: false,
-      goals_id: ["goal_003", "goal_005", "goal_008"],
       duration: 365,
+      goals_id: ["goal_003", "goal_005", "goal_008"],
     },
     {
       title: "Home DIY Projects",
@@ -149,9 +159,10 @@ export default function Community() {
         "Collection of weekend home improvement projects with step-by-step instructions, tool lists, and budgeting advice.",
       category: "other",
       image: "https://picsum.photos/seed/diy/400/600",
+      owner: "Soma",
       isFavorite: false,
-      goals_id: ["goal_003"],
       duration: 120,
+      goals_id: ["goal_003"],
     },
   ]);
 
@@ -187,24 +198,29 @@ export default function Community() {
     { id: "goal_015", title: "Develop Public Speaking Skills" },
   ];
 
-  // ====================== Handlers ======================
-  const openModal = (template: Template) => {
-    setSelectedTemplate(template);
-    setModalVisible(true);
-  };
+  // ====================== Event Handlers ======================
+  const handleTemplateSelect = (template: Template) => {
+    const selectedTemplate = {
+      title: template.title,
+      category: template.category,
+      description: template.description || "",
+      image: template.image,
+      owner: template.owner,
+      isFavorite: template.isFavorite || false,
+      isListed: template.isFavorite || false,
+      duration: template.duration || null,
+      goals:
+        template.goals_id?.map(
+          (id) =>
+            mockGoals.find((goal) => goal.id === id) || {
+              id,
+              title: `Goal ${id}`,
+            }
+        ) || [],
+    };
 
-  const closeModal = () => {
-    setModalVisible(false);
-    setSelectedTemplate(null);
-  };
-
-  const handleSelectTemplate = () => {
-    console.log("Selected Template Goals:", selectedTemplate?.goals_id);
-    closeModal();
-  };
-
-  const handleFilterChange = (filter: string) => {
-    setSelectedFilter(filter);
+    setSelectedTemplate(selectedTemplate);
+    setIsModalVisible(true);
   };
 
   const toggleFavorite = (title: string) => {
@@ -217,7 +233,12 @@ export default function Community() {
     );
   };
 
-  // ====================== Filtering Logic ======================
+  const handleFilterChange = (filter: string) => {
+    setSelectedFilter(filter);
+  };
+
+  // ====================== Helper Functions ======================
+  // Filtering Logic
   const filteredTemplates = templates.filter((template) => {
     if (selectedFilter === "FAVORITES" && !template.isFavorite) return false;
     if (
@@ -239,7 +260,7 @@ export default function Community() {
     return true;
   });
 
-  // ====================== Get Icon Color ======================
+  // Get Icon Color
   const getIconColor = (categoryId: string) => {
     if (categoryId === "FAVORITES" && selectedFilter === categoryId) {
       return "#FF0000";
@@ -313,7 +334,7 @@ export default function Community() {
           renderItem={({ item }) => (
             <TemplateCard
               template={item}
-              onSelect={() => openModal(item)}
+              onSelect={() => handleTemplateSelect(item)}
               onToggleFavorite={() => toggleFavorite(item.title)}
             />
           )}
@@ -333,14 +354,31 @@ export default function Community() {
         />
       </View>
 
-      {/* Template Modal */}
-      <TemplateModal
-        visible={isModalVisible}
-        template={selectedTemplate}
-        onClose={closeModal}
-        onSelect={handleSelectTemplate}
-        goals={mockGoals}
-      />
+      {/* Template Preview Modal */}
+      <View>
+        <TemplateModal
+          isVisible={isModalVisible}
+          onClose={() => setIsModalVisible(false)}
+          onAddToList={() => {
+            if (selectedTemplate) {
+              setSelectedTemplate({
+                ...selectedTemplate,
+                isListed: !selectedTemplate.isListed,
+              });
+            }
+          }}
+          data={
+            selectedTemplate || {
+              isListed: false,
+              title: "",
+              category: "",
+              image: "",
+              description: "",
+              owner: "Community User",
+            }
+          }
+        />
+      </View>
     </View>
   );
 }
