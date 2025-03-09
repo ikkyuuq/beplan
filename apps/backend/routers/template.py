@@ -31,6 +31,12 @@ class AssingedGoal(BaseModel):
     tasks: List[AssignedTask]
 
 
+class AssignedGoalUpdate(BaseModel):
+    assigned_goal_id: int
+    new_start_date: date
+    new_due_date: date
+
+
 class TemplateType(str, Enum):
     TEMPLATE = "template"
     COMMUNITY = "community"
@@ -41,7 +47,7 @@ class TemplateStatus(str, Enum):
     ASSIGNED = "assigned"
 
 
-class CreateTemplateFromUserGoalRequest(BaseModel):
+class CreateTemplateFromUserRequest(BaseModel):
     user_id: str
     title: str
     description: Optional[str] = None
@@ -49,7 +55,8 @@ class CreateTemplateFromUserGoalRequest(BaseModel):
     created_by: Optional[str] = "BePlan"
     category: str
     type: Optional[TemplateType] = TemplateType.TEMPLATE
-    assigned_goal_ids: List[int]
+    existing_goals: Optional[List[AssignedGoalUpdate]] = []
+    new_goals: Optional[List[T.Goal]] = []
 
 
 class CreateTemplateRequest(BaseModel):
@@ -364,29 +371,76 @@ async def create_template(req: CreateTemplateRequest):
             raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
-@router.post("/create_from_user_goals")
-async def create_template_from_user_goals(req: CreateTemplateFromUserGoalRequest):
+@router.post("/create/user")
+async def create_template_from_user_goals(req: CreateTemplateFromUserRequest):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
             async with conn.transaction():
-                assigned_goal_ids = req.assigned_goal_ids
-                assigned_goals = await conn.fetch(
-                    """
-                    SELECT g.id, g.title, ag.start_date, ag.due_date 
-                    FROM public.goal g
-                    JOIN public.assigned_goal ag ON g.id = ag.goal_id
-                    WHERE ag.user_id = $1
-                      AND ag.id = ANY($2)
-                    """,
-                    req.user_id,
-                    assigned_goal_ids,
-                )
-                if not assigned_goals:
-                    raise HTTPException(400, detail="No assigned goals found")
+                existing_goals_data = []
+                if req.existing_goals:
+                    update_mapping = {
+                        eg.assigned_goal_id: (eg.new_start_date, eg.new_due_date)
+                        for eg in req.existing_goals
+                    }
+                    existing_ids = list(update_mapping.keys())
+                    db_existing = await conn.fetch(
+                        """
+                        SELECT ag.id AS assigned_goal_id, g.id AS goal_id, g.title
+                        FROM public.goal g
+                        JOIN public.assigned_goal ag ON g.id = ag.goal_id
+                        WHERE ag.user_id = $1 AND ag.id = ANY($2)
+                        """,
+                        req.user_id,
+                        existing_ids,
+                    )
+                    if not db_existing:
+                        raise HTTPException(
+                            400, detail="No assigned goals found for the provided IDs"
+                        )
+                    for record in db_existing:
+                        assigned_goal_id = record["assigned_goal_id"]
+                        new_start_date, new_due_date = update_mapping[assigned_goal_id]
+                        existing_goals_data.append(
+                            {
+                                "goal_id": record["goal_id"],
+                                "assigned_goal_id": assigned_goal_id,
+                                "start_date": new_start_date,
+                                "due_date": new_due_date,
+                            }
+                        )
 
-                global_start_date = min(goal["start_date"] for goal in assigned_goals)
-                global_due_date = max(goal["due_date"] for goal in assigned_goals)
+                new_goals_data = []
+                if req.new_goals:
+                    for goal in req.new_goals:
+                        new_goal_rec = await conn.fetchrow(
+                            "INSERT INTO public.goal (title, type) VALUES ($1, $2) RETURNING id",
+                            goal.title,
+                            goal.type,
+                        )
+                        if not new_goal_rec:
+                            raise HTTPException(
+                                500, detail="Failed to create a new goal"
+                            )
+                        new_goals_data.append(
+                            {
+                                "goal_id": new_goal_rec["id"],
+                                "start_date": goal.start_date,
+                                "due_date": goal.due_date,
+                                "tasks": goal.tasks,
+                            }
+                        )
+
+                all_start_dates = [g["start_date"] for g in existing_goals_data] + [
+                    g["start_date"] for g in new_goals_data
+                ]
+                all_due_dates = [g["due_date"] for g in existing_goals_data] + [
+                    g["due_date"] for g in new_goals_data
+                ]
+                if not all_start_dates or not all_due_dates:
+                    raise HTTPException(400, detail="No goals provided")
+                global_start_date = min(all_start_dates)
+                global_due_date = max(all_due_dates)
 
                 new_template = await conn.fetchrow(
                     """
@@ -407,84 +461,162 @@ async def create_template_from_user_goals(req: CreateTemplateFromUserGoalRequest
                 if not new_template:
                     raise HTTPException(500, detail="Failed to create template")
 
-                assigned_task_intervals_rec = await conn.fetch(
-                    """
-                    SELECT ati.interval_date, t.id as task_id
-                    FROM public.assigned_task_interval ati
-                    JOIN public.assigned_task at ON ati.assigned_task_id = at.id
-                    JOIN public.task t ON at.task_id = t.id
-                    WHERE at.assigned_goal_id = ANY($1)
-                    """,
-                    assigned_goal_ids,
-                )
-
-                assigned_task_intervals_dict = {}
-                for row in assigned_task_intervals_rec:
-                    assigned_task_intervals_dict.setdefault(row["task_id"], []).append(
-                        row["interval_date"]
-                    )
-
-                for goal in assigned_goals:
-                    new_tmpl_goal = await conn.fetchrow(
+                if existing_goals_data:
+                    existing_assigned_ids = [
+                        g["assigned_goal_id"] for g in existing_goals_data
+                    ]
+                    assigned_task_intervals_rec = await conn.fetch(
                         """
-                        INSERT INTO public.tmpl_goal 
-                            (template_id, goal_id, start_date, due_date)
-                        VALUES ($1, $2, $3, $4)
-                        RETURNING id
+                        SELECT ati.interval_date, t.id AS task_id, at.assigned_goal_id
+                        FROM public.assigned_task_interval ati
+                        JOIN public.assigned_task at ON ati.assigned_task_id = at.id
+                        JOIN public.task t ON at.task_id = t.id
+                        WHERE at.assigned_goal_id = ANY($1)
                         """,
-                        new_template["id"],
-                        goal["id"],
-                        goal["start_date"],
-                        goal["due_date"],
+                        existing_assigned_ids,
                     )
-                    if not new_tmpl_goal:
-                        raise HTTPException(
-                            500, detail="Failed to create template goal"
+                    assigned_task_intervals_dict = {}
+                    for row in assigned_task_intervals_rec:
+                        key = (row["assigned_goal_id"], row["task_id"])
+                        assigned_task_intervals_dict.setdefault(key, []).append(
+                            row["interval_date"]
                         )
 
-                    tasks_rec = await conn.fetch(
-                        """
-                        SELECT id
-                        FROM public.task
-                        WHERE goal_id = $1
-                        """,
-                        goal["id"],
-                    )
-                    task_ids = [row["id"] for row in tasks_rec]
-
-                    for task_id in task_ids:
-                        new_tmpl_goal_task = await conn.fetchrow(
+                    for goal in existing_goals_data:
+                        tmpl_goal_rec = await conn.fetchrow(
                             """
-                            INSERT INTO public.tmpl_goal_task 
-                                (tmpl_goal_id, task_id)
-                            VALUES ($1, $2)
+                            INSERT INTO public.tmpl_goal 
+                                (template_id, goal_id, start_date, due_date)
+                            VALUES ($1, $2, $3, $4)
                             RETURNING id
                             """,
-                            new_tmpl_goal["id"],
-                            task_id,
+                            new_template["id"],
+                            goal["goal_id"],
+                            goal["start_date"],
+                            goal["due_date"],
                         )
-                        if not new_tmpl_goal_task:
+                        if not tmpl_goal_rec:
                             raise HTTPException(
-                                500, detail="Failed to create template goal task"
+                                500, detail="Failed to create template goal"
                             )
-
-                        interval_dates = assigned_task_intervals_dict.get(task_id, [])
-                        for interval_date in interval_dates:
-                            await conn.execute(
+                        tasks_rec = await conn.fetch(
+                            "SELECT id FROM public.task WHERE goal_id = $1",
+                            goal["goal_id"],
+                        )
+                        for task_row in tasks_rec:
+                            tmpl_goal_task_rec = await conn.fetchrow(
                                 """
-                                INSERT INTO public.tmpl_goal_task_interval
-                                    (tmpl_goal_task_id, interval_date)
+                                INSERT INTO public.tmpl_goal_task 
+                                    (tmpl_goal_id, task_id)
                                 VALUES ($1, $2)
+                                RETURNING id
                                 """,
-                                new_tmpl_goal_task["id"],
-                                interval_date,
+                                tmpl_goal_rec["id"],
+                                task_row["id"],
                             )
+                            if not tmpl_goal_task_rec:
+                                raise HTTPException(
+                                    500, detail="Failed to create template goal task"
+                                )
+                            intervals = assigned_task_intervals_dict.get(
+                                (goal["assigned_goal_id"], task_row["id"]), []
+                            )
+                            for interval_date in intervals:
+                                await conn.execute(
+                                    """
+                                    INSERT INTO public.tmpl_goal_task_interval
+                                        (tmpl_goal_task_id, interval_date)
+                                    VALUES ($1, $2)
+                                    """,
+                                    tmpl_goal_task_rec["id"],
+                                    interval_date,
+                                )
+
+                if new_goals_data:
+                    for goal in new_goals_data:
+                        tmpl_goal_rec = await conn.fetchrow(
+                            """
+                            INSERT INTO public.tmpl_goal 
+                                (template_id, goal_id, start_date, due_date)
+                            VALUES ($1, $2, $3, $4)
+                            RETURNING id
+                            """,
+                            new_template["id"],
+                            goal["goal_id"],
+                            goal["start_date"],
+                            goal["due_date"],
+                        )
+                        if not tmpl_goal_rec:
+                            raise HTTPException(
+                                500,
+                                detail="Failed to create template goal for new goal",
+                            )
+                        for task in goal["tasks"]:
+                            if task.repeat_type == T.RepeatType.DAILY:
+                                interval_dates = date_calculation.get_daily_range(
+                                    goal["start_date"], goal["due_date"]
+                                )
+                            elif task.repeat_type == T.RepeatType.WEEKLY:
+                                if not task.week_interval:
+                                    raise HTTPException(
+                                        400, detail="Week interval is required"
+                                    )
+                                interval_dates = date_calculation.get_weekly_range(
+                                    goal["start_date"],
+                                    goal["due_date"],
+                                    task.week_interval,
+                                )
+                            elif task.repeat_type == T.RepeatType.MONTHLY:
+                                if not task.date_interval:
+                                    raise HTTPException(
+                                        400, detail="Monthly interval is required"
+                                    )
+                                interval_dates = task.date_interval
+                            else:
+                                raise HTTPException(
+                                    400,
+                                    detail="Invalid task type; must be daily, weekly, or monthly",
+                                )
+
+                            # Create new task record for the new goal
+                            new_task_rec = await conn.fetchrow(
+                                """
+                                INSERT INTO public.task 
+                                    (title, description, goal_id, type, interval)
+                                VALUES ($1, $2, $3, $4, $5)
+                                RETURNING id
+                                """,
+                                task.title,
+                                task.description,
+                                goal["goal_id"],
+                                task.repeat_type,
+                                task.week_interval if task.week_interval else None,
+                            )
+                            tmpl_goal_task_rec = await conn.fetchrow(
+                                """
+                                INSERT INTO public.tmpl_goal_task 
+                                    (tmpl_goal_id, task_id)
+                                VALUES ($1, $2)
+                                RETURNING id
+                                """,
+                                tmpl_goal_rec["id"],
+                                new_task_rec["id"],
+                            )
+                            for interval in interval_dates:
+                                await conn.execute(
+                                    """
+                                    INSERT INTO public.tmpl_goal_task_interval 
+                                        (tmpl_goal_task_id, interval_date)
+                                    VALUES ($1, $2)
+                                    """,
+                                    tmpl_goal_task_rec["id"],
+                                    interval,
+                                )
 
                 return {
                     "message": "Template created from user goals",
                     "template_id": new_template["id"],
                 }
-
         except HTTPException:
             raise
         except Exception as e:
@@ -590,6 +722,24 @@ async def assign_template(req: AssignTemplateRequest):
             raise HTTPException(
                 status_code=409, detail="Template already assigned to user"
             )
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+
+
+@router.delete("/delete")
+async def delete_template(template_id: int):
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        try:
+            async with conn.transaction():
+                await conn.execute(
+                    "DELETE FROM public.template WHERE id = $1", template_id
+                )
+
+                return {"message": "Template deleted"}
+
         except HTTPException:
             raise
         except Exception as e:
