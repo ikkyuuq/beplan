@@ -462,7 +462,7 @@ async def check_goal_status(conn, assigned_goal_id: int):
         """
         SELECT 
             COUNT(*) AS total_tasks,
-            SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS completed_tasks
+            SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS completed_tasks,
             SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_tasks
         FROM public.assigned_task
         WHERE assigned_goal_id = $1
