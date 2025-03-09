@@ -279,7 +279,7 @@ async def get_goal(assigned_goal_id: int):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
-
+            
             goal_data = await conn.fetchrow(
                 """
                 SELECT g.id, g.title, g.type, ag.start_date, ag.due_date
@@ -305,13 +305,29 @@ async def get_goal(assigned_goal_id: int):
 
             tasks = []
             for task in tasks_data:
+                # Get date_interval for jobs with Repeat_type of 'date'
+                date_interval = []
+                if task["repeat_type"] == "date":
+                    date_interval = await conn.fetch(
+                        """
+                        SELECT interval_date
+                        FROM assigned_task_interval
+                        WHERE assigned_task_id IN (
+                            SELECT id FROM assigned_task WHERE task_id = $1 AND assigned_goal_id = $2
+                        )
+                        """,
+                        task["id"],
+                        assigned_goal_id,
+                    )
+                    date_interval = [row["interval_date"].isoformat() for row in date_interval]
+
                 tasks.append(
                     {
                         "id": task["id"],
                         "title": task["title"],
                         "description": task["description"],
                         "repeat_type": task["repeat_type"],
-                        "date_interval": [],
+                        "date_interval": date_interval,  
                         "week_interval": task["week_interval"],
                         "status": task["status"],
                     }
