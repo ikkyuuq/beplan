@@ -1,10 +1,10 @@
 from datetime import date
 
-import date_calculation
 from asyncpg import Connection
 from fastapi import HTTPException
 
 from const import types as T
+from utils import date_calculation
 
 
 async def get_interval_dates(task: T.Task, start_date: date, due_date: date):
