@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from enum import Enum
 from typing import List, Optional
 
@@ -17,7 +17,7 @@ class AssignedTask(BaseModel):
     id: int
     title: str
     description: Optional[str] = None
-    repeat_type: T.RepeatType
+    repeat_type: Optional[T.RepeatType] = None
     date_interval: Optional[List[date]] = None
     week_interval: Optional[List[int]] = None
 
@@ -88,7 +88,7 @@ class FetchTemplateRequest(BaseModel):
 class TaskTemplate(BaseModel):
     title: str
     description: Optional[str] = None
-    type: T.RepeatType
+    repeat_type: Optional[T.RepeatType] = None
     week_interval: Optional[List[int]] = None
 
 
@@ -107,6 +107,7 @@ class TemplateResponse(BaseModel):
     goals: List[GoalTemplate]
     type: TemplateType
     status: TemplateStatus
+    duration: int
 
 
 @router.get("")
@@ -122,6 +123,10 @@ async def fetch_template(req: FetchTemplateRequest):
                 templates = await conn.fetch("SELECT * FROM public.template")
             if not templates:
                 return []
+
+            duration = (
+                (templates[0]["due_date"] - templates[0]["start_date"]) + timedelta(1)
+            ).days
 
             template_ids = [tmpl["id"] for tmpl in templates]
 
@@ -181,7 +186,7 @@ async def fetch_template(req: FetchTemplateRequest):
                                 TaskTemplate(
                                     title=task_rec["title"],
                                     description=task_rec.get("description"),
-                                    type=task_rec["type"],
+                                    repeat_type=task_rec["type"],
                                     week_interval=task_rec.get("interval"),
                                 )
                             )
@@ -206,6 +211,7 @@ async def fetch_template(req: FetchTemplateRequest):
                             if tmpl["id"] in assigned_ids
                             else TemplateStatus.UNUSED
                         ),
+                        duration=duration,
                     )
                 )
 
