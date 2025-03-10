@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from "react";
-import {
-  Text,
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-} from "react-native";
-import { useSignIn, useClerk } from "@clerk/clerk-expo";
+import { Text, View, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useSignIn } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
-import PasswordInput from "@/components/PasswordInput";
+import SignButton from "@/components/SignButton";
+import InputField from "@/components/InputField";
+import VerificationScreen from "@/components/VerificationScreen";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -21,11 +17,11 @@ import Animated, {
 } from "react-native-reanimated";
 
 // ====================== Main Component ======================
-export default function SetPasswordScreen() {
+export default function ResetPasswordScreen() {
   // ====================== Animation Values ======================
   const titleOpacity = useSharedValue(0);
   const titleTranslateY = useSharedValue(20);
-  const subtitleOpacity = useSharedValue(0);
+  const descriptionOpacity = useSharedValue(0);
   const formOpacity = useSharedValue(0);
   const buttonOpacity = useSharedValue(0);
   const buttonTranslateY = useSharedValue(15);
@@ -39,8 +35,8 @@ export default function SetPasswordScreen() {
       easing: Easing.out(Easing.cubic),
     });
 
-    // Subtitle animation
-    subtitleOpacity.value = withDelay(300, withTiming(1, { duration: 500 }));
+    // Description animation
+    descriptionOpacity.value = withDelay(300, withTiming(1, { duration: 600 }));
 
     // Form animation
     formOpacity.value = withDelay(600, withTiming(1, { duration: 400 }));
@@ -62,8 +58,8 @@ export default function SetPasswordScreen() {
     transform: [{ translateY: titleTranslateY.value }],
   }));
 
-  const subtitleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: subtitleOpacity.value,
+  const descriptionAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: descriptionOpacity.value,
   }));
 
   const formAnimatedStyle = useAnimatedStyle(() => ({
@@ -75,197 +71,157 @@ export default function SetPasswordScreen() {
     transform: [{ translateY: buttonTranslateY.value }],
   }));
 
-  // ====================== Authentication & Navigation Hooks ======================
-  const { signIn, isLoaded } = useSignIn();
+  // ====================== Hooks & State ======================
+  const { isLoaded, signIn } = useSignIn();
   const router = useRouter();
-
-  // ====================== State Management ======================
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [emailAddress, setEmailAddress] = useState("");
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [code, setCode] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState<
-    "weak" | "medium" | "strong" | null
-  >(null);
+  const [isResending, setIsResending] = useState(false);
 
-  // ====================== Helper Functions ======================
-  const calculatePasswordStrength = (
-    password: string
-  ): "weak" | "medium" | "strong" => {
-    let score = 0;
-
-    if (password.length >= 8) score += 1;
-    if (password.length >= 12) score += 1;
-
-    if (/[A-Z]/.test(password)) score += 1; // Uppercase
-    if (/[a-z]/.test(password)) score += 1; // Lowercase
-    if (/[0-9]/.test(password)) score += 1; // Numbers
-    if (/[^A-Za-z0-9]/.test(password)) score += 1; // Special characters
-
-    if (score < 3) return "weak";
-    if (score < 5) return "medium";
-    return "strong";
-  };
-
-  useEffect(() => {
-    if (password) {
-      setPasswordStrength(calculatePasswordStrength(password));
-    } else {
-      setPasswordStrength(null);
-    }
-  }, [password]);
-
-  const validatePasswords = (): boolean => {
+  // ====================== Handlers ======================
+  const onResetPress = async () => {
     setErrorMessage("");
-
-    if (!password.trim() || !confirmPassword.trim()) {
-      setErrorMessage("Both fields are required.");
-      return false;
+    if (!isLoaded) return;
+    if (!emailAddress.trim()) {
+      setErrorMessage("Email address cannot be empty.");
+      return;
     }
 
-    if (password.length < 8) {
-      setErrorMessage("Password must be at least 8 characters long.");
-      return false;
-    }
-
-    if (passwordStrength === "weak") {
+    try {
+      await signIn.create({
+        strategy: "reset_password_email_code",
+        identifier: emailAddress,
+      });
+      setPendingVerification(true);
+    } catch (err: any) {
+      console.error(err);
       setErrorMessage(
-        "Please create a stronger password with uppercase, lowercase, numbers, and special characters."
+        err.errors?.[0]?.message ||
+          "Failed to send reset link. Please try again."
       );
-      return false;
     }
-
-    if (password !== confirmPassword) {
-      setErrorMessage("Passwords do not match.");
-      return false;
-    }
-
-    return true;
   };
 
-  // ====================== Password Reset Handler ======================
-  const onSetPasswordPress = async () => {
+  const onVerifyPress = async () => {
+    if (!isLoaded) return;
+
     try {
+      const verifyAttempt = await signIn.attemptFirstFactor({
+        strategy: "reset_password_email_code",
+        code,
+      });
+
+      if (verifyAttempt.status === "needs_new_password") {
+        console.log(
+          "Verification successful! Redirecting to set new password..."
+        );
+        router.replace(routes.setNewPassword);
+      } else {
+        console.error(
+          "Unexpected response:",
+          JSON.stringify(verifyAttempt, null, 2)
+        );
+        setErrorMessage("Unexpected error occurred. Please try again.");
+      }
+    } catch (err: any) {
+      setErrorMessage("Verification failed. Please try again.");
+    }
+  };
+
+  const handleResendCode = async () => {
+    try {
+      setIsResending(true);
+
       if (!isLoaded) return;
 
-      if (!validatePasswords()) return;
+      // Resend verification code
+      await signIn.create({
+        strategy: "reset_password_email_code",
+        identifier: emailAddress,
+      });
 
-      setIsProcessing(true);
-
-      await signIn.resetPassword({ password });
-
+      console.log("Resend Code");
       Alert.alert(
-        "Password Reset Complete",
-        "Your password has been successfully reset. Please sign in with your new password.",
-        [
-          {
-            text: "OK",
-            onPress: () => router.replace(routes.signIn),
-          },
-        ]
+        "Verification Code",
+        "We have resent the verification code to your email.",
+        [{ text: "OK" }]
       );
-    } catch (err: any) {
-      console.error("Password reset error:", err);
 
-      if (err.errors && err.errors.length > 0) {
-        setErrorMessage(err.errors[0].message);
-      } else {
-        setErrorMessage("Failed to reset password. Please try again.");
-      }
+      return Promise.resolve();
+    } catch (err) {
+      console.error("Failed to resend code:", err);
+      Alert.alert(
+        "Error",
+        "Failed to resend verification code. Please try again."
+      );
+      return Promise.reject(err);
     } finally {
-      setIsProcessing(false);
+      setIsResending(false);
     }
   };
 
-  // ====================== Render UI ======================
+  // ====================== Render Verification Screen ======================
+  if (pendingVerification) {
+    return (
+      <VerificationScreen
+        title="Verification Code"
+        description="Please enter the 6-digit verification code sent to your email."
+        code={code}
+        setCode={setCode}
+        onVerifyPress={onVerifyPress}
+        errorMessage={errorMessage}
+        onResendPress={handleResendCode}
+        emailAddress={emailAddress}
+        isResending={isResending}
+      />
+    );
+  }
+
+  // ====================== Render Reset Password Form ======================
   return (
     <View style={styles.container}>
-      {/* Title & Subtitle */}
+      {/* Back Button */}
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <Ionicons name="arrow-back" size={24} color="black" />
+      </TouchableOpacity>
+
+      {/* Title & Description */}
       <Animated.Text style={[styles.title, titleAnimatedStyle]}>
-        Reset Password
+        Forgot your password?
       </Animated.Text>
 
-      <Animated.Text style={[styles.subtitle, subtitleAnimatedStyle]}>
-        Please enter your new password and confirm.
+      <Animated.Text style={[styles.description, descriptionAnimatedStyle]}>
+        Don't worry. Just fill in your email and we'll send you a link to reset
+        your password.
       </Animated.Text>
 
-      {/* Input Fields */}
-      <Animated.View
-        style={[styles.inputWrapper, formAnimatedStyle, { width: "100%" }]}
-      >
-        <PasswordInput
-          placeholder="New password"
-          value={password}
-          onChangeText={setPassword}
+      {/* Email Input */}
+      <Animated.View style={[formAnimatedStyle, { width: "100%" }]}>
+        <Text style={styles.label}>Recovery Email Address</Text>
+        <InputField
+          iconName="mail-outline"
+          placeholder="example@example.com"
+          value={emailAddress}
+          onChangeText={setEmailAddress}
         />
 
-        {/* Password Strength Indicator */}
-        {passwordStrength && (
-          <View style={styles.strengthContainer}>
-            <Text style={styles.strengthLabel}>Password Strength:</Text>
-            <View style={styles.strengthBarContainer}>
-              <View
-                style={[
-                  styles.strengthBar,
-                  passwordStrength === "weak"
-                    ? styles.weakBar
-                    : passwordStrength === "medium"
-                    ? styles.mediumBar
-                    : styles.strongBar,
-                ]}
-              />
-            </View>
-            <Text
-              style={[
-                styles.strengthText,
-                passwordStrength === "weak"
-                  ? styles.weakText
-                  : passwordStrength === "medium"
-                  ? styles.mediumText
-                  : styles.strongText,
-              ]}
-            >
-              {passwordStrength.charAt(0).toUpperCase() +
-                passwordStrength.slice(1)}
-            </Text>
-          </View>
-        )}
-
-        <PasswordInput
-          placeholder="Confirm new password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-        />
-
-        {errorMessage && (
+        {/* Error Message */}
+        {errorMessage ? (
           <Animated.Text
             entering={FadeIn.duration(300)}
             style={styles.errorText}
           >
             {errorMessage}
           </Animated.Text>
-        )}
+        ) : null}
       </Animated.View>
 
-      {/* Continue Button */}
-      <Animated.View style={buttonAnimatedStyle}>
-        <TouchableOpacity
-          style={[styles.button, isProcessing && styles.disabledButton]}
-          onPress={onSetPasswordPress}
-          disabled={isProcessing}
-        >
-          <Text style={styles.buttonText}>
-            {isProcessing ? "Processing..." : "Continue"}
-          </Text>
-        </TouchableOpacity>
+      {/* Send Reset Link Button */}
+      <Animated.View style={[buttonAnimatedStyle, { width: "100%" }]}>
+        <SignButton onPress={onResetPress} buttonText="Send Reset Link" />
       </Animated.View>
-
-      {/* Loading Overlay */}
-      {isProcessing && (
-        <View style={styles.overlay}>
-          <ActivityIndicator size="large" color="#0000ff" />
-        </View>
-      )}
     </View>
   );
 }
@@ -278,7 +234,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#F8F8F8",
   },
 
   // Typography
@@ -287,105 +243,42 @@ const styles = StyleSheet.create({
     fontSize: 60,
     fontWeight: "normal",
     textAlign: "center",
-    color: "#000",
+    color: "#2D4A2E",
   },
-  subtitle: {
-    fontSize: 16,
-    color: "#555",
-    textAlign: "center",
-    marginTop: 10,
-    marginBottom: 30,
-  },
-  buttonText: {
-    color: "#FFF",
+  label: {
     fontSize: 18,
     fontWeight: "bold",
+    marginBottom: 10,
+  },
+  description: {
+    fontSize: 15,
+    color: "#333",
+    textAlign: "center",
+    marginVertical: 20,
   },
   errorText: {
+    fontSize: 14,
     color: "red",
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: 10,
-  },
-
-  // Input Fields
-  inputWrapper: {
-    width: "100%",
-    marginBottom: 15,
-  },
-
-  // Password Strength
-  strengthContainer: {
-    marginVertical: 12,
-    alignItems: "center",
-  },
-  strengthLabel: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 6,
-  },
-  strengthBarContainer: {
-    width: "100%",
-    height: 6,
-    backgroundColor: "#E0E0E0",
-    borderRadius: 3,
-    marginBottom: 6,
-  },
-  strengthBar: {
-    height: "100%",
-    borderRadius: 3,
-    width: "33.33%",
-  },
-  weakBar: {
-    backgroundColor: "#FF5252",
-    width: "33.33%",
-  },
-  mediumBar: {
-    backgroundColor: "#FFD740",
-    width: "66.66%",
-  },
-  strongBar: {
-    backgroundColor: "#4CAF50",
-    width: "100%",
-  },
-  strengthText: {
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  weakText: {
-    color: "#FF5252",
-  },
-  mediumText: {
-    color: "#FFD740",
-  },
-  strongText: {
-    color: "#4CAF50",
+    marginTop: 5,
   },
 
   // Button
-  button: {
-    backgroundColor: "#000",
-    paddingVertical: 16,
-    width: 200,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  disabledButton: {
-    backgroundColor: "#CCC",
-    opacity: 0.7,
+  backButton: {
+    position: "absolute",
+    top: 50,
+    left: 20,
+    padding: 10,
   },
 
-  // Overlay
-  overlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  // Loading/Error States
+  loadingContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    zIndex: 999,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

@@ -357,14 +357,6 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     marginTop: 30,
   },
-  forgotPassword: {
-    textAlign: "right",
-    color: "#777",
-    fontSize: 12,
-    fontWeight: "bold",
-    marginTop: 5,
-    marginBottom: 15,
-  },
   registerText: {
     fontSize: 14,
     color: "#43464a",
@@ -377,8 +369,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   errorText: {
-    color: "red",
     fontSize: 14,
+    color: "red",
     textAlign: "center",
     marginVertical: 8,
   },
@@ -386,6 +378,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     marginBottom: 15,
     color: "#43464a",
+  },
+  forgotPassword: {
+    textAlign: "right",
+    color: "#777",
+    fontSize: 12,
+    fontWeight: "bold",
+    marginTop: 5,
+    marginBottom: 15,
   },
 
   // Input Fields

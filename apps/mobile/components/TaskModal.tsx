@@ -562,12 +562,6 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontWeight: "bold",
   },
-  disabled: {
-    opacity: 0.5,
-  },
-  disabledText: {
-    color: "#555",
-  },
 
   // Weekly Selector Styles
   weeklyContainer: {
@@ -648,9 +642,28 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
   },
+
+  // Disabled Styles
+  disabled: {
+    opacity: 0.5,
+  },
+  disabledText: {
+    color: "#555",
+  },
   disabledButton: {
     opacity: 0.5,
   },
+  disabledSection: {
+    opacity: 0.5,
+  },
+  disabledDatePicker: {
+    backgroundColor: "#2A2C3A",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+
+  // Restricted Info Styles
   restrictedBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -664,15 +677,6 @@ const styles = StyleSheet.create({
     color: "#FF5733",
     fontSize: 14,
     flex: 1,
-  },
-  disabledSection: {
-    opacity: 0.5,
-  },
-  disabledDatePicker: {
-    backgroundColor: "#2A2C3A",
-    padding: 12,
-    borderRadius: 10,
-    alignItems: "center",
   },
   restrictedInfoBox: {
     backgroundColor: "#2A2C3A",

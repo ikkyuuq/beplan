@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: 20,
-    paddingTop: Platform.OS === "ios" ? 50 : 20,
+    paddingTop: Platform.OS === "ios" ? 20 : 20,
     paddingBottom: 10,
     backgroundColor: "#16171F",
   },
@@ -776,7 +776,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Description styling
+  // Description Styling
   descriptionRow: {
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",

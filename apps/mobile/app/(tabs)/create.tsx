@@ -9,7 +9,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Image,
 } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -144,7 +143,7 @@ export default function CreateScreen() {
         "Transform your physique with this comprehensive fitness regimen inspired by elite athletes. This goal combines progressive strength training, strategic cardio intervals, and recovery protocols designed for maximum muscle development and fat loss. Perfect for beginners and intermediate fitness enthusiasts looking to make significant physical changes in 90 days.",
       image: "https://picsum.photos/seed/fitness101/400/600",
       owner: "BePlan",
-      duration: 90, // 90 days
+      duration: 90,
       isFavorite: false,
       goals_id: ["goal_001", "goal_002", "goal_004"],
     },
@@ -155,7 +154,7 @@ export default function CreateScreen() {
         "Master your finances with this strategic roadmap to financial independence. Based on principles from top wealth advisors, this template helps you build smart saving habits, optimize investments, and develop passive income streams. Includes budgeting frameworks, investment strategies, and debt elimination techniques that work for any income level.",
       image: "https://picsum.photos/seed/finance101/400/600",
       owner: "BePlan",
-      duration: 365, // 1 year
+      duration: 365,
       isFavorite: false,
       goals_id: ["goal_003", "goal_005", "goal_008"],
     },
@@ -166,7 +165,7 @@ export default function CreateScreen() {
         "Cultivate inner peace and mental clarity with this progressive meditation program. Designed for busy professionals, this template helps you build a consistent practice starting with just 5 minutes daily and gradually expanding to deeper meditative states. Includes guided sessions, breathing techniques, and mindfulness exercises to reduce stress and enhance overall wellbeing.",
       image: "https://picsum.photos/seed/meditation101/400/600",
       owner: "BePlan",
-      duration: 30, // 30 days
+      duration: 30,
       isFavorite: false,
       goals_id: ["goal_009", "goal_010", "goal_012"],
     },
@@ -177,7 +176,7 @@ export default function CreateScreen() {
         "Become conversational in any language within 6 months using this comprehensive language acquisition strategy. Following proven polyglot methods, this system combines daily practice routines with strategic immersion techniques. Perfect for travelers, professionals, and lifelong learners who want to develop practical language skills efficiently.",
       image: "https://picsum.photos/seed/language101/400/600",
       owner: "BePlan",
-      duration: 180, // 180 days
+      duration: 180,
       isFavorite: false,
       goals_id: ["goal_007", "goal_015"],
     },
@@ -192,7 +191,7 @@ export default function CreateScreen() {
         "Transform your daily routine with this community-favorite health challenge. This template guides you through establishing 10 essential healthy habits that boost energy, improve sleep quality, and enhance overall vitality. Each habit is introduced gradually with specific action steps, making this perfect for health beginners and veterans alike.",
       image: "https://picsum.photos/seed/health101/400/600",
       owner: "John Doe",
-      duration: 30, // 30 days
+      duration: 30,
       isFavorite: false,
       goals_id: ["goal_010", "goal_011"],
     },
@@ -203,7 +202,7 @@ export default function CreateScreen() {
         "Maximize fat burning and muscle definition with this high-intensity interval training series. Created by a certified fitness trainer, this program features 24 unique workouts that progressively challenge your cardiovascular system and major muscle groups. Ideal for intermediate fitness enthusiasts who want maximum results in minimum time.",
       image: "https://picsum.photos/seed/hiit101/400/600",
       owner: "Jane Smith",
-      duration: 56, // 8 weeks
+      duration: 56,
       isFavorite: true,
       goals_id: ["goal_002", "goal_004"],
     },
@@ -214,7 +213,7 @@ export default function CreateScreen() {
         "Double your productivity while working fewer hours with this science-backed system. Drawing from the practices of top performers across industries, this template helps you implement time blocking, deep work sessions, and strategic rest periods. Perfect for entrepreneurs, professionals, and students who want to accomplish more without burnout.",
       image: "https://picsum.photos/seed/productivity101/400/600",
       owner: "Alex Johnson",
-      duration: 42, // 6 weeks
+      duration: 42,
       isFavorite: false,
       goals_id: ["goal_006", "goal_008"],
     },
@@ -228,7 +227,7 @@ export default function CreateScreen() {
       category: template.category,
       image: template.image,
       isFavorite: template.isFavorite || false,
-      isListed: template.isFavorite || false, // For the modal's listed state
+      isListed: template.isFavorite || false,
       owner: template.owner || "BePlan",
       duration: template.duration || null,
       goals:
@@ -274,11 +273,9 @@ export default function CreateScreen() {
 
     const today = new Date();
 
-    // Set start date to 7 days in the past (for already started goal)
     const pastDate = new Date(today);
     pastDate.setDate(today.getDate() - 7);
 
-    // Set due date to 14 days in the future
     const futureDate = new Date(today);
     futureDate.setDate(today.getDate() + 14);
 
@@ -351,29 +348,21 @@ export default function CreateScreen() {
           <Text style={styles.headerTitle}>Make your dreams come true</Text>
         </Animated.View>
 
-        {/* Search Input */}
+        {/* Search Bar */}
         <Animated.View
           style={[styles.searchContainer, searchInputAnimatedStyle]}
         >
-          <View style={styles.searchInputWrapper}>
-            <Ionicons
-              name="search"
-              size={20}
-              color="#777"
-              style={styles.searchIcon}
-            />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Describe your goal..."
-              placeholderTextColor="#999"
-            />
-            <TouchableOpacity
-              style={styles.aiButton}
-              onPress={() => console.log("AI button pressed")}
-            >
-              <Ionicons name="chatbubble-ellipses" size={22} color="#4F46E5" />
-            </TouchableOpacity>
-          </View>
+          <Ionicons
+            name="search"
+            size={20}
+            color="#777"
+            style={styles.searchIcon}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Describe your goal..."
+            placeholderTextColor="#999"
+          />
         </Animated.View>
 
         {/* Custom Goal Button */}
@@ -624,7 +613,6 @@ export default function CreateScreen() {
                         setIsModalVisible(true);
                       }}
                       onToggleFavorite={() => {
-                        // Determine which data source to update based on which modal is visible
                         if (isViewAllTemplatesVisible) {
                           setTemplateData((prev) =>
                             prev.map((item) =>
@@ -673,7 +661,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: Platform.OS === "ios" ? 100 : 120,
+    paddingBottom: Platform.OS === "ios" ? 70 : 120,
     paddingTop: 10,
   },
   overlay: {
@@ -706,32 +694,18 @@ const styles = StyleSheet.create({
 
   // Search Styles
   searchContainer: {
-    marginBottom: 5,
-    zIndex: 10,
-  },
-  searchInputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "white",
+    backgroundColor: "#fff",
     borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: Platform.OS === "ios" ? 12 : 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    padding: 8,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
-    color: "#333",
-  },
-  aiButton: {
-    padding: 6,
+    color: "#000000",
   },
 
   // Custom Goal Button Styles

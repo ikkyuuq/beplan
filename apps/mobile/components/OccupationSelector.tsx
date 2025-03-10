@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
+// ====================== Constants ======================
 // List of popular occupations
 const POPULAR_OCCUPATIONS = [
   "Software Developer",
@@ -31,6 +32,7 @@ const POPULAR_OCCUPATIONS = [
   "Other",
 ];
 
+// ====================== Type Definitions ======================
 type OccupationSelectorProps = {
   value: string;
   onValueChange: (value: string) => void;
@@ -39,6 +41,11 @@ type OccupationSelectorProps = {
   onCancel: () => void;
 };
 
+type OccupationItemProps = {
+  item: string;
+};
+
+// ====================== Main Component ======================
 export default function OccupationSelector({
   value,
   onValueChange,
@@ -46,11 +53,13 @@ export default function OccupationSelector({
   isSaving,
   onCancel,
 }: OccupationSelectorProps) {
+  // ====================== State Management ======================
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedOccupation, setSelectedOccupation] = useState(value);
   const [customOccupation, setCustomOccupation] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
 
+  // ====================== Effects ======================
   useEffect(() => {
     // If the initial value is not in the list, show it as a custom occupation
     if (value && !POPULAR_OCCUPATIONS.includes(value)) {
@@ -59,6 +68,7 @@ export default function OccupationSelector({
     }
   }, [value]);
 
+  // ====================== Handlers ======================
   const handleSelect = (occupation: string) => {
     if (occupation === "Other") {
       setShowCustomInput(true);
@@ -93,7 +103,8 @@ export default function OccupationSelector({
     setModalVisible(true);
   };
 
-  const renderOccupationItem = ({ item }: { item: string }) => (
+  // ====================== Render Helper Functions ======================
+  const renderOccupationItem = ({ item }: OccupationItemProps) => (
     <TouchableOpacity
       style={[
         styles.occupationItem,
@@ -108,6 +119,7 @@ export default function OccupationSelector({
     </TouchableOpacity>
   );
 
+  // ====================== Render UI ======================
   return (
     <View>
       {/* Current Selection Display */}
@@ -204,7 +216,9 @@ export default function OccupationSelector({
   );
 }
 
+// ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Selector Styles
   selector: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -219,6 +233,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#333",
   },
+
+  // Modal Styles
   modalContainer: {
     flex: 1,
     justifyContent: "center",
@@ -254,6 +270,8 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 5,
   },
+
+  // Occupation List Styles
   occupationList: {
     marginBottom: 16,
   },
@@ -272,6 +290,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
   },
+
+  // Custom Input Styles
   customInputContainer: {
     marginBottom: 16,
   },
@@ -289,6 +309,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: "#F5F5F5",
   },
+
+  // Modal Action Styles
   modalActions: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -322,6 +344,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
   },
+
+  // Action Button Styles
   actionButtons: {
     flexDirection: "row",
     justifyContent: "space-between",

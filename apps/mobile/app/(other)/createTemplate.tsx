@@ -425,15 +425,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#2A2C3A",
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  previewText: {
-    color: "#8B98D5",
-    marginTop: 8,
-  },
   heroContainer: {
     height: 200,
     width: "100%",
@@ -456,6 +447,11 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
   },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+  },
   heroTitle: {
     fontSize: 24,
     fontWeight: "bold",
@@ -464,6 +460,10 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0, 0, 0, 0.75)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
+  },
+  previewText: {
+    color: "#8B98D5",
+    marginTop: 8,
   },
   categoryChip: {
     backgroundColor: "rgba(255,255,255,0.2)",
@@ -582,24 +582,6 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 10,
   },
-  scrollIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-    opacity: 0.7,
-  },
-  scrollText: {
-    fontSize: 12,
-    color: "#8B98D5",
-    marginLeft: 4,
-  },
-  goalsSelectionInfo: {
-    textAlign: "center",
-    fontSize: 14,
-    color: "#8B98D5",
-    marginTop: 5,
-  },
   goalItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -622,6 +604,24 @@ const styles = StyleSheet.create({
   goalTextSelected: {
     color: "#32CD32",
     fontWeight: "500",
+  },
+  scrollIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+    opacity: 0.7,
+  },
+  scrollText: {
+    fontSize: 12,
+    color: "#8B98D5",
+    marginLeft: 4,
+  },
+  goalsSelectionInfo: {
+    textAlign: "center",
+    fontSize: 14,
+    color: "#8B98D5",
+    marginTop: 5,
   },
 
   // Favorite Button Styles

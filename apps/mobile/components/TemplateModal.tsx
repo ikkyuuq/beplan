@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,10 +8,16 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  Dimensions,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { FadeIn } from "react-native-reanimated";
+import Animated, { 
+  FadeIn, 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring 
+} from "react-native-reanimated";
 import Modal from "react-native-modal";
 
 // ====================== Type Definitions ======================
@@ -19,8 +25,10 @@ type TemplateModalProps = {
   isVisible: boolean;
   onClose: () => void;
   onAddToList: () => void;
+  onToggleFavorite?: () => void;
   data: {
     isListed: boolean;
+    isFavorite?: boolean;
     title: string;
     category: string;
     description?: string;
@@ -32,7 +40,7 @@ type TemplateModalProps = {
 };
 
 // ====================== Helper Functions ======================
-// Format duration to match TemplateCard
+// Format duration
 const formatDuration = (days?: number): string => {
   if (!days) return "";
 
@@ -74,29 +82,61 @@ export default function TemplateModal({
   isVisible,
   onClose,
   onAddToList,
+  onToggleFavorite,
   data,
 }: TemplateModalProps) {
   // ====================== State Management ======================
   const [showFullDescription, setShowFullDescription] = useState(false);
-  const [activeTab, setActiveTab] = useState<"description" | "goals">(
-    "description"
-  );
+  const [activeTab, setActiveTab] = useState<"description" | "goals">("description");
+  const [isFavorite, setIsFavorite] = useState(data.isFavorite || false);
+  
+  // ====================== Animation Values ======================
+  const favoriteScale = useSharedValue(1);
+  const buttonScale = useSharedValue(1);
+  
+  // ====================== Animation Styles ======================
+  const animatedFavoriteStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: favoriteScale.value }],
+  }));
+  
+  const animatedButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: buttonScale.value }],
+  }));
 
-  // ====================== Handlers ======================
-  // Handle select button with confirmation
+  // ====================== Effects ======================
+  useEffect(() => {
+    setIsFavorite(data.isFavorite || false);
+  }, [data.isFavorite]);
+
+  // ====================== Event Handlers ======================
+  const handleToggleFavorite = () => {
+    setIsFavorite(!isFavorite);
+    favoriteScale.value = withSpring(0.8, { damping: 10 }, () => {
+      favoriteScale.value = withSpring(1, { damping: 10 });
+    });
+    
+    if (onToggleFavorite) {
+      onToggleFavorite();
+    }
+  };
+
+  // Handle select button press
   const handleSelect = () => {
+    buttonScale.value = withSpring(0.95, { damping: 15 }, () => {
+      buttonScale.value = withSpring(1, { damping: 15 });
+    });
+    
     Alert.alert(
-      "Confirm Selection",
-      `Are you sure you want to select "${data.title}"?`,
+      "Add to List",
+      `Are you sure you want to add "${data.title}" to your list?`,
       [
         {
           text: "Cancel",
           style: "cancel",
         },
         {
-          text: "Confirm",
+          text: "Add",
           onPress: () => {
-            console.log(`Template selected: ${data.title}`);
             onAddToList();
             onClose();
           },
@@ -123,47 +163,74 @@ export default function TemplateModal({
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <View style={styles.previewContainer}>
-              {/* Hero Image Section */}
-              <View style={styles.heroContainer}>
-                <Image source={{ uri: data.image }} style={styles.heroImage} />
-                <LinearGradient
-                  colors={["transparent", "rgba(0,0,0,0.8)"]}
-                  style={styles.gradient}
-                />
-
-                {/* Owner Badge */}
-                <View style={styles.ownerBadge}>
-                  <MaterialCommunityIcons
-                    name="crown-circle"
-                    size={20}
-                    color={data.owner !== "BePlan" ? "silver" : "gold"}
-                  />
-                  <Text style={styles.ownerText}>{data.owner}</Text>
+            {/* Hero Image Section */}
+            <View style={styles.heroContainer}>
+              <Image source={{ uri: data.image }} style={styles.heroImage} />
+              <LinearGradient
+                colors={["transparent", "rgba(0,0,0,0.9)"]}
+                style={styles.gradient}
+              />
+              
+              {/* Close Button */}
+              <TouchableOpacity 
+                style={styles.closeButton} 
+                onPress={onClose}
+                activeOpacity={0.7}
+              >
+                <View style={styles.closeButtonCircle}>
+                  <Ionicons name="close" size={24} color="#fff" />
                 </View>
+              </TouchableOpacity>
+              
+              {/* Favorite Button */}
+              <TouchableOpacity 
+                style={styles.favoriteButton} 
+                onPress={handleToggleFavorite}
+                activeOpacity={0.7}
+              >
+                <Animated.View style={[styles.favoriteButtonCircle, animatedFavoriteStyle]}>
+                  <Ionicons 
+                    name={isFavorite ? "heart" : "heart-outline"} 
+                    size={24} 
+                    color={isFavorite ? "#FF3B5C" : "#fff"} 
+                  />
+                </Animated.View>
+              </TouchableOpacity>
 
-                {/* Hero Content */}
-                <View style={styles.heroContent}>
+              {/* Hero Content */}
+              <View style={styles.heroContent}>
+                {/* Template Title */}
+                <Text style={styles.templateTitle}>{data.title}</Text>
+                
+                {/* Badges Row */}
+                <View style={styles.badgesRow}>
+                  {/* Owner Badge */}
+                  <View style={styles.ownerBadge}>
+                    <MaterialCommunityIcons
+                      name="crown-circle"
+                      size={16}
+                      color={data.owner !== "BePlan" ? "#D6D6D6" : "#FFD700"}
+                    />
+                    <Text style={styles.ownerText}>{data.owner}</Text>
+                  </View>
+                  
                   {/* Category Badge */}
                   <View style={styles.categoryBadge}>
                     <Ionicons
                       name={getCategoryIcon(data.category)}
-                      size={14}
+                      size={16}
                       color="#FFF"
-                      style={styles.categoryIcon}
                     />
                     <Text style={styles.categoryText}>
                       {data.category.charAt(0).toUpperCase() +
                         data.category.slice(1).replace("_", " ")}
                     </Text>
                   </View>
-
-                  <Text style={styles.previewTitle}>{data.title}</Text>
-
+                  
                   {/* Duration Badge */}
                   {data.duration && (
                     <View style={styles.durationBadge}>
-                      <Ionicons name="time-outline" size={12} color="#FFF" />
+                      <Ionicons name="time-outline" size={16} color="#FFF" />
                       <Text style={styles.durationText}>
                         {formatDuration(data.duration)}
                       </Text>
@@ -171,139 +238,156 @@ export default function TemplateModal({
                   )}
                 </View>
               </View>
-
-              {/* Tab Navigation */}
-              <View style={styles.tabContainer}>
-                {/* Description Tab */}
-                <TouchableOpacity
-                  style={[
-                    styles.tab,
-                    activeTab === "description" && styles.activeTab,
-                  ]}
-                  onPress={() => setActiveTab("description")}
-                >
-                  <Ionicons
-                    name="document-text-outline"
-                    size={18}
-                    color={activeTab === "description" ? "#4E5A94" : "#888"}
-                  />
-                  <Text
-                    style={[
-                      styles.tabText,
-                      activeTab === "description" && styles.activeTabText,
-                    ]}
-                  >
-                    Description
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Goals Tab */}
-                <TouchableOpacity
-                  style={[
-                    styles.tab,
-                    activeTab === "goals" && styles.activeTab,
-                  ]}
-                  onPress={() => setActiveTab("goals")}
-                >
-                  <Ionicons
-                    name="flag-outline"
-                    size={18}
-                    color={activeTab === "goals" ? "#4E5A94" : "#888"}
-                  />
-                  <Text
-                    style={[
-                      styles.tabText,
-                      activeTab === "goals" && styles.activeTabText,
-                    ]}
-                  >
-                    Goals
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Content Section */}
-              <ScrollView style={styles.contentScroll}>
-                <View style={styles.previewTextContainer}>
-                  {/* Description Tab Content */}
-                  {activeTab === "description" && (
-                    <Animated.View
-                      entering={FadeIn.duration(300)}
-                      style={styles.tabContent}
-                    >
-                      <View style={styles.descriptionContainer}>
-                        <Text
-                          style={styles.previewDescription}
-                          numberOfLines={showFullDescription ? undefined : 6}
-                        >
-                          {data.description || "No description available."}
-                        </Text>
-
-                        {/* Show More/Less Button */}
-                        {data.description && data.description.length > 150 && (
-                          <TouchableOpacity
-                            style={styles.showMoreButton}
-                            onPress={() =>
-                              setShowFullDescription(!showFullDescription)
-                            }
-                          >
-                            <Text style={styles.showMoreText}>
-                              {showFullDescription ? "Show Less" : "Show More"}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    </Animated.View>
-                  )}
-
-                  {/* Goals Tab Content */}
-                  {activeTab === "goals" && (
-                    <Animated.View
-                      entering={FadeIn.duration(300)}
-                      style={styles.tabContent}
-                    >
-                      {data.goals && data.goals.length > 0 ? (
-                        <View style={styles.goalsList}>
-                          {data.goals.map((goal) => (
-                            <View key={goal.id} style={styles.goalItem}>
-                              <Ionicons
-                                name="flag-outline"
-                                size={16}
-                                color="#4E5A94"
-                              />
-                              <Text style={styles.goalText}>{goal.title}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      ) : (
-                        <View style={styles.emptyGoalsContainer}>
-                          <Ionicons
-                            name="information-circle-outline"
-                            size={40}
-                            color="#CCC"
-                          />
-                          <Text style={styles.emptyGoalsText}>
-                            No goals associated with this template
-                          </Text>
-                        </View>
-                      )}
-                    </Animated.View>
-                  )}
-                </View>
-              </ScrollView>
-
-              {/* Footer Buttons */}
-              <View style={styles.footerButtons}>
-                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                  <Text style={styles.closeButtonText}>Close</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.selectButton}
-                  onPress={handleSelect}
-                >
-                  <Text style={styles.selectButtonText}>Select</Text>
-                </TouchableOpacity>
-              </View>
             </View>
+            
+            {/* Content Tabs */}
+            <View style={styles.tabContainer}>
+              {/* Description Tab */}
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === "description" && styles.activeTab,
+                ]}
+                onPress={() => setActiveTab("description")}
+              >
+                <Ionicons
+                  name="document-text-outline"
+                  size={20}
+                  color={activeTab === "description" ? "#4E5A94" : "#888"}
+                />
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "description" && styles.activeTabText,
+                  ]}
+                >
+                  About
+                </Text>
+              </TouchableOpacity>
+
+              {/* Goals Tab */}
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === "goals" && styles.activeTab,
+                ]}
+                onPress={() => setActiveTab("goals")}
+              >
+                <Ionicons
+                  name="flag-outline"
+                  size={20}
+                  color={activeTab === "goals" ? "#4E5A94" : "#888"}
+                />
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "goals" && styles.activeTabText,
+                  ]}
+                >
+                  Goals ({data.goals?.length || 0})
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Tab Content */}
+            <ScrollView style={styles.contentScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.contentContainer}>
+                {/* Description Tab Content */}
+                {activeTab === "description" && (
+                  <Animated.View
+                    entering={FadeIn.duration(300)}
+                    style={styles.tabContent}
+                  >
+                    <View style={styles.descriptionContainer}>
+                      <Text
+                        style={styles.descriptionText}
+                        numberOfLines={showFullDescription ? undefined : 6}
+                      >
+                        {data.description || "No description available."}
+                      </Text>
+
+                      {/* Show More/Less Button */}
+                      {data.description && data.description.length > 150 && (
+                        <TouchableOpacity
+                          style={styles.showMoreButton}
+                          onPress={() =>
+                            setShowFullDescription(!showFullDescription)
+                          }
+                        >
+                          <Text style={styles.showMoreText}>
+                            {showFullDescription ? "Show Less" : "Show More"}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </Animated.View>
+                )}
+
+                {/* Goals Tab Content */}
+                {activeTab === "goals" && (
+                  <Animated.View
+                    entering={FadeIn.duration(300)}
+                    style={styles.tabContent}
+                  >
+                    {data.goals && data.goals.length > 0 ? (
+                      <View style={styles.goalsList}>
+                        {data.goals.map((goal, index) => (
+                          <View key={goal.id || index} style={styles.goalItem}>
+                            <LinearGradient
+                              colors={["#1A237E", "#303F9F"]} 
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={styles.goalGradient}
+                            >
+                              <View style={styles.goalIconContainer}>
+                                <Ionicons
+                                  name="flag"
+                                  size={16}
+                                  color="#FFF"
+                                />
+                              </View>
+                              <Text style={styles.goalText}>{goal.title}</Text>
+                            </LinearGradient>
+                          </View>
+                        ))}
+                      </View>
+                    ) : (
+                      <View style={styles.emptyGoalsContainer}>
+                        <Ionicons
+                          name="information-circle-outline"
+                          size={40}
+                          color="#CCC"
+                        />
+                        <Text style={styles.emptyGoalsText}>
+                          No goals associated with this template
+                        </Text>
+                      </View>
+                    )}
+                  </Animated.View>
+                )}
+              </View>
+            </ScrollView>
+
+            {/* Action Button */}
+            <Animated.View style={[styles.actionButtonContainer, animatedButtonStyle]}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleSelect}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={["#00695C", "#009688"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.actionButtonGradient}
+                >
+                  <Ionicons name="add-circle-outline" size={22} color="#fff" />
+                  <Text style={styles.actionButtonText}>
+                    Add to My List
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
           </View>
         </View>
       </Modal>
@@ -312,6 +396,8 @@ export default function TemplateModal({
 }
 
 // ====================== Styles ======================
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   // Modal Layout
   modalStyle: {
@@ -320,14 +406,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalContainer: {
-    width: "90%",
-    height: "90%",
+    width: SCREEN_WIDTH * 0.9,
+    height: SCREEN_HEIGHT * 0.8,
     backgroundColor: "transparent",
+    borderRadius: 24,
+    overflow: "hidden",
   },
   modalContent: {
     flex: 1,
     backgroundColor: "#FFF",
-    borderRadius: 16,
+    borderRadius: 24,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
@@ -335,28 +423,24 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 10,
   },
-  previewContainer: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-  },
-
+  
   // Hero Section
   heroContainer: {
-    height: 220,
+    height: SCREEN_HEIGHT * 0.35,
     position: "relative",
     width: "100%",
   },
   heroImage: {
     width: "100%",
     height: "100%",
+    resizeMode: "cover",
   },
   gradient: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    height: "70%",
+    height: "100%",
   },
   heroContent: {
     position: "absolute",
@@ -364,22 +448,100 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
   },
-  previewTitle: {
-    fontSize: 24,
+  templateTitle: {
+    fontSize: 28,
     fontWeight: "bold",
     color: "#FFF",
-    marginVertical: 8,
+    marginBottom: 16,
     textShadowColor: "rgba(0, 0, 0, 0.75)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
   },
-
-  // Tab Navigation
+  
+  // Buttons
+  closeButton: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    zIndex: 10,
+  },
+  closeButtonCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  favoriteButton: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    zIndex: 10,
+  },
+  favoriteButtonCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  
+  // Badges
+  badgesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  ownerBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  ownerText: {
+    color: "#FFF",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  categoryBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  categoryText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  durationBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  durationText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  
+  // Tabs
   tabContainer: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#EEE",
-    position: "relative",
+    borderBottomColor: "#ECECEC",
     backgroundColor: "#FFF",
   },
   tab: {
@@ -395,7 +557,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#4E5A94",
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#888",
     fontWeight: "500",
   },
@@ -403,108 +565,71 @@ const styles = StyleSheet.create({
     color: "#4E5A94",
     fontWeight: "600",
   },
-  tabContent: {
-    paddingTop: 16,
-  },
-
-  // Badges
-  categoryBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: "flex-start",
-    marginBottom: 4,
-  },
-  categoryIcon: {
-    marginRight: 4,
-  },
-  categoryText: {
-    color: "#FFF",
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  durationBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: "flex-start",
-    marginTop: 4,
-    gap: 5,
-  },
-  durationText: {
-    color: "#FFF",
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  ownerBadge: {
-    position: "absolute",
-    top: 12,
-    left: 12,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    borderRadius: 15,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  ownerText: {
-    color: "#FFF",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-
-  // Content Section
+  
+  // Content
   contentScroll: {
     flex: 1,
   },
-  previewTextContainer: {
+  contentContainer: {
     padding: 20,
+  },
+  tabContent: {
+    paddingBottom: 16,
   },
   descriptionContainer: {
     backgroundColor: "#F8F8F8",
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 16,
     borderWidth: 1,
     borderColor: "#EEEEEE",
   },
-  previewDescription: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: "#555",
+  descriptionText: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: "#333",
   },
   showMoreButton: {
-    marginTop: 8,
-    alignSelf: "flex-end",
+    marginTop: 12,
+    alignSelf: "center",
+    backgroundColor: "#ECECEC",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
   },
   showMoreText: {
     color: "#4E5A94",
     fontWeight: "500",
     fontSize: 14,
   },
-
-  // Goals Section
+  
+  // Goals List
   goalsList: {
-    gap: 8,
+    gap: 12,
   },
   goalItem: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  goalGradient: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(78, 90, 148, 0.1)",
     padding: 12,
-    borderRadius: 8,
-    gap: 8,
+    borderRadius: 12,
+  },
+  goalIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
   goalText: {
-    fontSize: 14,
-    color: "#333",
+    fontSize: 15,
+    color: "#FFF",
     flex: 1,
+    fontWeight: "500",
   },
   emptyGoalsContainer: {
     alignItems: "center",
@@ -517,33 +642,30 @@ const styles = StyleSheet.create({
     color: "#888",
     fontSize: 16,
   },
-
-  // Footer Buttons
-  footerButtons: {
-    flexDirection: "row",
+  
+  // Action Button with Green Gradient
+  actionButtonContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: "#EEE",
+    borderTopColor: "#ECECEC",
   },
-  closeButton: {
-    flex: 1,
-    padding: 16,
+  actionButton: {
+    borderRadius: 12,
+    height: 56,
+    overflow: 'hidden',
+  },
+  actionButtonGradient: {
+    flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    gap: 10,
+    width: '100%',
+    height: '100%',
   },
-  closeButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#555",
-  },
-  selectButton: {
-    flex: 1,
-    padding: 16,
-    alignItems: "center",
-    backgroundColor: "#4E5A94",
-  },
-  selectButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
+  actionButtonText: {
     color: "#FFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

@@ -3,22 +3,24 @@ import { View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { getOccupationIconData } from "../hooks/OccupationProfileIcons";
 
+// ====================== Type Definitions ======================
 type OccupationProfileIconProps = {
   occupation: string | null | undefined;
   size?: number;
   showLabel?: boolean;
 };
 
-{
-  /* Component that displays an icon based on the user's occupation */
-}
+// ====================== Main Component ======================
 export default function OccupationProfileIcon({
   occupation,
   size = 100,
+  showLabel = false,
 }: OccupationProfileIconProps) {
+  // ====================== Helper Variables ======================
   const iconData = getOccupationIconData(occupation);
   const iconSize = size * 0.5; // 50% of the size
 
+  // ====================== Render UI ======================
   return (
     <View
       style={[
@@ -36,7 +38,9 @@ export default function OccupationProfileIcon({
   );
 }
 
+// ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Container Styles
   container: {
     justifyContent: "center",
     alignItems: "center",

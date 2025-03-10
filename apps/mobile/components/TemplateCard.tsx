@@ -107,7 +107,7 @@ export default function TemplateCard({
         onPressOut={handlePressOut}
       >
         <View style={styles.card}>
-          {/* Image Container */}
+          {/* Full Image Container */}
           <View style={styles.imageContainer}>
             <Image source={{ uri: template.image }} style={styles.image} />
             <LinearGradient
@@ -115,18 +115,32 @@ export default function TemplateCard({
               style={styles.gradient}
             />
 
-            {/* Category Badge */}
-            <View style={styles.categoryBadge}>
-              <Ionicons
-                name={getCategoryIcon()}
-                size={12}
-                color="#fff"
-                style={styles.categoryIcon}
-              />
-              <Text style={styles.categoryText}>
-                {template.category.charAt(0).toUpperCase() +
-                  template.category.slice(1).replace("_", " ")}
-              </Text>
+            {/* Badges Container */}
+            <View style={styles.badgesContainer}>
+              {/* Category Badge */}
+              <View style={styles.categoryBadge}>
+                <Ionicons
+                  name={getCategoryIcon()}
+                  size={12}
+                  color="#fff"
+                  style={styles.categoryIcon}
+                />
+                <Text style={styles.categoryText}>
+                  {template.category.charAt(0).toUpperCase() +
+                    template.category.slice(1).replace("_", " ")}
+                </Text>
+              </View>
+
+              {/* Goals Badge */}
+              {template.goals_id && template.goals_id.length > 0 && (
+                <View style={styles.goalsBadge}>
+                  <Ionicons name="flag-outline" size={12} color="#fff" />
+                  <Text style={styles.goalsText}>
+                    {template.goals_id.length}{" "}
+                    {template.goals_id.length === 1 ? "Goal" : "Goals"}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Duration Badge */}
@@ -164,28 +178,11 @@ export default function TemplateCard({
                 />
               </Animated.View>
             </TouchableOpacity>
-          </View>
 
-          {/* Content Section */}
-          <View style={styles.contentContainer}>
-            <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
-              {template.title}
-            </Text>
-
-            <Text
-              style={styles.description}
-              numberOfLines={2}
-              ellipsizeMode="tail"
-            >
-              {template.description}
-            </Text>
-
-            {/* Goals Badge */}
-            <View style={styles.goalsContainer}>
-              <Ionicons name="flag-outline" size={14} color="#8B98D5" />
-              <Text style={styles.goalsText}>
-                {template.goals_id.length}{" "}
-                {template.goals_id.length === 1 ? "Goal" : "Goals"}
+            {/* Content Section */}
+            <View style={styles.contentContainer}>
+              <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">
+                {template.title}
               </Text>
             </View>
           </View>
@@ -209,35 +206,46 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    height: 180, 
   },
   card: {
     overflow: "hidden",
     borderRadius: 16,
     backgroundColor: "#fff",
+    height: "100%",
   },
 
-  // Image Section
+  // Image Section 
   imageContainer: {
-    height: 140,
+    height: "100%",
     position: "relative",
+    width: "100%",
   },
   image: {
     width: "100%",
     height: "100%",
+    resizeMode: "cover",
   },
   gradient: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    height: "50%",
+    height: "100%",
+  },
+
+  // Badges Container
+  badgesContainer: {
+    position: "absolute",
+    bottom: 10,
+    left: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
 
   // Category Badge
   categoryBadge: {
-    position: "absolute",
-    bottom: 10,
-    left: 10,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -249,6 +257,22 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   categoryText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "500",
+  },
+
+  // Goals Badge
+  goalsBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  goalsText: {
     color: "#fff",
     fontSize: 10,
     fontWeight: "500",
@@ -294,31 +318,19 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 0, 86, 0.8)",
   },
 
-  // Content Section
+  // Content Section - Now positioned at the bottom of the card
   contentContainer: {
-    padding: 12,
+    position: "absolute",
+    bottom: 50,
+    left: 10,
+    right: 10,
   },
   title: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#333",
-    marginBottom: 4,
-  },
-  description: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 8,
-    lineHeight: 16,
-  },
-
-  // Goals Section
-  goalsContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  goalsText: {
-    fontSize: 12,
-    color: "#8B98D5",
-    marginLeft: 4,
+    color: "#fff",
+    textShadowColor: "rgba(0, 0, 0, 0.75)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
 });

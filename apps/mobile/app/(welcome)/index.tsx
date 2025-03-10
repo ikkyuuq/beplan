@@ -143,6 +143,7 @@ export default function WelcomeScreen() {
 
 // ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Main Layout
   container: {
     flex: 1,
     justifyContent: "center",
@@ -150,6 +151,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     backgroundColor: "#F5F5F5",
   },
+
+  // Title Styles
   titleContainer: {
     marginTop: 15,
   },
@@ -171,12 +174,16 @@ const styles = StyleSheet.create({
     color: "#555",
     flexShrink: 1,
   },
+
+  // Divider
   divider: {
     height: 1,
     backgroundColor: "#AAA",
     marginVertical: 20,
     alignSelf: "stretch",
   },
+
+  // Button Styles
   buttonContainer: {
     flexDirection: "row",
     marginTop: 10,
@@ -212,6 +219,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 
+  // Loading/Error States
   loadingContainer: {
     flex: 1,
     justifyContent: "center",

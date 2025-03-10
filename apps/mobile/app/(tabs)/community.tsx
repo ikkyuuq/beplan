@@ -405,13 +405,13 @@ const styles = StyleSheet.create({
     marginLeft: -20,
   },
 
-  // Search Bar Styles
+  // Search Styles
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    borderRadius: 25,
-    padding: 10,
+    borderRadius: 16,
+    padding: 8,
   },
   searchIcon: {
     marginRight: 10,
