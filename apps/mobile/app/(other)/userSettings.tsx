@@ -278,7 +278,6 @@ export default function UserSettings() {
 
       setIsEditingOccupation(false);
 
-      // ถ้ามีการเปลี่ยนอาชีพและอาชีพใหม่ไม่ว่างเปล่า ให้แนะนำการใช้ไอคอนตามอาชีพ
       if (occupationChanged && occupation && !useOccupationIcon) {
         Alert.alert(
           "Occupation Updated",
@@ -380,7 +379,6 @@ export default function UserSettings() {
             </View>
 
             <View style={styles.profileImageContainer}>
-              {/* สร้าง Container ขนาดคงที่สำหรับรูปโปรไฟล์เพื่อป้องกันการขยับเมื่อเปลี่ยนรูปแบบไอคอน */}
               <View style={styles.fixedSizeContainer}>
                 {useOccupationIcon && occupation ? (
                   <OccupationProfileIcon
@@ -397,7 +395,6 @@ export default function UserSettings() {
               </View>
             </View>
 
-            {/* แยกปุ่มออกมานอก profileImageContainer เพื่อให้ตำแหน่งคงที่ */}
             {occupation && (
               <TouchableOpacity
                 style={styles.iconToggleButton}
@@ -453,7 +450,7 @@ export default function UserSettings() {
                 <Text style={styles.profileInfoValue}>{primaryEmail}</Text>
               </View>
 
-              {/* Occupation Field - Using the new OccupationSelector component */}
+              {/* Occupation Field */}
               <View style={styles.profileInfoRow}>
                 <Text style={styles.profileInfoLabel}>Occupation</Text>
                 {isEditingOccupation ? (
@@ -660,7 +657,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: 20,
-    paddingTop: Platform.OS === "ios" ? 50 : 20,
+    paddingTop: Platform.OS === "ios" ? 20 : 20,
     paddingBottom: 10,
     backgroundColor: "#16171F",
   },
@@ -779,7 +776,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Description styling
+  // Description Styling
   descriptionRow: {
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",

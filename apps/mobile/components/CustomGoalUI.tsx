@@ -163,37 +163,67 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                 <Text style={styles.inputLabel}>
                   Start Date <Text style={styles.required}>*</Text>
                 </Text>
-                <Pressable
-                  style={[
-                    styles.dateInput,
-                    startDate ? styles.dateInputSelected : {},
-                  ]}
-                  onPress={() => setStartDatePickerVisible(true)}
-                >
-                  <Text style={{ color: startDate ? "#fff" : "#AAA" }}>
-                    {startDate || "Select Date"}
-                  </Text>
-                  <Feather name="calendar" size={20} color="#fff" />
-                </Pressable>
+                <View style={{ position: "relative" }}>
+                  <Pressable
+                    style={[
+                      styles.dateInput,
+                      startDate ? styles.dateInputSelected : {},
+                      goalStarted && styles.disabledButton,
+                    ]}
+                    onPress={() =>
+                      !goalStarted && setStartDatePickerVisible(true)
+                    }
+                    disabled={goalStarted}
+                  >
+                    <Text style={{ color: startDate ? "#fff" : "#AAA" }}>
+                      {startDate || "Select Date"}
+                    </Text>
+                    <Feather name="calendar" size={20} color="#fff" />
+                  </Pressable>
+                  {goalStarted && <View style={styles.disabledOverlay} />}
+                </View>
               </View>
               <View style={styles.dateBox}>
                 <Text style={styles.inputLabel}>
                   End Date <Text style={styles.required}>*</Text>
                 </Text>
-                <Pressable
-                  style={[
-                    styles.dateInput,
-                    dueDate ? styles.dateInputSelected : {},
-                  ]}
-                  onPress={() => setDueDatePickerVisible(true)}
-                >
-                  <Text style={{ color: dueDate ? "#fff" : "#AAA" }}>
-                    {dueDate || "Select Date"}
-                  </Text>
-                  <Feather name="calendar" size={20} color="#fff" />
-                </Pressable>
+                <View style={{ position: "relative" }}>
+                  <Pressable
+                    style={[
+                      styles.dateInput,
+                      dueDate ? styles.dateInputSelected : {},
+                      goalStarted && styles.disabledButton,
+                    ]}
+                    onPress={() =>
+                      !goalStarted && setDueDatePickerVisible(true)
+                    }
+                    disabled={goalStarted}
+                  >
+                    <Text style={{ color: dueDate ? "#fff" : "#AAA" }}>
+                      {dueDate || "Select Date"}
+                    </Text>
+                    <Feather name="calendar" size={20} color="#fff" />
+                  </Pressable>
+                  {goalStarted && <View style={styles.disabledOverlay} />}
+                </View>
               </View>
             </View>
+
+            {/* Warning message for date changes if goal has started */}
+            {goalStarted && (
+              <View style={styles.warningContainer}>
+                <Ionicons
+                  name="warning-outline"
+                  size={18}
+                  color="#FF5733"
+                  style={styles.warningIcon}
+                />
+                <Text style={styles.warningText}>
+                  This goal has already started. Date changes are not allowed to
+                  maintain goal integrity.
+                </Text>
+              </View>
+            )}
           </Animated.View>
         </Animated.View>
 
@@ -210,12 +240,31 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
             {/* Task Progress Summary */}
             {taskList.length > 0 && <TaskProgressSummary taskList={taskList} />}
 
+            {/* Warning message for task modifications if goal has started */}
+            {goalStarted && taskList.length > 0 && (
+              <View
+                style={[styles.warningContainer, styles.taskSectionWarning]}
+              >
+                <Ionicons
+                  name="information-circle-outline"
+                  size={18}
+                  color="#FF5733"
+                  style={styles.warningIcon}
+                />
+                <Text style={styles.warningText}>
+                  Limited editing mode: You can only edit task titles and
+                  descriptions. Tasks cannot be deleted once a goal has started.
+                </Text>
+              </View>
+            )}
+
             {/* Task List with Status Grouping */}
             {taskList.length > 0 ? (
               <TaskList
                 taskList={taskList}
                 handleEditTask={handleEditTask}
                 handleDeleteTask={handleDeleteTask}
+                goalStarted={goalStarted}
               />
             ) : (
               <EmptyTaskList />
@@ -313,7 +362,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
 
 // ====================== Sub-Components ======================
 
-// Task Progress Summary Component
+// Task Progress Summary
 const TaskProgressSummary = ({ taskList }: { taskList: Task[] }) => {
   const pendingCount = taskList.filter((t) => t.status === "pending").length;
   const completedCount = taskList.filter(
@@ -418,10 +467,12 @@ const TaskList = ({
   taskList,
   handleEditTask,
   handleDeleteTask,
+  goalStarted,
 }: {
   taskList: Task[];
   handleEditTask: (index: number) => void;
   handleDeleteTask: (index: number) => void;
+  goalStarted: boolean;
 }) => {
   return (
     <View style={styles.taskListContainer}>
@@ -461,6 +512,7 @@ const TaskList = ({
                 index={taskList.indexOf(task)}
                 handleEditTask={handleEditTask}
                 handleDeleteTask={handleDeleteTask}
+                goalStarted={goalStarted}
               />
             ))}
           </View>
@@ -476,11 +528,13 @@ const TaskItem = ({
   index,
   handleEditTask,
   handleDeleteTask,
+  goalStarted,
 }: {
   task: Task;
   index: number;
   handleEditTask: (index: number) => void;
   handleDeleteTask: (index: number) => void;
+  goalStarted: boolean;
 }) => {
   return (
     <View style={styles.taskItem}>
@@ -528,16 +582,21 @@ const TaskItem = ({
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.taskAction}
-          onPress={() => handleDeleteTask(index)}
+          onPress={() => !goalStarted && handleDeleteTask(index)}
+          disabled={goalStarted}
         >
-          <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+          <Ionicons
+            name="trash-outline"
+            size={20}
+            color={goalStarted ? "rgba(255, 59, 48, 0.4)" : "#FF3B30"}
+          />
         </TouchableOpacity>
       </View>
     </View>
   );
 };
 
-// Empty Task List Component
+// Empty Task List
 const EmptyTaskList = () => {
   return (
     <View style={styles.emptyTaskList}>
@@ -767,8 +826,22 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     marginLeft: 8,
   },
+
+  // disable
+  disabledOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(70, 70, 70, 0.4)",
+    borderRadius: 12,
+    zIndex: 1,
+  },
   disabledButton: {
     backgroundColor: "#2A2C3A",
+    opacity: 0.5,
+    position: "relative",
   },
   disabledButtonText: {
     color: "#AAA",
@@ -923,6 +996,28 @@ const styles = StyleSheet.create({
   legendText: {
     color: "#AAA",
     fontSize: 12,
+  },
+
+  //warning
+  warningContainer: {
+    backgroundColor: "rgba(255, 87, 51, 0.1)",
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  warningIcon: {
+    marginRight: 8,
+  },
+  warningText: {
+    color: "#FF5733",
+    fontSize: 13,
+    flex: 1,
+  },
+  taskSectionWarning: {
+    marginTop: 5,
+    marginBottom: 15,
   },
 });
 

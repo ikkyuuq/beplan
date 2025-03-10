@@ -50,7 +50,7 @@ export default function SignInScreen() {
 
   // ====================== Animation Effects ======================
   useEffect(() => {
-    // Logo animation - simplified
+    // Logo animation
     logoOpacity.value = withTiming(1, { duration: 400 });
 
     // Title animation
@@ -127,7 +127,6 @@ export default function SignInScreen() {
   };
 
   const validateForm = (): boolean => {
-    // Reset error message
     setErrorMessage("");
 
     // Check for empty fields
@@ -150,7 +149,6 @@ export default function SignInScreen() {
     try {
       if (!isLoaded) return;
 
-      // Validate form before proceeding
       if (!validateForm()) return;
 
       setIsSigningIn(true);
@@ -359,14 +357,6 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     marginTop: 30,
   },
-  forgotPassword: {
-    textAlign: "right",
-    color: "#777",
-    fontSize: 12,
-    fontWeight: "bold",
-    marginTop: 5,
-    marginBottom: 15,
-  },
   registerText: {
     fontSize: 14,
     color: "#43464a",
@@ -379,8 +369,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   errorText: {
-    color: "red",
     fontSize: 14,
+    color: "red",
     textAlign: "center",
     marginVertical: 8,
   },
@@ -388,6 +378,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     marginBottom: 15,
     color: "#43464a",
+  },
+  forgotPassword: {
+    textAlign: "right",
+    color: "#777",
+    fontSize: 12,
+    fontWeight: "bold",
+    marginTop: 5,
+    marginBottom: 15,
   },
 
   // Input Fields

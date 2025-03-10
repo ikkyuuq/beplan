@@ -16,19 +16,19 @@ interface SignButtonProps {
 }
 
 // ====================== Main Component ======================
-const SignButton: React.FC<SignButtonProps> = ({
+export default function SignButton({
   onPress,
   buttonText,
   buttonStyle,
   textStyle,
-}) => {
+}: SignButtonProps) {
   // ====================== Render UI ======================
   return (
     <TouchableOpacity onPress={onPress} style={[styles.button, buttonStyle]}>
       <Text style={[styles.text, textStyle]}>{buttonText}</Text>
     </TouchableOpacity>
   );
-};
+}
 
 // ====================== Styles ======================
 const styles = StyleSheet.create({
@@ -49,5 +49,3 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
-
-export default SignButton;

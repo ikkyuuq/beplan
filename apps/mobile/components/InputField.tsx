@@ -12,7 +12,7 @@ interface InputFieldProps extends TextInputProps {
 }
 
 // ====================== Main Component ======================
-const InputField: React.FC<InputFieldProps & { marginBottom?: number }> = ({
+export default function InputField({
   iconName,
   placeholder,
   value,
@@ -20,7 +20,7 @@ const InputField: React.FC<InputFieldProps & { marginBottom?: number }> = ({
   secureTextEntry,
   marginBottom = 10,
   ...props
-}) => {
+}: InputFieldProps & { marginBottom?: number }) {
   // ====================== Render UI ======================
   return (
     <View style={[styles.inputWrapper, { marginBottom }]}>
@@ -43,7 +43,7 @@ const InputField: React.FC<InputFieldProps & { marginBottom?: number }> = ({
       />
     </View>
   );
-};
+}
 
 // ====================== Styles ======================
 const styles = StyleSheet.create({
@@ -69,5 +69,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-
-export default InputField;

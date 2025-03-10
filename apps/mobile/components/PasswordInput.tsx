@@ -2,16 +2,28 @@ import React from "react";
 import { View, TextInput, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+// ====================== Type Definitions ======================
 interface PasswordInputProps {
   placeholder: string;
   value: string;
   onChangeText: (text: string) => void;
 }
 
-const PasswordInput: React.FC<PasswordInputProps> = ({ placeholder, value, onChangeText }) => {
+// ====================== Main Component ======================
+export default function PasswordInput({
+  placeholder,
+  value,
+  onChangeText,
+}: PasswordInputProps) {
+  // ====================== Render UI ======================
   return (
     <View style={styles.inputContainer}>
-      <Ionicons name="lock-closed-outline" size={20} color="#333" style={styles.icon} />
+      <Ionicons
+        name="lock-closed-outline"
+        size={20}
+        color="#333"
+        style={styles.icon}
+      />
       <TextInput
         style={styles.input}
         placeholder={placeholder}
@@ -22,9 +34,11 @@ const PasswordInput: React.FC<PasswordInputProps> = ({ placeholder, value, onCha
       />
     </View>
   );
-};
+}
 
+// ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Container Styles
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -37,14 +51,16 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 15,
   },
+
+  // Icon Styles
   icon: {
     marginRight: 10,
   },
+
+  // Input Styles
   input: {
     flex: 1,
     fontSize: 16,
     color: "#333",
   },
 });
-
-export default PasswordInput;

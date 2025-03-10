@@ -287,7 +287,7 @@ export default function TaskModal({
                 />
               </View>
 
-              {/* Repeat Settings - Disabled when restrictEditing is true */}
+              {/* Repeat Settings */}
               <View
                 style={[
                   styles.switchContainer,
@@ -312,7 +312,7 @@ export default function TaskModal({
                 />
               </View>
 
-              {/* Date Picker - Hidden or Disabled when restrictEditing is true */}
+              {/* Date Picker */}
               {!isRepeat && !restrictEditing && (
                 <View style={styles.datePickerContainer}>
                   <Pressable
@@ -327,7 +327,7 @@ export default function TaskModal({
                 </View>
               )}
 
-              {/* Display selected dates even in restricted mode, but not editable */}
+              {/* Display selected dates */}
               {!isRepeat && restrictEditing && selectedDates.length > 0 && (
                 <View style={styles.datePickerContainer}>
                   <View style={styles.disabledDatePicker}>
@@ -339,7 +339,7 @@ export default function TaskModal({
                 </View>
               )}
 
-              {/* Calendar Picker - Only shown if not in restricted mode */}
+              {/* Calendar Picker  */}
               {!restrictEditing && (
                 <CalendarPicker
                   visible={isCalendarVisible}
@@ -354,7 +354,7 @@ export default function TaskModal({
                 />
               )}
 
-              {/* Task Type Segments - Disabled in restricted mode */}
+              {/* Task Type Segments */}
               <View
                 style={[
                   styles.segmentContainer,
@@ -392,7 +392,7 @@ export default function TaskModal({
                 })}
               </View>
 
-              {/* Custom Selectors - Only shown when not in restricted mode */}
+              {/* Custom Selectors */}
               {!restrictEditing &&
                 taskType === "monthly" &&
                 renderMonthlySelector()}
@@ -400,7 +400,7 @@ export default function TaskModal({
                 taskType === "weekly" &&
                 renderWeeklySelector()}
 
-              {/* Display selected days/options in restricted mode, but not editable */}
+              {/* Display selected days/options */}
               {restrictEditing &&
                 taskType === "weekly" &&
                 selectedDaysOfWeek.length > 0 && (
@@ -562,12 +562,6 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontWeight: "bold",
   },
-  disabled: {
-    opacity: 0.5,
-  },
-  disabledText: {
-    color: "#555",
-  },
 
   // Weekly Selector Styles
   weeklyContainer: {
@@ -648,9 +642,28 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
   },
+
+  // Disabled Styles
+  disabled: {
+    opacity: 0.5,
+  },
+  disabledText: {
+    color: "#555",
+  },
   disabledButton: {
     opacity: 0.5,
   },
+  disabledSection: {
+    opacity: 0.5,
+  },
+  disabledDatePicker: {
+    backgroundColor: "#2A2C3A",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+
+  // Restricted Info Styles
   restrictedBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -664,15 +677,6 @@ const styles = StyleSheet.create({
     color: "#FF5733",
     fontSize: 14,
     flex: 1,
-  },
-  disabledSection: {
-    opacity: 0.5,
-  },
-  disabledDatePicker: {
-    backgroundColor: "#2A2C3A",
-    padding: 12,
-    borderRadius: 10,
-    alignItems: "center",
   },
   restrictedInfoBox: {
     backgroundColor: "#2A2C3A",

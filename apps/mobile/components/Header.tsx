@@ -1,24 +1,37 @@
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  ViewStyle,
+  Pressable,
+  StyleSheet,
+  Image,
+  Platform,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { View, ViewStyle, Pressable, StyleSheet, Image } from "react-native";
 import { useUser } from "@clerk/clerk-expo";
-import { useEffect, useState } from "react";
 import OccupationProfileIcon from "./OccupationProfileIcon";
 
+// ====================== Type Definitions ======================
 type HeaderProps = {
   children?: React.ReactNode;
   containerStyle?: ViewStyle;
 };
 
+// ====================== Main Component ======================
 export default function Header({ children, containerStyle }: HeaderProps) {
+  // ====================== Hooks & Navigation ======================
   const router = useRouter();
   const { user, isLoaded } = useUser();
+
+  // ====================== State Management ======================
   const [useOccupationIcon, setUseOccupationIcon] = useState(false);
   const [occupation, setOccupation] = useState<string | null>(null);
 
+  // ====================== Effects ======================
   useEffect(() => {
     if (isLoaded && user) {
-      // Get user metadata for occupation and icon preference
+      // Get user metadata for occupation and icon
       const occupationValue = user.unsafeMetadata?.occupation as string;
       const useOccupIcon = user.unsafeMetadata?.useOccupationIcon as boolean;
 
@@ -27,12 +40,15 @@ export default function Header({ children, containerStyle }: HeaderProps) {
     }
   }, [isLoaded, user]);
 
+  // ====================== Handlers ======================
   const handleNavigateToSettings = () => {
     router.push("/userSettings");
   };
 
+  // ====================== Helper Variables ======================
   const profileImageUrl = user?.imageUrl;
 
+  // ====================== Render UI ======================
   return (
     <View style={[styles.header, containerStyle]}>
       <View style={styles.headerContent}>
@@ -63,6 +79,7 @@ export default function Header({ children, containerStyle }: HeaderProps) {
   );
 }
 
+// ====================== Styles ======================
 const styles = StyleSheet.create({
   // Header Styles
   header: {
@@ -71,7 +88,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     padding: 24,
-    paddingTop: 35,
+    paddingTop: Platform.OS === "ios" ? 60 : 20,
     gap: 18,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
@@ -79,11 +96,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     elevation: 5,
   },
+
+  // Header Content Styles
   headerContent: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
+
+  // Profile Button Styles
   profileButton: {
     alignItems: "center",
     justifyContent: "center",

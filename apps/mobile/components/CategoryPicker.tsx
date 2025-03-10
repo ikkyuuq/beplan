@@ -42,7 +42,6 @@ export default function CategoryPicker({
     return (iconMap[category] || "pricetag-outline") as IoniconsName;
   };
 
-  // Get the appropriate color for each category
   const getCategoryColor = (category: string): string => {
     const colorMap: Record<string, string> = {
       All: "#8B98D5",

@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useSignUp } from "@clerk/clerk-expo";
+import { useSignUp, useClerk } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
 import SignButton from "@/components/SignButton";
@@ -78,7 +78,8 @@ export default function SignUpScreen() {
   }));
 
   // ====================== Authentication & Navigation Hooks ======================
-  const { signUp, isLoaded, setActive } = useSignUp();
+  const { signUp, isLoaded } = useSignUp();
+  const { signOut } = useClerk();
   const router = useRouter();
 
   // ====================== State Management ======================
@@ -91,6 +92,7 @@ export default function SignUpScreen() {
   const [errorMessage, setErrorMessage] = React.useState("");
   const [isSigningUp, setIsSigningUp] = React.useState(false);
   const [isResendingCode, setIsResendingCode] = React.useState(false);
+  const [isSigningOut, setIsSigningOut] = React.useState(false);
 
   // ====================== Helper Functions ======================
   const isValidEmail = (email: string): boolean => {
@@ -164,7 +166,6 @@ export default function SignUpScreen() {
     try {
       if (!isLoaded) return;
 
-      // Validate the form
       if (!validateForm()) return;
 
       setIsSigningUp(true);
@@ -205,7 +206,6 @@ export default function SignUpScreen() {
         return;
       }
 
-      // Validate code format (6 digits)
       if (!/^\d{6}$/.test(code)) {
         setErrorMessage("Please enter a valid 6-digit code.");
         return;
@@ -216,8 +216,24 @@ export default function SignUpScreen() {
       });
 
       if (signUpAttempt.status === "complete") {
-        await setActive({ session: signUpAttempt.createdSessionId });
-        router.replace(routes.loggedInRedirect);
+        setIsSigningOut(true);
+        try {
+          await signOut();
+        } catch (err) {
+          console.error("Sign out error:", err);
+        }
+        setIsSigningOut(false);
+
+        Alert.alert(
+          "Account Created Successfully",
+          "Your account has been created. Please sign in to continue.",
+          [
+            {
+              text: "OK",
+              onPress: () => router.replace(routes.signIn),
+            },
+          ]
+        );
       } else {
         setErrorMessage("Verification incomplete. Please try again.");
       }
@@ -342,7 +358,7 @@ export default function SignUpScreen() {
       </Animated.View>
 
       {/* Loading Indicator */}
-      {isSigningUp && (
+      {(isSigningUp || isSigningOut) && (
         <View style={styles.overlay}>
           <ActivityIndicator size="large" color="#0000ff" />
         </View>

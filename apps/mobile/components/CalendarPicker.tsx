@@ -231,16 +231,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: "center",
   },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "500",
+  },
   selectedDatesText: {
     color: "#fff",
     fontSize: 14,
     textAlign: "center",
     marginBottom: 10,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "500",
   },
 
   // Button Styles
