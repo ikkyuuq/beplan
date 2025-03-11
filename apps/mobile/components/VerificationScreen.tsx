@@ -19,7 +19,6 @@ import Animated, {
   FadeIn,
 } from "react-native-reanimated";
 
-// ====================== Type Definitions ======================
 interface VerificationScreenProps {
   title?: string;
   description?: string;
@@ -27,12 +26,12 @@ interface VerificationScreenProps {
   setCode: React.Dispatch<React.SetStateAction<string>>;
   onVerifyPress: () => Promise<void>;
   errorMessage?: string | null;
+  setErrorMessage?: React.Dispatch<React.SetStateAction<string>>;
   onResendPress: () => Promise<void>;
   emailAddress: string;
   isResending?: boolean;
 }
 
-// ====================== Main Component ======================
 export default function VerificationScreen({
   title = "Verification Code",
   description = "Please enter the 6-digit verification code we sent via Email.",
@@ -40,11 +39,12 @@ export default function VerificationScreen({
   setCode,
   onVerifyPress,
   errorMessage,
+  setErrorMessage,
   onResendPress,
   emailAddress,
   isResending = false,
 }: VerificationScreenProps) {
-  // ====================== Animation Values ======================
+  // Animation Values
   const titleOpacity = useSharedValue(0);
   const titleTranslateY = useSharedValue(20);
   const descriptionOpacity = useSharedValue(0);
@@ -52,7 +52,6 @@ export default function VerificationScreen({
   const buttonOpacity = useSharedValue(0);
   const resendOpacity = useSharedValue(0);
 
-  // ====================== Animation Setup ======================
   useEffect(() => {
     // Title animation
     titleOpacity.value = withTiming(1, { duration: 500 });
@@ -72,7 +71,7 @@ export default function VerificationScreen({
     resendOpacity.value = withDelay(900, withTiming(1, { duration: 400 }));
   }, []);
 
-  // ====================== Animated Styles ======================
+  // Animated Styles
   const titleAnimatedStyle = useAnimatedStyle(() => ({
     opacity: titleOpacity.value,
     transform: [{ translateY: titleTranslateY.value }],
@@ -94,10 +93,8 @@ export default function VerificationScreen({
     opacity: resendOpacity.value,
   }));
 
-  // ====================== Navigation Hook ======================
   const router = useRouter();
 
-  // ====================== Render UI ======================
   return (
     <View style={styles.container}>
       {/* Back Button */}
@@ -109,16 +106,12 @@ export default function VerificationScreen({
       <Animated.Text style={[styles.title, titleAnimatedStyle]}>
         {title}
       </Animated.Text>
-
       <Animated.Text style={[styles.description, descriptionAnimatedStyle]}>
         {description}
       </Animated.Text>
 
       {/* Email Display */}
-      <Animated.View
-        style={[styles.emailContainer, descriptionAnimatedStyle]}
-        entering={FadeIn.delay(400).duration(300)}
-      >
+      <Animated.View style={styles.emailContainer}>
         <Text style={styles.emailLabel}>Verification code sent to:</Text>
         <Text style={styles.emailValue}>{emailAddress}</Text>
       </Animated.View>
@@ -128,18 +121,16 @@ export default function VerificationScreen({
         <InputField
           placeholder="Enter verification code"
           value={code}
-          onChangeText={setCode}
+          onChangeText={(text) => {
+            setCode(text);
+            if (setErrorMessage) setErrorMessage("");
+          }}
           keyboardType="numeric"
         />
 
         {/* Error Message */}
         {errorMessage && (
-          <Animated.Text
-            entering={FadeIn.duration(300)}
-            style={styles.errorText}
-          >
-            {errorMessage}
-          </Animated.Text>
+          <Animated.Text style={styles.errorText}>{errorMessage}</Animated.Text>
         )}
       </Animated.View>
 
@@ -171,7 +162,6 @@ export default function VerificationScreen({
   );
 }
 
-// ====================== Styles ======================
 const styles = StyleSheet.create({
   // Main Layout
   container: {
@@ -198,9 +188,11 @@ const styles = StyleSheet.create({
   errorText: {
     color: "red",
     fontSize: 14,
-    marginTop: 5,
-    alignSelf: "center",
+    textAlign: "center",
+    marginBottom: 10,
   },
+
+  // Resend Link Styles
   resendText: {
     textDecorationLine: "underline",
     color: "#333",
@@ -246,11 +238,9 @@ const styles = StyleSheet.create({
   resendButtonDisabled: {
     marginTop: 15,
     padding: 8,
-    opacity: 0.7,
   },
   resendingContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
   },
 });
