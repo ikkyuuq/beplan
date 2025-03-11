@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
   },
 
-  // Title Styles
+  // Title
   title: {
     fontSize: 60,
     fontWeight: "normal",
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
 
-  // Button Styles
+  // Button
   buttonContainer: {
     flexDirection: "row",
     marginTop: 10,

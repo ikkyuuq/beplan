@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Title Styles
+  // Title
   titleContainer: {
     alignItems: "flex-start",
     borderRadius: 25,
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     marginLeft: -20,
   },
 
-  // Search Styles
+  // Search
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     color: "#000000",
   },
 
-  // Template/Card Styles
+  // Template/Card
   templateContainer: {
     flex: 1,
     backgroundColor: "#F8F8F8",
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
-  // Filter Styles
+  // Filter
   filterContainerWrapper: {
     width: "100%",
     marginTop: 10,
