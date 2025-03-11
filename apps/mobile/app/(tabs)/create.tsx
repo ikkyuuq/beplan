@@ -676,7 +676,7 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
 
-  // Header Styles
+  // Header
   headerTextContainer: {
     alignItems: "flex-start",
     marginBottom: 16,
@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 
-  // Search Styles
+  // Search
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -708,16 +708,16 @@ const styles = StyleSheet.create({
     color: "#000000",
   },
 
-  // Custom Goal Button Styles
+  // Custom Goal Button
   customGoalButton: {
     alignSelf: "center",
-    width: "80%",
+    width: "50%",
     borderRadius: 30,
+    marginTop: 6,
   },
   buttonGradient: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 30,
@@ -763,7 +763,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Modal Styles
+  // Modal
   modalWrapper: {
     margin: 0,
     justifyContent: "flex-end",

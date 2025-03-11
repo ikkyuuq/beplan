@@ -393,6 +393,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
+
+  // Header
   header: {
     paddingHorizontal: 16,
     paddingTop: Platform.OS === "ios" ? 50 : 16,
@@ -415,7 +417,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Preview Section
+  // Preview
   previewContainer: {
     backgroundColor: "#1E1F29",
   },
@@ -478,7 +480,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Form Section
+  // Form
   formSection: {
     padding: 20,
     backgroundColor: "#16171F",
@@ -520,7 +522,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 
-  // Image Upload Styles
+  // Image Upload
   imagePicker: {
     backgroundColor: "#2A2C3A",
     borderRadius: 12,
@@ -563,7 +565,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Goals Selection Styles
+  // Goals Selection
   goalsScrollOuterContainer: {
     borderWidth: 1,
     borderColor: "#3A3F55",
@@ -624,7 +626,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 
-  // Favorite Button Styles
+  // Favorite Button
   favoriteButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -640,7 +642,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
 
-  // Create Button Styles
+  // Create Button
   createButton: {
     backgroundColor: "#4F46E5",
     borderRadius: 12,
