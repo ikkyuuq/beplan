@@ -23,6 +23,7 @@ import Animated, {
   FadeIn,
   FadeInDown,
   FadeInUp,
+  BounceIn,
 } from "react-native-reanimated";
 
 // ====================== Browser Warm-Up Utility ======================
@@ -48,7 +49,7 @@ export default function SignInScreen() {
   const buttonOpacity = useSharedValue(0);
   const socialButtonsOpacity = useSharedValue(0);
 
-  // ====================== Animation Effects ======================
+  // ====================== Animation Setup ======================
   useEffect(() => {
     // Logo animation
     logoOpacity.value = withTiming(1, { duration: 400 });
@@ -75,6 +76,7 @@ export default function SignInScreen() {
       })
     );
 
+    // Social Button Animation
     socialButtonsOpacity.value = withDelay(
       600,
       withTiming(1, { duration: 300 })
@@ -129,9 +131,18 @@ export default function SignInScreen() {
   const validateForm = (): boolean => {
     setErrorMessage("");
 
-    // Check for empty fields
-    if (!identifier.trim() || !password.trim()) {
+    if (!identifier.trim() && !password.trim()) {
       setErrorMessage("Email/Username and password cannot be empty.");
+      return false;
+    }
+
+    if (!identifier.trim()) {
+      setErrorMessage("Email/Username cannot be empty.");
+      return false;
+    }
+
+    if (!password.trim()) {
+      setErrorMessage("Password cannot be empty.");
       return false;
     }
 
@@ -225,7 +236,10 @@ export default function SignInScreen() {
             iconName="person-outline"
             placeholder="Email or Username"
             value={identifier}
-            onChangeText={setIdentifier}
+            onChangeText={(text) => {
+              setIdentifier(text);
+              setErrorMessage("");
+            }}
             marginBottom={15}
             autoCapitalize="none"
             keyboardType={
@@ -234,31 +248,36 @@ export default function SignInScreen() {
           />
         </Animated.View>
 
-        {errorMessage && (
-          <Animated.Text
-            entering={FadeIn.duration(200)}
-            style={styles.errorText}
-          >
-            {errorMessage}
-          </Animated.Text>
-        )}
-
         <Animated.View entering={FadeInDown.delay(550).duration(300)}>
           <InputField
             iconName="lock-closed-outline"
             placeholder="Enter your password"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              setErrorMessage("");
+            }}
             secureTextEntry
             marginBottom={2}
           />
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(650).duration(250)}>
+        <View style={styles.recoveryAndErrorContainer}>
+          {errorMessage ? (
+            <Animated.Text
+              entering={FadeIn.duration(200)}
+              style={styles.errorText}
+            >
+              {errorMessage}
+            </Animated.Text>
+          ) : (
+            <View style={{ flex: 1 }} />
+          )}
+
           <TouchableOpacity onPress={() => router.push(routes.resetPassword)}>
             <Text style={styles.forgotPassword}>Recovery Password</Text>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
       </Animated.View>
 
       {/* Sign In Button */}
@@ -266,18 +285,25 @@ export default function SignInScreen() {
         <SignButton onPress={onSignInPress} buttonText="Sign In" />
       </Animated.View>
 
-      {/* Social Sign-In Section */}
+      {/* Separator */}
       <View style={styles.separatorContainer}>
-        <View style={styles.separatorLine} />
+        <Animated.View
+          entering={BounceIn.duration(600)}
+          style={styles.separatorLine}
+        />
         <Animated.Text
-          entering={FadeIn.delay(750).duration(250)}
+          entering={BounceIn.delay(300).duration(600)}
           style={styles.separatorText}
         >
           Or continue with
         </Animated.Text>
-        <View style={styles.separatorLine} />
+        <Animated.View
+          entering={BounceIn.duration(600)}
+          style={styles.separatorLine}
+        />
       </View>
 
+      {/* Social Sign-In Section */}
       <Animated.View
         style={[styles.socialButtonsContainer, socialButtonsAnimatedStyle]}
       >
@@ -340,13 +366,11 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
 
-  // Logo
+  // Logo & Header
   logoContainer: {
     alignSelf: "flex-start",
     marginBottom: 10,
   },
-
-  // Typography
   title: {
     fontFamily: "InriaSerif_400Regular",
     fontSize: 60,
@@ -356,6 +380,37 @@ const styles = StyleSheet.create({
     lineHeight: 54,
     marginBottom: 30,
     marginTop: 30,
+  },
+
+  // Input Fields
+  inputWrapper: {
+    width: "100%",
+    marginBottom: 15,
+  },
+  recoveryAndErrorContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 5,
+    marginBottom: 15,
+  },
+
+  // Typography
+  errorText: {
+    fontSize: 12,
+    color: "red",
+    textAlign: "left",
+    marginRight: 10,
+  },
+  forgotPassword: {
+    color: "#777",
+    fontSize: 12,
+    fontWeight: "bold",
+    textAlign: "right",
+  },
+  separatorText: {
+    marginHorizontal: 10,
+    color: "#43464a",
   },
   registerText: {
     fontSize: 14,
@@ -367,31 +422,6 @@ const styles = StyleSheet.create({
     color: "#1E90FF",
     fontWeight: "bold",
     textAlign: "center",
-  },
-  errorText: {
-    fontSize: 14,
-    color: "red",
-    textAlign: "center",
-    marginVertical: 8,
-  },
-  separatorText: {
-    marginHorizontal: 10,
-    marginBottom: 15,
-    color: "#43464a",
-  },
-  forgotPassword: {
-    textAlign: "right",
-    color: "#777",
-    fontSize: 12,
-    fontWeight: "bold",
-    marginTop: 5,
-    marginBottom: 15,
-  },
-
-  // Input Fields
-  inputWrapper: {
-    width: "100%",
-    marginBottom: 15,
   },
 
   // Separator
@@ -412,6 +442,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     alignSelf: "center",
+    marginTop: 15,
   },
   socialButton: {
     backgroundColor: "#000",

@@ -87,7 +87,7 @@ export default function WelcomeScreen() {
   return (
     <View style={styles.container}>
       {/* Title Animation */}
-      <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
+      <Animated.View style={[titleAnimatedStyle]}>
         {["Planning", "Just Got", "Easier!"].map((text, index) => (
           <Animated.Text
             key={index}
@@ -153,9 +153,6 @@ const styles = StyleSheet.create({
   },
 
   // Title Styles
-  titleContainer: {
-    marginTop: 15,
-  },
   title: {
     fontSize: 60,
     fontWeight: "normal",
@@ -180,7 +177,6 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#AAA",
     marginVertical: 20,
-    alignSelf: "stretch",
   },
 
   // Button Styles
@@ -188,14 +184,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginTop: 10,
     gap: 12,
-    alignSelf: "stretch",
-    justifyContent: "center",
+    alignSelf: "center",
   },
   buttonOutline: {
     borderWidth: 1,
     borderColor: "#2D2D2D",
     paddingVertical: 16,
-    paddingHorizontal: 24,
     borderRadius: 10,
     minWidth: 140,
     alignItems: "center",
@@ -211,27 +205,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 10,
     minWidth: 140,
-    alignItems: "center",
   },
   buttonTextPrimary: {
     color: "#FFF",
     fontSize: 18,
     fontWeight: "bold",
-  },
-
-  // Loading/Error States
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  errorText: {
-    fontSize: 16,
-    color: "red",
   },
 });

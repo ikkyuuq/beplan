@@ -83,7 +83,9 @@ export default function ResetPasswordScreen() {
   // ====================== Handlers ======================
   const onResetPress = async () => {
     setErrorMessage("");
+
     if (!isLoaded) return;
+
     if (!emailAddress.trim()) {
       setErrorMessage("Email address cannot be empty.");
       return;
@@ -106,6 +108,16 @@ export default function ResetPasswordScreen() {
 
   const onVerifyPress = async () => {
     if (!isLoaded) return;
+
+    if (!code.trim()) {
+      setErrorMessage("Please enter the verification code.");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(code)) {
+      setErrorMessage("Please enter a valid 6-digit code.");
+      return;
+    }
 
     try {
       const verifyAttempt = await signIn.attemptFirstFactor({
@@ -172,6 +184,7 @@ export default function ResetPasswordScreen() {
         setCode={setCode}
         onVerifyPress={onVerifyPress}
         errorMessage={errorMessage}
+        setErrorMessage={setErrorMessage}
         onResendPress={handleResendCode}
         emailAddress={emailAddress}
         isResending={isResending}
@@ -204,7 +217,10 @@ export default function ResetPasswordScreen() {
           iconName="mail-outline"
           placeholder="example@example.com"
           value={emailAddress}
-          onChangeText={setEmailAddress}
+          onChangeText={(text) => {
+            setEmailAddress(text);
+            setErrorMessage("");
+          }}
         />
 
         {/* Error Message */}
@@ -231,8 +247,6 @@ const styles = StyleSheet.create({
   // Main Layout
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     padding: 20,
     backgroundColor: "#F8F8F8",
   },
@@ -243,23 +257,27 @@ const styles = StyleSheet.create({
     fontSize: 60,
     fontWeight: "normal",
     textAlign: "center",
+    marginTop: 180,
     color: "#2D4A2E",
   },
   label: {
     fontSize: 18,
     fontWeight: "bold",
+    marginTop: 40,
     marginBottom: 10,
   },
   description: {
     fontSize: 15,
     color: "#333",
     textAlign: "center",
-    marginVertical: 20,
+    marginTop: 30,
+    marginBottom: 20,
   },
   errorText: {
-    fontSize: 14,
     color: "red",
-    marginTop: 5,
+    fontSize: 14,
+    alignSelf: "center",
+    marginBottom: 10,
   },
 
   // Button
@@ -268,17 +286,5 @@ const styles = StyleSheet.create({
     top: 50,
     left: 20,
     padding: 10,
-  },
-
-  // Loading/Error States
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
   },
 });

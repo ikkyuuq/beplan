@@ -312,14 +312,20 @@ export default function SignUpScreen() {
           iconName="person-outline"
           placeholder="Choose a username"
           value={username}
-          onChangeText={setUsername}
+          onChangeText={(text) => {
+            setUsername(text);
+            setErrorMessage("");
+          }}
           autoCapitalize="none"
         />
         <InputField
           iconName="mail-outline"
           placeholder="example@example.com"
           value={emailAddress}
-          onChangeText={setEmailAddress}
+          onChangeText={(text) => {
+            setEmailAddress(text);
+            setErrorMessage("");
+          }}
           keyboardType="email-address"
           autoCapitalize="none"
         />
@@ -327,14 +333,20 @@ export default function SignUpScreen() {
           iconName="lock-closed-outline"
           placeholder="Enter your password"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            setErrorMessage("");
+          }}
           secureTextEntry
         />
         <InputField
           iconName="lock-closed-outline"
           placeholder="Confirm your password"
           value={confirmPassword}
-          onChangeText={setConfirmPassword}
+          onChangeText={(text) => {
+            setConfirmPassword(text);
+            setErrorMessage("");
+          }}
           secureTextEntry
         />
         {/* Error Message */}
@@ -403,7 +415,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 10,
     marginBottom: 10,
-    alignSelf: "center",
     textAlign: "center",
   },
 

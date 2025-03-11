@@ -7,9 +7,10 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSignIn, useClerk } from "@clerk/clerk-expo";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
-import PasswordInput from "@/components/PasswordInput";
+import InputField from "@/components/InputField";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -140,6 +141,10 @@ export default function SetPasswordScreen() {
   // ====================== Render UI ======================
   return (
     <View style={styles.container}>
+      {/* Back Button */}
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <Ionicons name="arrow-back" size={24} color="black" />
+      </TouchableOpacity>
       {/* Title & Subtitle */}
       <Animated.Text style={[styles.title, titleAnimatedStyle]}>
         Reset Password
@@ -170,15 +175,25 @@ export default function SetPasswordScreen() {
       <Animated.View
         style={[styles.inputWrapper, formAnimatedStyle, { width: "100%" }]}
       >
-        <PasswordInput
+        <InputField
+          iconName="lock-closed-outline"
           placeholder="New password"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            if (errorMessage) setErrorMessage("");
+          }}
+          secureTextEntry={true}
         />
-        <PasswordInput
+        <InputField
+          iconName="lock-closed-outline"
           placeholder="Confirm new password"
           value={confirmPassword}
-          onChangeText={setConfirmPassword}
+          onChangeText={(text) => {
+            setConfirmPassword(text);
+            if (errorMessage) setErrorMessage("");
+          }}
+          secureTextEntry={true}
         />
         {errorMessage && (
           <Animated.Text
@@ -293,5 +308,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.9)",
     zIndex: 999,
+  },
+
+  // Button
+  backButton: {
+    position: "absolute",
+    top: 50,
+    left: 20,
+    padding: 10,
   },
 });
