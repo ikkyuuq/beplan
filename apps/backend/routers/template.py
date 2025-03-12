@@ -116,16 +116,19 @@ class TemplateResponse(BaseModel):
     type: TemplateType
     status: TemplateStatus
     duration: int
+    is_favorite: bool
 
 
 @router.get("/")
-async def fetch_template(req: FetchTemplateRequest):
+async def fetch_template(
+    user_id: Optional[str] = None, template_id: Optional[int] = None
+):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
-            if req.template_id is not None:
+            if template_id is not None:
                 templates = await conn.fetch(
-                    "SELECT * FROM public.template WHERE id = $1", req.template_id
+                    "SELECT * FROM public.template WHERE id = $1", template_id
                 )
             else:
                 templates = await conn.fetch("SELECT * FROM public.template")
@@ -139,10 +142,10 @@ async def fetch_template(req: FetchTemplateRequest):
             template_ids = [tmpl["id"] for tmpl in templates]
 
             assigned_ids = set()
-            if req.user_id:
+            if user_id:
                 assigned = await conn.fetch(
                     "SELECT template_id FROM public.assigned_template WHERE user_id = $1",
-                    req.user_id,
+                    user_id,
                 )
                 assigned_ids = {row["template_id"] for row in assigned}
             else:
@@ -188,6 +191,20 @@ async def fetch_template(req: FetchTemplateRequest):
 
             templates_resp = []
             for tmpl in templates:
+                is_favorite = False
+                fav_tmpl_rec = await conn.fetchrow(
+                    """
+                    SELECT * FROM public.favorite_template
+                    WHERE user_id = $1
+                    AND template_id = $2
+                    """,
+                    user_id,
+                    tmpl["id"],
+                )
+                if fav_tmpl_rec:
+                    is_favorite = True
+                else:
+                    is_favorite = False
                 goal_templates = []
                 for tmpl_goal in goals_by_template.get(tmpl["id"], []):
                     goal_rec = goals_dict.get(tmpl_goal["goal_id"])
@@ -227,6 +244,7 @@ async def fetch_template(req: FetchTemplateRequest):
                             else TemplateStatus.UNUSED
                         ),
                         duration=duration,
+                        is_favorite=is_favorite,
                     )
                 )
 
@@ -837,6 +855,58 @@ async def delete_template(template_id: int):
 
                 return {"message": "Template deleted"}
 
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+
+
+class FavoriteTemplateRequest(BaseModel):
+    user_id: str
+    template_id: int
+
+
+@router.put("/toggle_favorite")
+async def favorite_template(req: FavoriteTemplateRequest):
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        try:
+            async with conn.transaction():
+                existing = await conn.fetchrow(
+                    """
+                    SELECT * FROM public.favorite_template
+                    WHERE user_id = $1
+                    AND template_id = $2
+                """,
+                    req.user_id,
+                    req.template_id,
+                )
+                if existing:
+                    await conn.execute(
+                        """
+                        DELETE FROM public.favorite_template
+                        WHERE user_id = $1
+                        AND template_id = $2
+                    """,
+                        req.user_id,
+                        req.template_id,
+                    )
+                    return {"message": "Template unfavorited"}
+                else:
+                    await conn.execute(
+                        """
+                        INSERT INTO public.favorite_template (user_id, template_id)
+                        VALUES ($1, $2)
+                        """,
+                        req.user_id,
+                        req.template_id,
+                    )
+                    return {"message": "Template favorited"}
+
+        except UniqueViolationError:
+            raise HTTPException(
+                status_code=409, detail="Template already favorited by user"
+            )
         except HTTPException:
             raise
         except Exception as e:
