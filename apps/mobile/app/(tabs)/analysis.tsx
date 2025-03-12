@@ -93,9 +93,8 @@ export default function Analysis() {
       const baseUrl =
         Platform.OS === "android"
           ? "http://10.0.2.2:8000"
-          : "http://192.168.1.43:8000"; // for iPhone
+          : "http://192.168.1.43:8000"; // iPhone
 
-      // Fetch data from the API
       const response = await fetch(
         `${baseUrl}/api/v1/analysis/?user_id=${user.id}`
       );
@@ -137,7 +136,7 @@ export default function Analysis() {
       easing: Easing.out(Easing.cubic),
     });
 
-    // Cards animation with sequential timing
+    // Cards animation
     cardsOpacity1.value = withDelay(300, withTiming(1, { duration: 500 }));
     cardsOpacity2.value = withDelay(500, withTiming(1, { duration: 500 }));
     cardsOpacity3.value = withDelay(700, withTiming(1, { duration: 500 }));
