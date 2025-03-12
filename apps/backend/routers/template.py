@@ -33,8 +33,8 @@ class AssingedGoal(BaseModel):
 
 class AssignedGoalUpdate(BaseModel):
     assigned_goal_id: int
-    new_start_date: date
-    new_due_date: date
+    new_start_date: Optional[date] = None
+    new_due_date: Optional[date] = None
 
 
 class TemplateType(str, Enum):
@@ -382,10 +382,29 @@ async def create_template_from_user_goals(req: CreateTemplateFromUserRequest):
             async with conn.transaction():
                 existing_goals_data = []
                 if req.existing_goals:
-                    update_mapping = {
-                        eg.assigned_goal_id: (eg.new_start_date, eg.new_due_date)
-                        for eg in req.existing_goals
-                    }
+                    update_mapping = {}
+                    for eg in req.existing_goals:
+                        if (
+                            eg.new_start_date is not None
+                            and eg.new_due_date is not None
+                        ):
+                            update_mapping[eg.assigned_goal_id] = (
+                                eg.new_start_date,
+                                eg.new_due_date,
+                            )
+                        else:
+                            rec = await conn.fetchrow(
+                                """
+                                SELECT start_date, due_date
+                                FROM public.assigned_goal
+                                WHERE id = $1
+                                """,
+                                eg.assigned_goal_id,
+                            )
+                            update_mapping[eg.assigned_goal_id] = (
+                                rec["start_date"],
+                                rec["due_date"],
+                            )
                     existing_ids = list(update_mapping.keys())
                     db_existing = await conn.fetch(
                         """
