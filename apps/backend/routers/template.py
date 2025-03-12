@@ -913,6 +913,32 @@ async def favorite_template(req: FavoriteTemplateRequest):
             raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
+@router.get("/favorite/{user_id}")
+async def get_favorite_templates(user_id: str):
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        try:
+            fav_templates = await conn.fetch(
+                """
+                SELECT t.id, t.title, t.description, t.image_url, t.created_by, t.category, t.type
+                FROM public.template t
+                JOIN public.favorite_template ft ON t.id = ft.template_id
+                WHERE ft.user_id = $1
+                """,
+                user_id,
+            )
+
+            if not fav_templates:
+                return []
+
+            return fav_templates
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+
+
 # NOTE: Wait for next meeting to discuss the update template logic
 @router.put("/update")
 async def update_template(req: UpdateTemplateRequest):
