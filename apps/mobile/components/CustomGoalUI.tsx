@@ -13,7 +13,16 @@ import {
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { Task } from "@/types/taskTypes";
+
+type Task = {
+  title: string;
+  description?: string;
+  type: "normal" | "daily" | "weekly" | "monthly";
+  selectedDates?: string[];
+  selectedDaysOfWeek?: number[];
+  monthlyMode?: "start" | "mid" | "end";
+  status: "pending" | "completed" | "failed" | "deleted";
+};
 
 // ====================== Type Definitions ======================
 type CustomGoalUIProps = {
