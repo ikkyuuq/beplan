@@ -711,9 +711,11 @@ const styles = StyleSheet.create({
   // Custom Goal Button
   customGoalButton: {
     alignSelf: "center",
-    width: "50%",
+    //width: "50%",
+    width: Platform.OS === 'ios' ? '100%' : '50%',
+    alignItems: "center",
     borderRadius: 30,
-    marginTop: 6,
+    marginTop: Platform.OS === 'ios' ? 0 : 6
   },
   buttonGradient: {
     flexDirection: "row",
