@@ -90,7 +90,7 @@ class UpdateTemplateRequest(BaseModel):
 
 class FetchTemplateRequest(BaseModel):
     template_id: Optional[int] = None
-    user_id: str
+    user_id: Optional[str] = None
 
 
 class TaskTemplate(BaseModel):
@@ -138,11 +138,18 @@ async def fetch_template(req: FetchTemplateRequest):
 
             template_ids = [tmpl["id"] for tmpl in templates]
 
-            assigned = await conn.fetch(
-                "SELECT template_id FROM public.assigned_template WHERE user_id = $1",
-                req.user_id,
-            )
-            assigned_ids = {row["template_id"] for row in assigned}
+            assigned_ids = set()
+            if req.user_id:
+                assigned = await conn.fetch(
+                    "SELECT template_id FROM public.assigned_template WHERE user_id = $1",
+                    req.user_id,
+                )
+                assigned_ids = {row["template_id"] for row in assigned}
+            else:
+                assigned = await conn.fetch(
+                    "SELECT id FROM public.template WHERE create_by = BePlan"
+                )
+                assigned_ids = {row["template_id"] for row in assigned}
 
             tmpl_goals = await conn.fetch(
                 "SELECT * FROM public.tmpl_goal WHERE template_id = ANY($1)",
