@@ -270,7 +270,7 @@ export default function CustomGoal() {
   };
 
   // ====================== Submit Handler ======================
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isFormValid) {
       Alert.alert(
         "Incomplete Goal",
@@ -287,7 +287,7 @@ export default function CustomGoal() {
 
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
       const userId = user?.id;
 
       if (!userId) {
@@ -309,6 +309,29 @@ export default function CustomGoal() {
         JSON.stringify(formattedGoalData, null, 2)
       );
 
+      const baseUrl =
+        Platform.OS === "android"
+          ? "http://10.0.2.2:8000"
+          : "http://127.0.0.1:8000";
+
+      const response = await fetch(`${baseUrl}/api/v1/goal/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formattedGoalData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `Server error: ${response.status}`
+        );
+      }
+
+      const responseData = await response.json();
+      console.log("📌 API Response:", JSON.stringify(responseData, null, 2));
+
       Alert.alert(
         "Success!",
         "Your custom goal has been created successfully.",
@@ -319,8 +342,15 @@ export default function CustomGoal() {
           },
         ]
       );
+    } catch (error: any) {
+      console.error("Failed to create goal:", error);
+      Alert.alert(
+        "Error",
+        error.message || "Failed to create goal. Please try again later."
+      );
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   // ====================== Back Button Handler ======================
