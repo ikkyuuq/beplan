@@ -246,7 +246,11 @@ async def fetch_goal_for_create_template(user_id: str):
             )
 
             goals = {
-                row["id"]: {row["title"], row["start_date"], row["due_date"]}
+                row["id"]: {
+                    "title": row["title"],
+                    "start_date": row["start_date"],
+                    "due_date": row["due_date"],
+                }
                 for row in goals_rec
             }
 
