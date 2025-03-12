@@ -150,9 +150,9 @@ async def fetch_template(
                 assigned_ids = {row["template_id"] for row in assigned}
             else:
                 assigned = await conn.fetch(
-                    "SELECT id FROM public.template WHERE create_by = BePlan"
+                    "SELECT id FROM public.template WHERE created_by = 'BePlan'"
                 )
-                assigned_ids = {row["template_id"] for row in assigned}
+                assigned_ids = {row["id"] for row in assigned}
 
             tmpl_goals = await conn.fetch(
                 "SELECT * FROM public.tmpl_goal WHERE template_id = ANY($1)",
