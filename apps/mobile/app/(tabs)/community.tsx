@@ -10,9 +10,19 @@ import {
 } from "react-native";
 import { useState } from "react";
 import TemplateCard from "@/components/TemplateCard";
-import { Template } from "@/types/templateTypes";
 import TemplateModal from "@/components/TemplateModal";
 import Header from "@/components/Header";
+
+type Template = {
+  title: string;
+  category: string;
+  description: string;
+  image: string;
+  owner: string;
+  isFavorite: boolean;
+  duration?: number;
+  goals_id: string[];
+};
 
 // ====================== Main Component ======================
 export default function Community() {

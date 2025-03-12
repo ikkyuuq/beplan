@@ -10,7 +10,6 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  Platform,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -25,7 +24,7 @@ import Animated, {
   FadeInDown,
 } from "react-native-reanimated";
 import OccupationSelector from "@/components/OccupationSelector";
-import OccupationProfileIcon from "@/components/OccupationProfileIcon";
+import * as ImagePicker from "expo-image-picker";
 
 // ====================== Main Component ======================
 export default function UserSettings() {
@@ -38,18 +37,19 @@ export default function UserSettings() {
   const [isChangingUsername, setIsChangingUsername] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [isEditingOccupation, setIsEditingOccupation] = useState(false);
+  const [isEditingProfileImage, setIsEditingProfileImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingImage, setIsLoadingImage] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const [username, setUsername] = useState("");
   const [profileImage, setProfileImage] = useState("");
+  const [newProfileImage, setNewProfileImage] = useState("");
   const [primaryEmail, setPrimaryEmail] = useState("");
   const [description, setDescription] = useState("");
   const [occupation, setOccupation] = useState("");
   const [externalAccounts, setExternalAccounts] = useState<any[]>([]);
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
-
-  const [useOccupationIcon, setUseOccupationIcon] = useState<boolean>(false);
 
   // ====================== Animation Values ======================
   const headerOpacity = useSharedValue(0);
@@ -112,7 +112,6 @@ export default function UserSettings() {
     if (isLoaded && user) {
       const loadUserData = async () => {
         try {
-          // Load user profile data
           setUsername(user.username || getDefaultUsername());
           setProfileImage(user.imageUrl);
           setPrimaryEmail(user.primaryEmailAddress?.emailAddress || "");
@@ -120,18 +119,8 @@ export default function UserSettings() {
           setOccupation((user.unsafeMetadata?.occupation as string) || "");
           setExternalAccounts(user.externalAccounts || []);
 
-          const occupationValue =
-            (user.unsafeMetadata?.occupation as string) || "";
-          setOccupation(occupationValue);
-
-          const useOccupIcon = user.unsafeMetadata
-            ?.useOccupationIcon as boolean;
-          setUseOccupationIcon(useOccupIcon || false);
-          setProfileImage(user.imageUrl);
-
           if (user.getSessions) {
             const sessions = await user.getSessions();
-
             const activeSession = sessions.find(
               (session) => session.status === "active"
             );
@@ -139,10 +128,7 @@ export default function UserSettings() {
             const processedSessions = await Promise.all(
               sessions.map(async (session) => {
                 const isCurrent = session.id === activeSession?.id;
-                return {
-                  ...session,
-                  isCurrent,
-                };
+                return { ...session, isCurrent };
               })
             );
 
@@ -177,18 +163,130 @@ export default function UserSettings() {
   };
 
   const getDeviceIcon = (userAgent: string) => {
-    if (userAgent.includes("iPhone") || userAgent.includes("iPad")) {
+    if (
+      userAgent.includes("iPhone") ||
+      userAgent.includes("iPad") ||
+      userAgent.includes("Android")
+    ) {
       return <Ionicons name="phone-portrait" size={24} color="#555" />;
-    } else if (userAgent.includes("Android")) {
-      return <Ionicons name="phone-portrait" size={24} color="#555" />;
-    } else {
-      return <Feather name="monitor" size={24} color="#555" />;
     }
+    return <Feather name="monitor" size={24} color="#555" />;
   };
 
   const formatLastActiveTime = (lastActiveAt: string) => {
     const date = new Date(lastActiveAt);
     return date.toLocaleString();
+  };
+
+  // ====================== Image Picker ======================
+  const pickImage = async () => {
+    try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "We need access to your photos to upload a profile image."
+        );
+        return;
+      }
+
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+
+      if (!result.canceled) {
+        setIsEditingProfileImage(true);
+        setNewProfileImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image");
+    }
+  };
+
+  const handleCancelProfileImage = () => {
+    setNewProfileImage("");
+    setIsEditingProfileImage(false);
+  };
+
+  // ====================== Unified Save Handler ======================
+  const handleSave = async (type: string) => {
+    if (!user) return;
+
+    try {
+      setIsSaving(true);
+
+      const updateLog = {
+        profileImageURI:
+          type === "profileImage" ? newProfileImage : profileImage || null,
+        username: username || null,
+        occupation: occupation || null,
+        aboutMe: description || null,
+      };
+
+      switch (type) {
+        case "username":
+          if (username !== getDefaultUsername()) {
+            await user.update({
+              username: username,
+            });
+          }
+          setIsChangingUsername(false);
+          break;
+
+        case "description":
+          await user.update({
+            unsafeMetadata: {
+              ...user.unsafeMetadata,
+              description: description,
+            },
+          });
+          setIsEditingDescription(false);
+          break;
+
+        case "occupation":
+          await user.update({
+            unsafeMetadata: {
+              ...user.unsafeMetadata,
+              occupation: occupation,
+            },
+          });
+          setIsEditingOccupation(false);
+          break;
+
+        case "profileImage":
+          if (!newProfileImage) return;
+          setIsLoadingImage(true);
+          setProfileImage(newProfileImage);
+          setNewProfileImage("");
+          setIsEditingProfileImage(false);
+          break;
+
+        default:
+          throw new Error("Invalid save type");
+      }
+
+      console.log("User Profile Update:", JSON.stringify(updateLog, null, 2));
+
+      Alert.alert(
+        "Success",
+        `${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully!`
+      );
+    } catch (error: any) {
+      console.error(`${type} update error:`, error);
+      Alert.alert(
+        "Error",
+        error.message || `Failed to update ${type}. Please try again.`
+      );
+    } finally {
+      setIsSaving(false);
+      if (type === "profileImage") setIsLoadingImage(false);
+    }
   };
 
   // ====================== Handlers ======================
@@ -203,142 +301,6 @@ export default function UserSettings() {
     } catch (error) {
       console.error("Sign out error:", error);
       Alert.alert("Error", "Failed to sign out. Please try again.");
-    }
-  };
-
-  const handleSaveUsername = async () => {
-    if (!user) return;
-
-    try {
-      setIsSaving(true);
-
-      if (username !== getDefaultUsername()) {
-        await user.update({
-          username: username,
-        });
-      }
-
-      setIsChangingUsername(false);
-      Alert.alert("Success", "Username updated successfully!");
-    } catch (error: any) {
-      console.error("Username update error:", error);
-      Alert.alert(
-        "Error",
-        error.message || "Failed to update username. Please try again."
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSaveDescription = async () => {
-    if (!user) return;
-
-    try {
-      setIsSaving(true);
-
-      const currentMetadata = user.unsafeMetadata || {};
-
-      await user.update({
-        unsafeMetadata: {
-          ...currentMetadata,
-          description: description,
-        },
-      });
-
-      setIsEditingDescription(false);
-      Alert.alert("Success", "Description updated successfully!");
-    } catch (error: any) {
-      console.error("Description update error:", error);
-      Alert.alert(
-        "Error",
-        error.message || "Failed to update description. Please try again."
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSaveOccupation = async () => {
-    if (!user) return;
-
-    try {
-      setIsSaving(true);
-
-      const currentMetadata = user.unsafeMetadata || {};
-      const prevOccupation = currentMetadata.occupation;
-      const occupationChanged = prevOccupation !== occupation;
-
-      await user.update({
-        unsafeMetadata: {
-          ...currentMetadata,
-          occupation: occupation,
-        },
-      });
-
-      setIsEditingOccupation(false);
-
-      if (occupationChanged && occupation && !useOccupationIcon) {
-        Alert.alert(
-          "Occupation Updated",
-          "Would you like to use an occupation-based profile icon?",
-          [
-            {
-              text: "Yes",
-              onPress: toggleProfileIconType,
-            },
-            {
-              text: "No",
-              style: "cancel",
-            },
-          ]
-        );
-      } else {
-        Alert.alert("Success", "Occupation updated successfully!");
-      }
-    } catch (error: any) {
-      console.error("Occupation update error:", error);
-      Alert.alert(
-        "Error",
-        error.message || "Failed to update occupation. Please try again."
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const toggleProfileIconType = async () => {
-    if (!user || !occupation) return;
-
-    try {
-      setIsSaving(true);
-
-      const newUseOccupationIcon = !useOccupationIcon;
-      const currentMetadata = user.unsafeMetadata || {};
-
-      await user.update({
-        unsafeMetadata: {
-          ...currentMetadata,
-          useOccupationIcon: newUseOccupationIcon,
-        },
-      });
-
-      setUseOccupationIcon(newUseOccupationIcon);
-
-      Alert.alert(
-        "Success",
-        newUseOccupationIcon
-          ? "Now using occupation-based profile icon!"
-          : "Now using default profile image!"
-      );
-    } catch (error: any) {
-      console.error("Profile icon update error:", error);
-      Alert.alert(
-        "Error",
-        error.message || "Failed to update profile icon preference."
-      );
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -378,36 +340,61 @@ export default function UserSettings() {
               </View>
             </View>
 
+            {/* Profile Image with Edit Button */}
             <View style={styles.profileImageContainer}>
-              <View style={styles.fixedSizeContainer}>
-                {useOccupationIcon && occupation ? (
-                  <OccupationProfileIcon
-                    occupation={occupation}
-                    size={100}
-                    showLabel={false}
-                  />
-                ) : (
-                  <Image
-                    source={{ uri: profileImage }}
-                    style={styles.profileImage}
-                  />
-                )}
-              </View>
-            </View>
+              {isLoadingImage ? (
+                <View style={styles.loadingImageContainer}>
+                  <ActivityIndicator size="large" color="#4E5A94" />
+                </View>
+              ) : (
+                <>
+                  <View style={styles.profileImageWrapper}>
+                    <Image
+                      source={{
+                        uri:
+                          isEditingProfileImage && newProfileImage
+                            ? newProfileImage
+                            : profileImage,
+                      }}
+                      style={styles.profileImage}
+                    />
+                  </View>
 
-            {occupation && (
-              <TouchableOpacity
-                style={styles.iconToggleButton}
-                onPress={toggleProfileIconType}
-                disabled={isSaving}
-              >
-                <Text style={styles.iconToggleText}>
-                  {useOccupationIcon
-                    ? "Use Default Profile"
-                    : "Use Occupation Icon"}
-                </Text>
-              </TouchableOpacity>
-            )}
+                  {isEditingProfileImage ? (
+                    <View style={styles.profileImageActions}>
+                      <TouchableOpacity
+                        style={styles.profileImageActionButton}
+                        onPress={() => handleSave("profileImage")}
+                        disabled={isLoadingImage}
+                      >
+                        <Text style={styles.profileImageActionText}>Save</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.profileImageActionButton,
+                          styles.cancelButton,
+                        ]}
+                        onPress={handleCancelProfileImage}
+                        disabled={isLoadingImage}
+                      >
+                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.editProfileImageButton}
+                      onPress={pickImage}
+                    >
+                      <Feather name="edit-2" size={14} color="#4E5A94" />
+                      <Text style={styles.editProfileImageText}>
+                        Edit Profile Picture
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+            </View>
 
             <View style={styles.profileDetailsContainer}>
               <View style={styles.profileInfoRow}>
@@ -422,7 +409,7 @@ export default function UserSettings() {
                     />
                     <TouchableOpacity
                       style={styles.saveButton}
-                      onPress={handleSaveUsername}
+                      onPress={() => handleSave("username")}
                       disabled={isSaving}
                     >
                       {isSaving ? (
@@ -458,7 +445,7 @@ export default function UserSettings() {
                     <OccupationSelector
                       value={occupation}
                       onValueChange={setOccupation}
-                      onSave={handleSaveOccupation}
+                      onSave={() => handleSave("occupation")}
                       isSaving={isSaving}
                       onCancel={() => setIsEditingOccupation(false)}
                     />
@@ -509,7 +496,7 @@ export default function UserSettings() {
                     <View style={styles.descriptionButtons}>
                       <TouchableOpacity
                         style={[styles.saveButton, { flex: 1 }]}
-                        onPress={handleSaveDescription}
+                        onPress={() => handleSave("description")}
                         disabled={isSaving}
                       >
                         {isSaving ? (
@@ -657,7 +644,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: 20,
-    paddingTop: Platform.OS === "ios" ? 20 : 20,
+    paddingTop: 20,
     paddingBottom: 10,
     backgroundColor: "#16171F",
   },
@@ -670,7 +657,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
 
-  // Section Styling
+  // Section Base
   section: {
     backgroundColor: "#FFF",
     borderRadius: 16,
@@ -724,12 +711,27 @@ const styles = StyleSheet.create({
   profileImageContainer: {
     alignItems: "center",
     marginTop: 10,
+    marginBottom: 20,
+  },
+  profileImageWrapper: {
+    position: "relative",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    overflow: "hidden",
   },
   profileImage: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    marginBottom: 15,
+  },
+  loadingImageContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#F0F0F0",
+    justifyContent: "center",
+    alignItems: "center",
   },
   profileDetailsContainer: {
     gap: 12,
@@ -754,29 +756,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
 
-  // Change Icon Button
-  fixedSizeContainer: {
-    width: 100,
-    height: 100,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  iconToggleButton: {
-    marginTop: 10,
-    marginBottom: 15,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: "#4E5A94",
-    borderRadius: 15,
-    alignSelf: "center",
-  },
-  iconToggleText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "500",
-  },
-
-  // Description Styling
+  // Description
   descriptionRow: {
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
@@ -826,11 +806,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
-  // Edit and Save Buttons
-  editButton: {
-    padding: 6,
-    marginLeft: 10,
-  },
+  // Input Fields
   usernameContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -851,33 +827,93 @@ const styles = StyleSheet.create({
     fontSize: 14,
     backgroundColor: "#FAFAFA",
   },
+
+  // Buttons Base
+  buttonBase: {
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    minHeight: 36,
+  },
+
+  // Edit Buttons
+  editButton: {
+    padding: 6,
+    marginLeft: 10,
+  },
+  editProfileImageButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F0F0F0",
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 10,
+    gap: 6,
+    minHeight: 36,
+  },
+  editProfileImageText: {
+    color: "#4E5A94",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+
+  // Save Buttons
   saveButton: {
     backgroundColor: "#4E5A94",
-    paddingHorizontal: 12,
+    borderRadius: 8,
     paddingVertical: 6,
-    borderRadius: 6,
-    justifyContent: "center",
+    paddingHorizontal: 10,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 32,
   },
   saveButtonText: {
     color: "#FFF",
     fontSize: 14,
     fontWeight: "500",
   },
-  cancelButton: {
-    backgroundColor: "#F5F5F5",
-    paddingHorizontal: 12,
+  profileImageActionButton: {
+    backgroundColor: "#4E5A94",
+    borderRadius: 8,
     paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#DDD",
-    justifyContent: "center",
+    paddingHorizontal: 10,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 32,
   },
-  cancelButtonText: {
-    color: "#666",
+  profileImageActionText: {
+    color: "#fff",
     fontSize: 14,
     fontWeight: "500",
+  },
+
+  // Cancel Buttons
+  cancelButton: {
+    backgroundColor: "#FF3B30",
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 32,
+  },
+  cancelButtonText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+
+  // Profile Image Actions
+  profileImageActions: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 10,
   },
 
   // Connected Accounts

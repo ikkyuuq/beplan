@@ -25,7 +25,17 @@ import Modal from "react-native-modal";
 import { LinearGradient } from "expo-linear-gradient";
 import TemplateCard from "@/components/TemplateCard";
 import TemplateModal from "@/components/TemplateModal";
-import { Template } from "@/types/templateTypes";
+
+type Template = {
+  title: string;
+  category: string;
+  description: string;
+  image: string;
+  owner: string;
+  isFavorite: boolean;
+  duration?: number;
+  goals_id: string[];
+};
 
 // ====================== Main Component ======================
 export default function CreateScreen() {

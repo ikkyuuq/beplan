@@ -13,8 +13,8 @@ import {
 import { Feather } from "@expo/vector-icons";
 
 // ====================== Constants ======================
-// List of popular occupations
 const POPULAR_OCCUPATIONS = [
+  "None",
   "Software Developer",
   "Teacher",
   "Doctor",
@@ -61,7 +61,6 @@ export default function OccupationSelector({
 
   // ====================== Effects ======================
   useEffect(() => {
-    // If the initial value is not in the list, show it as a custom occupation
     if (value && !POPULAR_OCCUPATIONS.includes(value)) {
       setCustomOccupation(value);
       setShowCustomInput(true);
@@ -73,6 +72,11 @@ export default function OccupationSelector({
     if (occupation === "Other") {
       setShowCustomInput(true);
       setSelectedOccupation("Other");
+    } else if (occupation === "None") {
+      setShowCustomInput(false);
+      setSelectedOccupation("");
+      onValueChange("");
+      setModalVisible(false);
     } else {
       setShowCustomInput(false);
       setSelectedOccupation(occupation);
@@ -109,6 +113,7 @@ export default function OccupationSelector({
       style={[
         styles.occupationItem,
         selectedOccupation === item && styles.selectedItem,
+        item === "None" && { backgroundColor: "#F0F0F0" },
       ]}
       onPress={() => handleSelect(item)}
     >

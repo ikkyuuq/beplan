@@ -12,7 +12,16 @@ import {
 import TaskModal from "@/components/TaskModal";
 import CalendarPicker from "@/components/CalendarPicker";
 import CustomGoalUI from "@/components/CustomGoalUI";
-import { Task } from "@/types/taskTypes";
+
+type Task = {
+  title: string;
+  description?: string;
+  type: "normal" | "daily" | "weekly" | "monthly";
+  selectedDates?: string[];
+  selectedDaysOfWeek?: number[];
+  monthlyMode?: "start" | "mid" | "end";
+  status: "pending" | "completed" | "failed" | "deleted";
+};
 
 // ====================== Helper Functions ======================
 const formatGoalForBackend = (
@@ -278,7 +287,6 @@ export default function CustomGoal() {
 
     setIsLoading(true);
 
-    // Simulate API call
     setTimeout(() => {
       const userId = user?.id;
 

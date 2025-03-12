@@ -10,6 +10,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -21,6 +22,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import CategoryPicker from "@/components/CategoryPicker";
+import { useUser } from "@clerk/clerk-expo";
 
 // ====================== Main Component ======================
 export default function createTemplate() {
@@ -33,23 +35,14 @@ export default function createTemplate() {
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
   const [isFormValid, setIsFormValid] = useState(false);
   const [isScrollEnabled, setIsScrollEnabled] = useState(true);
+  const [isLoadingGoals, setIsLoadingGoals] = useState(false);
   const router = useRouter();
+  const { user, isLoaded, isSignedIn } = useUser();
 
-  // Mock Data
-  const mockGoals = [
-    { id: "1", title: "Build Strength" },
-    { id: "2", title: "Improve Cardio" },
-    { id: "3", title: "Lose Weight" },
-    { id: "4", title: "Financial Stability" },
-    { id: "5", title: "Time Management" },
-    { id: "6", title: "Stress Reduction" },
-    { id: "7", title: "Sleep Better" },
-    { id: "8", title: "Learn New Skills" },
-    { id: "9", title: "Read More Books" },
-    { id: "10", title: "Improve Posture" },
-    { id: "11", title: "Drink More Water" },
-    { id: "12", title: "Travel Planning" },
-  ];
+  // ====================== Available Goals State ======================
+  const [availableGoals, setAvailableGoals] = useState<
+    Array<{ id: string; title: string }>
+  >([]);
 
   // ====================== Animation Values ======================
   const createButtonScale = useSharedValue(1);
@@ -72,6 +65,58 @@ export default function createTemplate() {
       title.trim() !== "" && image !== "" && selectedGoalIds.length > 0
     );
   }, [title, image, selectedGoalIds]);
+
+  // ====================== Fetch Available Goals ======================
+  useEffect(() => {
+    const fetchAvailableGoals = async () => {
+      if (!isLoaded || !isSignedIn || !user) return;
+
+      const userId = user.id;
+      if (!userId) {
+        Alert.alert("Error", "Could not get user ID. Please try again later.");
+        return;
+      }
+
+      setIsLoadingGoals(true);
+
+      try {
+        const baseUrl =
+          Platform.OS === "android"
+            ? "http://10.0.2.2:8000"
+            : "http://192.168.1.43:8000"; //iphone
+
+        const response = await fetch(
+          `${baseUrl}/api/v1/template/available_goals?user_id=${userId}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Fetched goals:", data);
+
+        const goalsArray = Object.entries(data).map(([id, title]) => ({
+          id,
+          title: title as string,
+        }));
+
+        setAvailableGoals(goalsArray);
+      } catch (error) {
+        console.error("Failed to fetch available goals:", error);
+        Alert.alert(
+          "Error",
+          "Failed to fetch your goals. Please check network connection and server status."
+        );
+
+        setAvailableGoals([]);
+      } finally {
+        setIsLoadingGoals(false);
+      }
+    };
+
+    fetchAvailableGoals();
+  }, [isLoaded, isSignedIn, user]);
 
   // ====================== Handlers ======================
   const pickImage = async () => {
@@ -119,16 +164,32 @@ export default function createTemplate() {
       return;
     }
 
+    if (!isLoaded || !isSignedIn) {
+      Alert.alert(
+        "Authentication Error",
+        "Please sign in to save your template."
+      );
+      return;
+    }
+
+    const userId = user?.id;
+    if (!userId) {
+      Alert.alert("Error", "Could not get user ID. Please try again later.");
+      return;
+    }
+
     const newTemplate = {
       title,
       description,
+      image_url: image,
+      created_by: "BePlan",
       category,
-      image,
-      isFavorite,
-      goals_id: selectedGoalIds,
+      type: "template",
+      goal_id: selectedGoalIds,
     };
 
     console.log("📌 New Template:", JSON.stringify(newTemplate, null, 2));
+
     Alert.alert("Success", "Template created successfully!", [
       { text: "OK", onPress: () => resetForm() },
     ]);
@@ -143,7 +204,6 @@ export default function createTemplate() {
     setSelectedGoalIds([]);
   };
 
-  // check if a goal is selected
   const isGoalSelected = (goalId: string) => {
     return selectedGoalIds.includes(goalId);
   };
@@ -286,48 +346,69 @@ export default function createTemplate() {
               Select goals that this template will help achieve
             </Text>
             <View style={styles.goalsScrollOuterContainer}>
-              <ScrollView
-                horizontal={false}
-                style={styles.goalsScrollContainer}
-                contentContainerStyle={styles.goalsContentContainer}
-                showsVerticalScrollIndicator={true}
-                nestedScrollEnabled={true}
-                onTouchStart={() => setIsScrollEnabled(false)}
-                onTouchEnd={() => setIsScrollEnabled(true)}
-                onScrollEndDrag={() => setIsScrollEnabled(true)}
-              >
-                <View style={styles.goalsContainer}>
-                  {mockGoals.map((goal) => (
-                    <Pressable
-                      key={goal.id}
-                      style={[
-                        styles.goalItem,
-                        isGoalSelected(goal.id) && styles.goalSelected,
-                      ]}
-                      onPress={() => toggleGoalSelection(goal.id)}
-                      android_ripple={{ color: "rgba(255,255,255,0.1)" }}
-                    >
-                      <Ionicons
-                        name={
-                          isGoalSelected(goal.id)
-                            ? "checkmark-circle"
-                            : "ellipse-outline"
-                        }
-                        size={22}
-                        color={isGoalSelected(goal.id) ? "#32CD32" : "#8B98D5"}
-                      />
-                      <Text
-                        style={[
-                          styles.goalText,
-                          isGoalSelected(goal.id) && styles.goalTextSelected,
-                        ]}
-                      >
-                        {goal.title}
-                      </Text>
-                    </Pressable>
-                  ))}
+              {isLoadingGoals ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#8B98D5" />
+                  <Text style={styles.loadingText}>Loading your goals...</Text>
                 </View>
-              </ScrollView>
+              ) : availableGoals.length > 0 ? (
+                <ScrollView
+                  horizontal={false}
+                  style={styles.goalsScrollContainer}
+                  contentContainerStyle={styles.goalsContentContainer}
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                  onTouchStart={() => setIsScrollEnabled(false)}
+                  onTouchEnd={() => setIsScrollEnabled(true)}
+                  onScrollEndDrag={() => setIsScrollEnabled(true)}
+                >
+                  <View style={styles.goalsContainer}>
+                    {availableGoals.map((goal) => (
+                      <Pressable
+                        key={goal.id}
+                        style={[
+                          styles.goalItem,
+                          isGoalSelected(goal.id) && styles.goalSelected,
+                        ]}
+                        onPress={() => toggleGoalSelection(goal.id)}
+                        android_ripple={{ color: "rgba(255,255,255,0.1)" }}
+                      >
+                        <Ionicons
+                          name={
+                            isGoalSelected(goal.id)
+                              ? "checkmark-circle"
+                              : "ellipse-outline"
+                          }
+                          size={22}
+                          color={
+                            isGoalSelected(goal.id) ? "#32CD32" : "#8B98D5"
+                          }
+                        />
+                        <Text
+                          style={[
+                            styles.goalText,
+                            isGoalSelected(goal.id) && styles.goalTextSelected,
+                          ]}
+                        >
+                          {goal.title}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : (
+                <View style={styles.noGoalsContainer}>
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={40}
+                    color="#8B98D5"
+                  />
+                  <Text style={styles.noGoalsText}>No goals available</Text>
+                  <Text style={styles.noGoalsSubText}>
+                    Create some goals first to use in templates
+                  </Text>
+                </View>
+              )}
             </View>
             <View style={styles.scrollIndicator}>
               <Ionicons name="chevron-down" size={16} color="#8B98D5" />
@@ -572,6 +653,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#1E1F29",
     marginVertical: 5,
+    minHeight: 120,
   },
   goalsScrollContainer: {
     maxHeight: 180,
@@ -624,6 +706,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#8B98D5",
     marginTop: 5,
+  },
+
+  // Loading
+  loadingContainer: {
+    padding: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    color: "#8B98D5",
+    marginTop: 10,
+    fontSize: 14,
+  },
+
+  // No Goals
+  noGoalsContainer: {
+    padding: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  noGoalsText: {
+    color: "#fff",
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  noGoalsSubText: {
+    color: "#8B98D5",
+    marginTop: 5,
+    fontSize: 14,
+    textAlign: "center",
   },
 
   // Favorite Button

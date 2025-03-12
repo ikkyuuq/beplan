@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   View,
   ViewStyle,
@@ -10,7 +10,6 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useUser } from "@clerk/clerk-expo";
-import OccupationProfileIcon from "./OccupationProfileIcon";
 
 // ====================== Type Definitions ======================
 type HeaderProps = {
@@ -22,30 +21,12 @@ type HeaderProps = {
 export default function Header({ children, containerStyle }: HeaderProps) {
   // ====================== Hooks & Navigation ======================
   const router = useRouter();
-  const { user, isLoaded } = useUser();
+  const { user } = useUser();
 
-  // ====================== State Management ======================
-  const [useOccupationIcon, setUseOccupationIcon] = useState(false);
-  const [occupation, setOccupation] = useState<string | null>(null);
-
-  // ====================== Effects ======================
-  useEffect(() => {
-    if (isLoaded && user) {
-      // Get user metadata for occupation and icon
-      const occupationValue = user.unsafeMetadata?.occupation as string;
-      const useOccupIcon = user.unsafeMetadata?.useOccupationIcon as boolean;
-
-      setOccupation(occupationValue || null);
-      setUseOccupationIcon(useOccupIcon || false);
-    }
-  }, [isLoaded, user]);
-
-  // ====================== Handlers ======================
   const handleNavigateToSettings = () => {
     router.push("/userSettings");
   };
 
-  // ====================== Helper Variables ======================
   const profileImageUrl = user?.imageUrl;
 
   // ====================== Render UI ======================
@@ -57,21 +38,11 @@ export default function Header({ children, containerStyle }: HeaderProps) {
           onPress={handleNavigateToSettings}
           style={styles.profileButton}
         >
-          {useOccupationIcon && occupation ? (
-            <View style={styles.profileImage}>
-              <OccupationProfileIcon
-                occupation={occupation}
-                size={35}
-                showLabel={false}
-              />
-            </View>
-          ) : (
-            <Image
-              source={{ uri: profileImageUrl }}
-              style={styles.profileImage}
-              resizeMode="cover"
-            />
-          )}
+          <Image
+            source={{ uri: profileImageUrl }}
+            style={styles.profileImage}
+            resizeMode="cover"
+          />
         </Pressable>
       </View>
       {children}
@@ -115,7 +86,5 @@ const styles = StyleSheet.create({
     height: 35,
     borderRadius: 100,
     overflow: "hidden",
-    justifyContent: "center",
-    alignItems: "center",
   },
 });
