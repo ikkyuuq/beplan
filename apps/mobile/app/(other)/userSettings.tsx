@@ -221,7 +221,9 @@ export default function UserSettings() {
     try {
       setIsSaving(true);
 
+      let formattedImageData: any;
       const updateLog = {
+        userId: user.id,
         profileImageURI:
           type === "profileImage" ? newProfileImage : profileImage || null,
         username: username || null,
@@ -262,9 +264,51 @@ export default function UserSettings() {
         case "profileImage":
           if (!newProfileImage) return;
           setIsLoadingImage(true);
-          setProfileImage(newProfileImage);
+          if (newProfileImage.startsWith("https://img.clerk.com")) {
+            formattedImageData = newProfileImage;
+          } else {
+            const formData = new FormData();
+
+            // Get file extension and type from URI
+            const fileName =
+              newProfileImage.split("/").pop() || "profile_image";
+            const fileExtension =
+              fileName.split(".").pop()?.toLowerCase() || "jpg";
+
+            const mimeTypes: { [key: string]: string } = {
+              jpg: "image/jpeg",
+              jpeg: "image/jpeg",
+              png: "image/png",
+              gif: "image/gif",
+              bmp: "image/bmp",
+              webp: "image/webp",
+            };
+
+            const mimeType = mimeTypes[fileExtension] || "image/jpeg"; // Default JPEG if unknown
+
+            formData.append("file", {
+              uri: newProfileImage,
+              name: fileName,
+              type: mimeType,
+            } as any);
+
+            formattedImageData = {
+              uri: newProfileImage,
+              name: fileName,
+              type: mimeType,
+            };
+          }
+
+          if (!newProfileImage.startsWith("https://img.clerk.com")) {
+            setProfileImage(newProfileImage);
+          } else {
+            setProfileImage(newProfileImage);
+          }
+
           setNewProfileImage("");
           setIsEditingProfileImage(false);
+
+          updateLog.profileImageURI = formattedImageData;
           break;
 
         default:
