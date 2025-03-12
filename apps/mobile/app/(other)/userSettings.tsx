@@ -45,6 +45,7 @@ export default function UserSettings() {
   const [username, setUsername] = useState("");
   const [profileImage, setProfileImage] = useState("");
   const [newProfileImage, setNewProfileImage] = useState("");
+  const [uploadedImage, setUploadedImage] = useState<any>(null);
   const [primaryEmail, setPrimaryEmail] = useState("");
   const [description, setDescription] = useState("");
   const [occupation, setOccupation] = useState("");
@@ -122,14 +123,14 @@ export default function UserSettings() {
           if (user.getSessions) {
             const sessions = await user.getSessions();
             const activeSession = sessions.find(
-              (session) => session.status === "active"
+              (session) => session.status === "active",
             );
 
             const processedSessions = await Promise.all(
               sessions.map(async (session) => {
                 const isCurrent = session.id === activeSession?.id;
                 return { ...session, isCurrent };
-              })
+              }),
             );
 
             setActiveSessions(processedSessions);
@@ -187,7 +188,7 @@ export default function UserSettings() {
       if (status !== "granted") {
         Alert.alert(
           "Permission Required",
-          "We need access to your photos to upload a profile image."
+          "We need access to your photos to upload a profile image.",
         );
         return;
       }
@@ -202,10 +203,11 @@ export default function UserSettings() {
       if (!result.canceled) {
         setIsEditingProfileImage(true);
         setNewProfileImage(result.assets[0].uri);
+        setUploadedImage(result.assets[0]);
       }
     } catch (error) {
-      console.error("Error picking image:", error);
-      Alert.alert("Error", "Failed to pick image");
+      console.error("Image picker error:", error);
+      Alert.alert("Error", "Failed to open image picker. Please try again.");
     }
   };
 
@@ -265,37 +267,59 @@ export default function UserSettings() {
           if (!newProfileImage) return;
           setIsLoadingImage(true);
           if (newProfileImage.startsWith("https://img.clerk.com")) {
-            formattedImageData = newProfileImage;
+            formattedImageData = uploadedImage;
           } else {
-            const formData = new FormData();
-
-            // Get file extension and type from URI
-            const fileName =
-              newProfileImage.split("/").pop() || "profile_image";
-            const fileExtension =
-              fileName.split(".").pop()?.toLowerCase() || "jpg";
-
-            const mimeTypes: { [key: string]: string } = {
-              jpg: "image/jpeg",
-              jpeg: "image/jpeg",
-              png: "image/png",
-              gif: "image/gif",
-              bmp: "image/bmp",
-              webp: "image/webp",
-            };
-
-            const mimeType = mimeTypes[fileExtension] || "image/jpeg"; // Default JPEG if unknown
+            let formData = new FormData();
 
             formData.append("file", {
-              uri: newProfileImage,
-              name: fileName,
-              type: mimeType,
-            } as any);
+              uri: uploadedImage.uri || newProfileImage,
+              name: uploadedImage.fileName,
+              type: uploadedImage.mimeType,
+            });
+
+            const uploadResp = await fetch(
+              "http://10.0.2.2:8000/api/v1/user/upload_image",
+              {
+                method: "POST",
+                body: formData,
+              },
+            );
+
+            if (!uploadResp.ok) {
+              throw new Error(
+                "Failed to upload image. Please try again later.",
+              );
+            }
+            const data = await uploadResp.json();
+
+            // Using /initialize to when first entry
+            const updateUserResp = await fetch(
+              "http://10.0.2.2:8000/api/v1/user/update",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  imageUrl: data.url,
+                  user_id: user.id,
+                  username: username,
+                  occupation: occupation,
+                  about: description,
+                }),
+              },
+            );
+
+            if (!updateUserResp.ok) {
+              throw new Error(
+                "Failed to update user profile. Please try again later.",
+              );
+            }
 
             formattedImageData = {
-              uri: newProfileImage,
-              name: fileName,
-              type: mimeType,
+              uri: uploadedImage.uri,
+              name: uploadedImage.fileName,
+              type: uploadedImage.mimeType,
             };
           }
 
@@ -319,13 +343,13 @@ export default function UserSettings() {
 
       Alert.alert(
         "Success",
-        `${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully!`
+        `${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully!`,
       );
     } catch (error: any) {
       console.error(`${type} update error:`, error);
       Alert.alert(
         "Error",
-        error.message || `Failed to update ${type}. Please try again.`
+        error.message || `Failed to update ${type}. Please try again.`,
       );
     } finally {
       setIsSaving(false);
