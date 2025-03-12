@@ -235,7 +235,7 @@ async def fetch_goal_for_create_template(user_id: str):
         try:
             goals_rec = await conn.fetch(
                 """
-                SELECT ag.id, g.title
+                SELECT ag.id, ag.start_date, ag.due_date, g.title
                 FROM public.goal g
                 JOIN public.assigned_goal ag ON g.id = ag.goal_id
                 WHERE ag.user_id = $1
@@ -244,7 +244,10 @@ async def fetch_goal_for_create_template(user_id: str):
                 user_id,
             )
 
-            goals = {row["id"]: row["title"] for row in goals_rec}
+            goals = {
+                row["id"]: {row["title"], row["start_date"], row["due_date"]}
+                for row in goals_rec
+            }
 
             return goals
 
