@@ -3,6 +3,7 @@ from enum import Enum
 from typing import List, Optional
 
 from asyncpg import UniqueViolationError
+from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -381,6 +382,7 @@ async def create_template_from_user_goals(req: CreateTemplateFromUserRequest):
         try:
             async with conn.transaction():
                 existing_goals_data = []
+                updated_assigned_ids = set()
                 if req.existing_goals:
                     update_mapping = {}
                     for eg in req.existing_goals:
@@ -392,6 +394,7 @@ async def create_template_from_user_goals(req: CreateTemplateFromUserRequest):
                                 eg.new_start_date,
                                 eg.new_due_date,
                             )
+                            updated_assigned_ids.add(eg.assigned_goal_id)
                         else:
                             rec = await conn.fetchrow(
                                 """
@@ -487,7 +490,7 @@ async def create_template_from_user_goals(req: CreateTemplateFromUserRequest):
                     existing_assigned_ids = [
                         g["assigned_goal_id"] for g in existing_goals_data
                     ]
-                    assigned_task_intervals_rec = await conn.fetch(
+                    existing_assigned_task_intervals_rec = await conn.fetch(
                         """
                         SELECT ati.interval_date, t.id AS task_id, at.assigned_goal_id
                         FROM public.assigned_task_interval ati
@@ -498,8 +501,9 @@ async def create_template_from_user_goals(req: CreateTemplateFromUserRequest):
                         existing_assigned_ids,
                     )
                     assigned_task_intervals_dict = {}
-                    for row in assigned_task_intervals_rec:
+                    for row in existing_assigned_task_intervals_rec:
                         key = (row["assigned_goal_id"], row["task_id"])
+
                         assigned_task_intervals_dict.setdefault(key, []).append(
                             row["interval_date"]
                         )
@@ -522,7 +526,7 @@ async def create_template_from_user_goals(req: CreateTemplateFromUserRequest):
                                 500, detail="Failed to create template goal"
                             )
                         tasks_rec = await conn.fetch(
-                            "SELECT id FROM public.task WHERE goal_id = $1",
+                            "SELECT id, type, interval FROM public.task WHERE goal_id = $1",
                             goal["goal_id"],
                         )
                         for task_row in tasks_rec:
@@ -540,19 +544,79 @@ async def create_template_from_user_goals(req: CreateTemplateFromUserRequest):
                                 raise HTTPException(
                                     500, detail="Failed to create template goal task"
                                 )
-                            intervals = assigned_task_intervals_dict.get(
-                                (goal["assigned_goal_id"], task_row["id"]), []
-                            )
-                            for interval_date in intervals:
-                                await conn.execute(
-                                    """
-                                    INSERT INTO public.tmpl_goal_task_interval
-                                        (tmpl_goal_task_id, interval_date)
-                                    VALUES ($1, $2)
-                                    """,
-                                    tmpl_goal_task_rec["id"],
-                                    interval_date,
+                            if goal["assigned_goal_id"] in updated_assigned_ids:
+                                task_type = task_row["type"]
+                                weekly_interval = task_row["interval"]
+
+                                if task_type == T.RepeatType.DAILY:
+                                    interval_dates = date_calculation.get_daily_range(
+                                        goal["start_date"], goal["due_date"]
+                                    )
+                                elif task_type == T.RepeatType.WEEKLY:
+                                    interval_dates = date_calculation.get_weekly_range(
+                                        goal["start_date"],
+                                        goal["due_date"],
+                                        weekly_interval,
+                                    )
+                                elif task_type == T.RepeatType.MONTHLY:
+                                    existing_intervals = (
+                                        assigned_task_intervals_dict.get(
+                                            (goal["assigned_goal_id"], task_row["id"]),
+                                            [],
+                                        )
+                                    )
+                                    days = {d.day for d in existing_intervals}
+
+                                    if not days:
+                                        raise HTTPException(
+                                            400,
+                                            detail=f"Monthly task {task_row['id']} has no existing intervals to base calculation on",
+                                        )
+
+                                    interval_dates = []
+                                    start_date = goal["start_date"]
+                                    due_date = goal["due_date"]
+
+                                    for day in days:
+                                        current_month = start_date.replace(day=1)
+                                        while current_month <= due_date:
+                                            try:
+                                                date = current_month.replace(day=day)
+                                                if start_date <= date <= due_date:
+                                                    interval_dates.append(date)
+                                            except ValueError:
+                                                pass
+                                            current_month += relativedelta(months=1)
+
+                                    interval_dates.sort()
+                                else:
+                                    raise HTTPException(
+                                        400,
+                                        detail="Invalid task type; must be daily, weekly, or monthly",
+                                    )
+
+                                for interval in interval_dates:
+                                    await conn.execute(
+                                        """INSERT INTO tmpl_goal_task_interval
+                                           (tmpl_goal_task_id, interval_date)
+                                           VALUES ($1, $2)""",
+                                        tmpl_goal_task_rec["id"],
+                                        interval,
+                                    )
+                            else:
+                                intervals = assigned_task_intervals_dict.get(
+                                    (goal["assigned_goal_id"], task_row["id"]), []
                                 )
+                                for interval_date in intervals:
+                                    await conn.execute(
+                                        """
+                                        INSERT INTO public.tmpl_goal_task_interval
+                                            (tmpl_goal_task_id, interval_date)
+                                        VALUES ($1, $2)
+                                        """,
+                                        tmpl_goal_task_rec["id"],
+                                        interval_date,
+                                    )
 
                 if new_goals_data:
                     for goal in new_goals_data:
