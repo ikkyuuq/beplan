@@ -403,7 +403,7 @@ async def get_goals_today(
                 )
                 task_list.append(
                     FetchTask(
-                        id=task["task_id"],
+                        id=task["id"],
                         title=task_detail["title"],
                         description=task_detail["description"],
                         status=T.Status(task["status"]),
