@@ -25,7 +25,7 @@ class AssignedTask(BaseModel):
     week_interval: Optional[List[int]] = None
 
 
-class AssingedGoal(BaseModel):
+class AssignedGoal(BaseModel):
     id: int
     title: str
     type: T.GoalType
@@ -48,6 +48,14 @@ class TemplateType(str, Enum):
 class TemplateStatus(str, Enum):
     UNUSED = "unused"
     ASSIGNED = "assigned"
+
+
+class CreateBy(BaseModel):
+    user_id: str 
+    username: Optional[str] = None
+    image: Optional[str] = None
+    occupation: Optional[str] = None
+    about: Optional[str] = None
 
 
 class CreateTemplateFromUserRequest(BaseModel):
@@ -112,13 +120,14 @@ class TemplateResponse(BaseModel):
     title: str
     description: Optional[str] = None
     image_url: str
-    created_by: Optional[str] = "BePlan"
+    created_by: CreateBy
     category: str
     goals: List[GoalTemplate]
     type: TemplateType
     status: TemplateStatus
     duration: int
     is_favorite: bool
+
 
 
 @router.get("/")
@@ -155,6 +164,14 @@ async def fetch_template(
                     "SELECT id FROM public.template WHERE created_by = 'BePlan'"
                 )
                 assigned_ids = {row["id"] for row in assigned}
+
+            
+            user_ids = [tmpl["created_by"] for tmpl in templates]
+            users = await conn.fetch(
+                "SELECT id, username, image, occupation, about FROM public.user WHERE id = ANY($1)",
+                user_ids,
+            )
+            users_dict = {user["id"]: user for user in users}
 
             tmpl_goals = await conn.fetch(
                 "SELECT * FROM public.tmpl_goal WHERE template_id = ANY($1)",
@@ -207,6 +224,17 @@ async def fetch_template(
                     is_favorite = True
                 else:
                     is_favorite = False
+
+                
+                user_info = users_dict.get(tmpl["created_by"], {})
+                created_by = CreateBy(
+                    user_id=user_info.get("id", "BePlan"),
+                    username=user_info.get("username"),
+                    image=user_info.get("image"),
+                    occupation=user_info.get("occupation"),
+                    about=user_info.get("about"),
+                )
+
                 goal_templates = []
                 for tmpl_goal in goals_by_template.get(tmpl["id"], []):
                     goal_rec = goals_dict.get(tmpl_goal["goal_id"])
@@ -235,8 +263,8 @@ async def fetch_template(
                         id=tmpl["id"],
                         title=tmpl["title"],
                         description=tmpl.get("description"),
-                        image_url=tmpl["image_url"],
-                        created_by=tmpl.get("created_by", "BePlan"),
+                        image_url=tmpl.get("image_url", "https://example.com/default-image.jpg"),  # ใช้ค่าเริ่มต้น
+                        created_by=created_by,
                         category=tmpl["category"],
                         type=tmpl["type"],
                         goals=goal_templates,
@@ -556,7 +584,6 @@ async def create_template_from_user_goals(req: CreateTemplateFromUserRequest):
                     assigned_task_intervals_dict = {}
                     for row in existing_assigned_task_intervals_rec:
                         key = (row["assigned_goal_id"], row["task_id"])
-
                         assigned_task_intervals_dict.setdefault(key, []).append(
                             row["interval_date"]
                         )
@@ -963,7 +990,7 @@ async def get_favorite_templates(user_id: str):
             raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
-# NOTE: Wait for next meeting to discuss the update template logic
+
 @router.put("/update")
 async def update_template(req: UpdateTemplateRequest):
     pool = await get_db_pool()
