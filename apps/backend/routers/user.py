@@ -1,7 +1,8 @@
 import os
 from typing import Any, Optional
 
-from boto3.session import NoCredentialsError, Session
+from boto3.session import Session
+from botocore.exceptions import NoCredentialsError
 from clerk_backend_api import Clerk
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel

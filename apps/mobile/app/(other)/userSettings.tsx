@@ -115,7 +115,11 @@ export default function UserSettings() {
         try {
           setUsername(user.username || getDefaultUsername());
           setProfileImage(
-            user?.unsafeMetadata.profileImageUrl || user?.imageUrl || "",
+            typeof user?.unsafeMetadata === "object" &&
+              user?.unsafeMetadata !== null &&
+              "profileImageUrl" in user?.unsafeMetadata
+              ? (user.unsafeMetadata as any).profileImageUrl
+              : user?.imageUrl || ""
           );
           setPrimaryEmail(user.primaryEmailAddress?.emailAddress || "");
           setDescription((user.unsafeMetadata?.description as string) || "");
@@ -125,14 +129,14 @@ export default function UserSettings() {
           if (user.getSessions) {
             const sessions = await user.getSessions();
             const activeSession = sessions.find(
-              (session) => session.status === "active",
+              (session) => session.status === "active"
             );
 
             const processedSessions = await Promise.all(
               sessions.map(async (session) => {
                 const isCurrent = session.id === activeSession?.id;
                 return { ...session, isCurrent };
-              }),
+              })
             );
 
             setActiveSessions(processedSessions);
@@ -190,7 +194,7 @@ export default function UserSettings() {
       if (status !== "granted") {
         Alert.alert(
           "Permission Required",
-          "We need access to your photos to upload a profile image.",
+          "We need access to your photos to upload a profile image."
         );
         return;
       }
@@ -285,12 +289,12 @@ export default function UserSettings() {
               {
                 method: "POST",
                 body: formData,
-              },
+              }
             );
 
             if (!uploadResp.ok) {
               throw new Error(
-                "Failed to upload image. Please try again later.",
+                "Failed to upload image. Please try again later."
               );
             }
             const data = await uploadResp.json();
@@ -310,12 +314,12 @@ export default function UserSettings() {
                   occupation: occupation,
                   about: description,
                 }),
-              },
+              }
             );
 
             if (!updateUserResp.ok) {
               throw new Error(
-                "Failed to update user profile. Please try again later.",
+                "Failed to update user profile. Please try again later."
               );
             }
 
@@ -353,13 +357,13 @@ export default function UserSettings() {
 
       Alert.alert(
         "Success",
-        `${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully!`,
+        `${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully!`
       );
     } catch (error: any) {
       console.error(`${type} update error:`, error);
       Alert.alert(
         "Error",
-        error.message || `Failed to update ${type}. Please try again.`,
+        error.message || `Failed to update ${type}. Please try again.`
       );
     } finally {
       setIsSaving(false);

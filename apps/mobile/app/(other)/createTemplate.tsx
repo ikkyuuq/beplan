@@ -12,17 +12,24 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import CategoryPicker from "@/components/CategoryPicker";
+import CalendarPicker from "@/components/CalendarPicker";
 import { useUser } from "@clerk/clerk-expo";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
+
+// ====================== Type Definitions ======================
+type Goal = {
+  id: string;
+  title: string;
+};
 
 // ====================== Main Component ======================
 export default function createTemplate() {
@@ -31,18 +38,28 @@ export default function createTemplate() {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("All");
   const [image, setImage] = useState("");
-  const [isFavorite, setIsFavorite] = useState(false);
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
   const [isFormValid, setIsFormValid] = useState(false);
   const [isScrollEnabled, setIsScrollEnabled] = useState(true);
   const [isLoadingGoals, setIsLoadingGoals] = useState(false);
   const router = useRouter();
   const { user, isLoaded, isSignedIn } = useUser();
+  const [isLoading, setIsLoading] = useState(false);
+  const [goalDates, setGoalDates] = useState<
+    Map<
+      string,
+      { newStartDate?: string; newDueDate?: string; showDatePicker: boolean }
+    >
+  >(new Map());
+  const [currentGoalId, setCurrentGoalId] = useState<string | null>(null);
+  const [isStartDatePickerVisible, setStartDatePickerVisible] = useState(false);
+  const [isDueDatePickerVisible, setDueDatePickerVisible] = useState(false);
+  const [currentStartDate, setCurrentStartDate] = useState<string>("");
+  const [currentDueDate, setCurrentDueDate] = useState<string>("");
+  const today = new Date().toISOString().split("T")[0];
 
   // ====================== Available Goals State ======================
-  const [availableGoals, setAvailableGoals] = useState<
-    Array<{ id: string; title: string }>
-  >([]);
+  const [availableGoals, setAvailableGoals] = useState<Goal[]>([]);
 
   // ====================== Animation Values ======================
   const createButtonScale = useSharedValue(1);
@@ -61,10 +78,25 @@ export default function createTemplate() {
 
   // ====================== Effects ======================
   useEffect(() => {
-    setIsFormValid(
-      title.trim() !== "" && image !== "" && selectedGoalIds.length > 0
-    );
-  }, [title, image, selectedGoalIds]);
+    const basicFieldsValid =
+      title.trim() !== "" && image !== "" && selectedGoalIds.length > 0;
+
+    let allDatesValid = true;
+
+    for (const goalId of selectedGoalIds) {
+      const goalDateInfo = goalDates.get(goalId);
+
+      if (
+        goalDateInfo?.showDatePicker &&
+        (!goalDateInfo.newStartDate || !goalDateInfo.newDueDate)
+      ) {
+        allDatesValid = false;
+        break;
+      }
+    }
+
+    setIsFormValid(basicFieldsValid && allDatesValid);
+  }, [title, image, selectedGoalIds, goalDates]);
 
   // ====================== Fetch Available Goals ======================
   useEffect(() => {
@@ -83,7 +115,7 @@ export default function createTemplate() {
         const baseUrl =
           Platform.OS === "android"
             ? "http://10.0.2.2:8000"
-            : "http://192.168.1.43:8000"; //iphone
+            : "http://127.0.0.1:8000";
 
         const response = await fetch(
           `${baseUrl}/api/v1/template/available_goals?user_id=${userId}`
@@ -96,10 +128,14 @@ export default function createTemplate() {
         const data = await response.json();
         console.log("Fetched goals:", data);
 
-        const goalsArray = Object.entries(data).map(([id, title]) => ({
-          id,
-          title: title as string,
-        }));
+        const goalsArray = Object.entries(data).map(([id, goalObject]) => {
+          const goal = goalObject as { title: string };
+
+          return {
+            id,
+            title: goal.title,
+          };
+        });
 
         setAvailableGoals(goalsArray);
       } catch (error) {
@@ -148,14 +184,79 @@ export default function createTemplate() {
   };
 
   const toggleGoalSelection = (goalId: string) => {
-    setSelectedGoalIds((prev) =>
-      prev.includes(goalId)
-        ? prev.filter((id) => id !== goalId)
-        : [...prev, goalId]
-    );
+    if (selectedGoalIds.includes(goalId)) {
+      // If the goal is being deselected, remove it from both arrays
+      setSelectedGoalIds((prev) => prev.filter((id) => id !== goalId));
+
+      // Also remove from goalDates if exists
+      const updatedGoalDates = new Map(goalDates);
+      updatedGoalDates.delete(goalId);
+      setGoalDates(updatedGoalDates);
+    } else {
+      Alert.alert(
+        "Goal Date Options",
+        "Would you like to set new start and due dates for this goal?",
+        [
+          {
+            text: "Yes",
+            onPress: () => {
+              setSelectedGoalIds((prev) => [...prev, goalId]);
+
+              const updatedGoalDates = new Map(goalDates);
+              updatedGoalDates.set(goalId, { showDatePicker: true });
+              setGoalDates(updatedGoalDates);
+
+              setCurrentGoalId(goalId);
+              setCurrentStartDate("");
+              setCurrentDueDate("");
+              setStartDatePickerVisible(true);
+            },
+          },
+          {
+            text: "No",
+            onPress: () => {
+              setSelectedGoalIds((prev) => [...prev, goalId]);
+
+              const updatedGoalDates = new Map(goalDates);
+              updatedGoalDates.set(goalId, { showDatePicker: false });
+              setGoalDates(updatedGoalDates);
+            },
+          },
+        ]
+      );
+    }
   };
 
-  const handleCreateTemplate = () => {
+  const handleStartDateSelect = (dates: string[]) => {
+    if (!currentGoalId || dates.length === 0) return;
+
+    const selectedDate = dates[0];
+    setCurrentStartDate(selectedDate);
+
+    setStartDatePickerVisible(false);
+    setTimeout(() => setDueDatePickerVisible(true), 300);
+  };
+
+  const handleDueDateSelect = (dates: string[]) => {
+    if (!currentGoalId || dates.length === 0) return;
+
+    const selectedDate = dates[0];
+    setCurrentDueDate(selectedDate);
+    setDueDatePickerVisible(false);
+
+    const updatedGoalDates = new Map(goalDates);
+    updatedGoalDates.set(currentGoalId, {
+      showDatePicker: true,
+      newStartDate: currentStartDate,
+      newDueDate: selectedDate,
+    });
+    setGoalDates(updatedGoalDates);
+
+    // Reset current goal
+    setCurrentGoalId(null);
+  };
+
+  const handleCreateTemplate = async () => {
     if (!isFormValid) {
       Alert.alert(
         "Missing Information",
@@ -178,21 +279,82 @@ export default function createTemplate() {
       return;
     }
 
-    const newTemplate = {
-      title,
-      description,
-      image_url: image,
-      created_by: "BePlan",
-      category,
-      type: "template",
-      goal_id: selectedGoalIds,
-    };
+    // Set loading state
+    setIsLoading(true);
 
-    console.log("📌 New Template:", JSON.stringify(newTemplate, null, 2));
+    try {
+      const existingGoals = selectedGoalIds.map((goalId) => {
+        const goalDateInfo = goalDates.get(goalId);
 
-    Alert.alert("Success", "Template created successfully!", [
-      { text: "OK", onPress: () => resetForm() },
-    ]);
+        if (
+          goalDateInfo?.showDatePicker &&
+          goalDateInfo.newStartDate &&
+          goalDateInfo.newDueDate
+        ) {
+          return {
+            assigned_goal_id: goalId,
+            new_start_date: goalDateInfo.newStartDate,
+            new_due_date: goalDateInfo.newDueDate,
+          };
+        } else {
+          return {
+            assigned_goal_id: goalId,
+          };
+        }
+      });
+
+      const newTemplate = {
+        user_id: userId,
+        title,
+        description,
+        image_url: image,
+        category,
+        existing_goals: existingGoals,
+      };
+
+      console.log("📌 New Template:", JSON.stringify(newTemplate, null, 2));
+
+      const baseUrl =
+        Platform.OS === "android"
+          ? "http://10.0.2.2:8000"
+          : "http://127.0.0.1:8000";
+
+      const response = await fetch(`${baseUrl}/api/v1/template/create/user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newTemplate),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `Server error: ${response.status}`
+        );
+      }
+
+      const responseData = await response.json();
+      console.log("📌 API Response:", JSON.stringify(responseData, null, 2));
+
+      Alert.alert("Success", "Template created successfully!", [
+        {
+          text: "OK",
+          onPress: () => {
+            resetForm();
+            router.back();
+          },
+        },
+      ]);
+    } catch (error: any) {
+      console.error("Failed to create template:", error);
+      Alert.alert(
+        "Error",
+        error.message || "Failed to create template. Please try again later."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const resetForm = () => {
@@ -200,16 +362,28 @@ export default function createTemplate() {
     setDescription("");
     setCategory("All");
     setImage("");
-    setIsFavorite(false);
     setSelectedGoalIds([]);
+    setGoalDates(new Map());
   };
 
   const isGoalSelected = (goalId: string) => {
     return selectedGoalIds.includes(goalId);
   };
 
-  // ====================== Render UI ======================
+  const getGoalDateText = (goalId: string) => {
+    const goalDateInfo = goalDates.get(goalId);
+    if (!goalDateInfo || !goalDateInfo.showDatePicker) {
+      return "Using original dates";
+    }
 
+    if (goalDateInfo.newStartDate && goalDateInfo.newDueDate) {
+      return `${goalDateInfo.newStartDate} to ${goalDateInfo.newDueDate}`;
+    }
+
+    return "Dates not set";
+  };
+
+  // ====================== Render UI ======================
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -364,35 +538,64 @@ export default function createTemplate() {
                 >
                   <View style={styles.goalsContainer}>
                     {availableGoals.map((goal) => (
-                      <Pressable
-                        key={goal.id}
-                        style={[
-                          styles.goalItem,
-                          isGoalSelected(goal.id) && styles.goalSelected,
-                        ]}
-                        onPress={() => toggleGoalSelection(goal.id)}
-                        android_ripple={{ color: "rgba(255,255,255,0.1)" }}
-                      >
-                        <Ionicons
-                          name={
-                            isGoalSelected(goal.id)
-                              ? "checkmark-circle"
-                              : "ellipse-outline"
-                          }
-                          size={22}
-                          color={
-                            isGoalSelected(goal.id) ? "#32CD32" : "#8B98D5"
-                          }
-                        />
-                        <Text
+                      <View key={goal.id} style={styles.goalItemContainer}>
+                        <Pressable
                           style={[
-                            styles.goalText,
-                            isGoalSelected(goal.id) && styles.goalTextSelected,
+                            styles.goalItem,
+                            isGoalSelected(goal.id) && styles.goalSelected,
                           ]}
+                          onPress={() => toggleGoalSelection(goal.id)}
+                          android_ripple={{ color: "rgba(255,255,255,0.1)" }}
                         >
-                          {goal.title}
-                        </Text>
-                      </Pressable>
+                          <Ionicons
+                            name={
+                              isGoalSelected(goal.id)
+                                ? "checkmark-circle"
+                                : "ellipse-outline"
+                            }
+                            size={22}
+                            color={
+                              isGoalSelected(goal.id) ? "#32CD32" : "#8B98D5"
+                            }
+                          />
+                          <Text
+                            style={[
+                              styles.goalText,
+                              isGoalSelected(goal.id) &&
+                                styles.goalTextSelected,
+                            ]}
+                          >
+                            {typeof goal.title === "string"
+                              ? goal.title
+                              : String(goal.title)}
+                          </Text>
+                        </Pressable>
+
+                        {/* Date information for selected goals */}
+                        {isGoalSelected(goal.id) && (
+                          <View style={styles.goalDateInfo}>
+                            <Text style={styles.goalDateText}>
+                              {getGoalDateText(goal.id)}
+                            </Text>
+                            {/* Edit dates button if needed */}
+                            {goalDates.get(goal.id)?.showDatePicker && (
+                              <Pressable
+                                style={styles.editDatesButton}
+                                onPress={() => {
+                                  setCurrentGoalId(goal.id);
+                                  setCurrentStartDate("");
+                                  setCurrentDueDate("");
+                                  setStartDatePickerVisible(true);
+                                }}
+                              >
+                                <Text style={styles.editDatesButtonText}>
+                                  Edit Dates
+                                </Text>
+                              </Pressable>
+                            )}
+                          </View>
+                        )}
+                      </View>
                     ))}
                   </View>
                 </ScrollView>
@@ -423,22 +626,6 @@ export default function createTemplate() {
             </Text>
           </View>
 
-          {/* Favorite Option */}
-          <Pressable
-            style={styles.favoriteButton}
-            onPress={() => setIsFavorite(!isFavorite)}
-            android_ripple={{ color: "rgba(255,255,255,0.05)" }}
-          >
-            <Ionicons
-              name={isFavorite ? "heart" : "heart-outline"}
-              size={24}
-              color={isFavorite ? "red" : "#8B98D5"}
-            />
-            <Text style={styles.favoriteText}>
-              {isFavorite ? "Marked as Favorite" : "Mark as Favorite"}
-            </Text>
-          </Pressable>
-
           {/* Create Button */}
           <Pressable
             style={[
@@ -448,18 +635,58 @@ export default function createTemplate() {
             onPress={handleCreateTemplate}
             onPressIn={isFormValid ? handlePressIn : undefined}
             onPressOut={isFormValid ? handlePressOut : undefined}
-            disabled={!isFormValid}
+            disabled={!isFormValid || isLoading}
             android_ripple={
               isFormValid ? { color: "rgba(255,255,255,0.2)" } : undefined
             }
           >
             <Animated.View style={[styles.buttonContent, animatedButtonStyle]}>
-              <Ionicons name="add-circle-outline" size={24} color="#fff" />
-              <Text style={styles.createButtonText}>Create Template</Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="add-circle-outline" size={24} color="#fff" />
+                  <Text style={styles.createButtonText}>Create Template</Text>
+                </>
+              )}
             </Animated.View>
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Calendar Pickers for goal dates */}
+      <CalendarPicker
+        visible={isStartDatePickerVisible}
+        onClose={() => setStartDatePickerVisible(false)}
+        onConfirm={handleStartDateSelect}
+        title="Select Start Date"
+        initialDates={currentStartDate ? [currentStartDate] : []}
+        highlightColor="#4F46E5"
+        singleSelect
+        minDate={today}
+        maxDate={currentDueDate || undefined}
+      />
+
+      <CalendarPicker
+        visible={isDueDatePickerVisible}
+        onClose={() => setDueDatePickerVisible(false)}
+        onConfirm={handleDueDateSelect}
+        title="Select Due Date"
+        initialDates={currentDueDate ? [currentDueDate] : []}
+        highlightColor="#FF5733"
+        singleSelect
+        minDate={currentStartDate || today}
+        otherSelectedDate={currentStartDate}
+        otherHighlightColor="#4F46E5"
+      />
+
+      {/* Loading Overlay if needed */}
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#4F46E5" />
+          <Text style={styles.loadingOverlayText}>Creating template...</Text>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -656,15 +883,17 @@ const styles = StyleSheet.create({
     minHeight: 120,
   },
   goalsScrollContainer: {
-    maxHeight: 180,
+    maxHeight: 240,
   },
   goalsContentContainer: {
     padding: 10,
   },
   goalsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: "column",
     gap: 10,
+  },
+  goalItemContainer: {
+    marginBottom: 8,
   },
   goalItem: {
     flexDirection: "row",
@@ -672,7 +901,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#2A2C3A",
     paddingVertical: 10,
     paddingHorizontal: 15,
-    borderRadius: 25,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: "#3A3F55",
   },
@@ -684,10 +913,35 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     color: "#fff",
+    flex: 1,
   },
   goalTextSelected: {
     color: "#32CD32",
     fontWeight: "500",
+  },
+  // Goal date info styles
+  goalDateInfo: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    marginTop: 4,
+  },
+  goalDateText: {
+    fontSize: 12,
+    color: "#8B98D5",
+    fontStyle: "italic",
+  },
+  editDatesButton: {
+    backgroundColor: "rgba(79, 70, 229, 0.3)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  editDatesButtonText: {
+    fontSize: 11,
+    color: "#a5a9ff",
   },
   scrollIndicator: {
     flexDirection: "row",
@@ -719,6 +973,22 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 14,
   },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(22, 23, 31, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  loadingOverlayText: {
+    color: "#fff",
+    marginTop: 16,
+    fontSize: 16,
+  },
 
   // No Goals
   noGoalsContainer: {
@@ -737,22 +1007,6 @@ const styles = StyleSheet.create({
     marginTop: 5,
     fontSize: 14,
     textAlign: "center",
-  },
-
-  // Favorite Button
-  favoriteButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#2A2C3A",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 25,
-  },
-  favoriteText: {
-    marginLeft: 10,
-    fontSize: 16,
-    color: "#fff",
   },
 
   // Create Button

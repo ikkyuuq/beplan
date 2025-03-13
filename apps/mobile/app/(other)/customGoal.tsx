@@ -2,13 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Alert, KeyboardAvoidingView, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useUser } from "@clerk/clerk-expo";
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withDelay,
-  Easing,
-} from "react-native-reanimated";
 import TaskModal from "@/components/TaskModal";
 import CalendarPicker from "@/components/CalendarPicker";
 import CustomGoalUI from "@/components/CustomGoalUI";
@@ -73,92 +66,11 @@ export default function CustomGoal() {
   // ====================== State Management ======================
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
-  // ====================== Get URL Parameters ======================
   const params = useLocalSearchParams();
   const initialGoalData = params.initialGoalData
     ? JSON.parse(params.initialGoalData as string)
     : null;
 
-  // ====================== Animation Values ======================
-  const headerOpacity = useSharedValue(0);
-  const titleOpacity = useSharedValue(0);
-  const formOpacity = useSharedValue(0);
-  const taskListOpacity = useSharedValue(0);
-  const buttonOpacity = useSharedValue(0);
-  const buttonTranslateY = useSharedValue(20);
-
-  // ====================== Animation Setup ======================
-  useEffect(() => {
-    // Header animation
-    headerOpacity.value = withTiming(1, {
-      duration: 600,
-      easing: Easing.out(Easing.cubic),
-    });
-
-    // Title animation
-    titleOpacity.value = withDelay(300, withTiming(1, { duration: 500 }));
-
-    // Form animation
-    formOpacity.value = withDelay(500, withTiming(1, { duration: 500 }));
-
-    // Task list animation
-    taskListOpacity.value = withDelay(700, withTiming(1, { duration: 500 }));
-
-    // Button animation
-    buttonOpacity.value = withDelay(900, withTiming(1, { duration: 400 }));
-    buttonTranslateY.value = withDelay(
-      900,
-      withTiming(0, {
-        duration: 400,
-        easing: Easing.out(Easing.cubic),
-      })
-    );
-  }, []);
-
-  // ====================== Animated Styles ======================
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value,
-  }));
-
-  const titleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: titleOpacity.value,
-    transform: [
-      {
-        translateY: withTiming(titleOpacity.value * 1 === 1 ? 0 : 20, {
-          duration: 500,
-        }),
-      },
-    ],
-  }));
-
-  const formAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: formOpacity.value,
-    transform: [
-      {
-        translateY: withTiming(formOpacity.value * 1 === 1 ? 0 : 20, {
-          duration: 500,
-        }),
-      },
-    ],
-  }));
-
-  const taskListAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: taskListOpacity.value,
-    transform: [
-      {
-        translateY: withTiming(taskListOpacity.value * 1 === 1 ? 0 : 20, {
-          duration: 500,
-        }),
-      },
-    ],
-  }));
-
-  const buttonAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: buttonOpacity.value,
-    transform: [{ translateY: buttonTranslateY.value }],
-  }));
-
-  // ====================== State Management ======================
   const [goalTitle, setGoalTitle] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>("");
@@ -382,7 +294,7 @@ export default function CustomGoal() {
   useEffect(() => {
     if (startDate) {
       const today = new Date().toISOString().split("T")[0];
-      const hasStarted = today >= startDate;
+      const hasStarted = today > startDate;
       setGoalStarted(hasStarted);
     }
   }, [startDate]);
@@ -392,12 +304,10 @@ export default function CustomGoal() {
     if (!initialDataLoaded && initialGoalData) {
       console.log("📌 Loading initial goal data");
 
-      // Set basic goal info
       setGoalTitle(initialGoalData.title || "");
       setStartDate(initialGoalData.startDate || "");
       setDueDate(initialGoalData.dueDate || "");
 
-      // Process tasks if they exist
       if (initialGoalData.tasks && Array.isArray(initialGoalData.tasks)) {
         const formattedTasks = initialGoalData.tasks.map((task: any) => ({
           title: task.title || "",
@@ -417,32 +327,13 @@ export default function CustomGoal() {
     }
   }, [initialGoalData, initialDataLoaded]);
 
-  const testLogData = () => {
-    const goalData = {
-      title: goalTitle,
-      startDate: startDate || "Not Set",
-      dueDate: dueDate || "Not Set",
-    };
-    const taskData = taskList.map((task) => ({ ...task }));
-    console.log("📌 Current Goal Data:", JSON.stringify(goalData, null, 2));
-    console.log("📌 Task List:", JSON.stringify(taskData, null, 2));
-  };
-
   // ====================== Render UI ======================
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1, backgroundColor: "#16171F" }}
     >
-      {/* Main UI Component */}
       <CustomGoalUI
-        // Animation Styles
-        headerAnimatedStyle={headerAnimatedStyle}
-        titleAnimatedStyle={titleAnimatedStyle}
-        formAnimatedStyle={formAnimatedStyle}
-        taskListAnimatedStyle={taskListAnimatedStyle}
-        buttonAnimatedStyle={buttonAnimatedStyle}
-        // Data
         goalTitle={goalTitle}
         startDate={startDate}
         dueDate={dueDate}
@@ -451,7 +342,6 @@ export default function CustomGoal() {
         isLoading={isLoading}
         goalStarted={goalStarted}
         isEditingGoal={isEditingGoal}
-        // Event Handlers
         setGoalTitle={setGoalTitle}
         handleBack={handleBack}
         setStartDatePickerVisible={setStartDatePickerVisible}
@@ -460,11 +350,8 @@ export default function CustomGoal() {
         handleDeleteTask={handleDeleteTask}
         setTaskModalVisible={setTaskModalVisible}
         handleSubmit={handleSubmit}
-        // Debug
-        testLogData={testLogData}
       />
 
-      {/* Modals */}
       <TaskModal
         visible={isTaskModalVisible}
         onClose={() => {
@@ -475,7 +362,6 @@ export default function CustomGoal() {
         initialTask={editingIndex !== null ? taskList[editingIndex] : undefined}
         startDate={startDate}
         dueDate={dueDate}
-        // restrict editing if goal has started
         restrictEditing={goalStarted && editingIndex !== null}
       />
 
