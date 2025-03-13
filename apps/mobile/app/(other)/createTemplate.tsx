@@ -154,7 +154,9 @@ export default function createTemplate() {
     fetchAvailableGoals();
   }, [isLoaded, isSignedIn, user]);
 
-  // ====================== Handlers ======================
+  // Function to fix the image upload functionality in createTemplate.tsx
+  // This needs to be integrated into the pickImage function
+
   const pickImage = async () => {
     try {
       const { status } =
@@ -179,10 +181,24 @@ export default function createTemplate() {
         const uploadedImage = result.assets[0];
 
         const formData = new FormData();
+
+        const fileType = uploadedImage.uri.substring(
+          uploadedImage.uri.lastIndexOf(".") + 1
+        );
+        const mimeType =
+          fileType === "jpg" || fileType === "jpeg"
+            ? "image/jpeg"
+            : fileType === "png"
+            ? "image/png"
+            : "image/jpg";
+
         formData.append("file", {
-          uri: uploadedImage.uri,
-          name: uploadedImage.fileName,
-          type: uploadedImage.mimeType,
+          uri:
+            Platform.OS === "ios"
+              ? uploadedImage.uri.replace("file://", "")
+              : uploadedImage.uri,
+          name: uploadedImage.fileName || `photo.${fileType}`,
+          type: uploadedImage.mimeType || mimeType,
         } as any);
 
         try {
@@ -190,19 +206,39 @@ export default function createTemplate() {
             Platform.OS === "android"
               ? "http://10.0.2.2:8000"
               : "http://127.0.0.1:8000";
-          const uploadResponse = await fetch(
-            `${baseUrl}/api/v1/user/upload_image`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "multipart/form-data",
-              },
-              body: formData,
-            }
+
+          // Set a reasonable timeout
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Upload request timed out")),
+              30000
+            )
           );
 
+          // Create the fetch promise
+          const fetchPromise = fetch(`${baseUrl}/api/v1/user/upload_image`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+            body: formData,
+          });
+
+          // Race the fetch against the timeout
+          const uploadResponse = (await Promise.race([
+            fetchPromise,
+            timeoutPromise,
+          ])) as Response;
+
           if (!uploadResponse.ok) {
-            throw new Error("Failed to upload image");
+            // Try to get more information about the error
+            const errorText = await uploadResponse.text();
+            console.error(
+              `Upload failed with status ${uploadResponse.status}: ${errorText}`
+            );
+            throw new Error(
+              `Failed to upload image (status ${uploadResponse.status})`
+            );
           }
 
           const uploadData = await uploadResponse.json();
@@ -211,13 +247,30 @@ export default function createTemplate() {
           setImage(uploadData.url);
         } catch (error) {
           console.error("Image upload failed:", error);
-          Alert.alert("Error", "Failed to upload image. Please try again.");
+
+          if (
+            error instanceof TypeError &&
+            error.message === "Network request failed"
+          ) {
+            Alert.alert(
+              "Network Error",
+              "Failed to connect to the server. Please check your internet connection and try again.",
+              [{ text: "OK" }]
+            );
+          } else {
+            Alert.alert(
+              "Upload Failed",
+              "Failed to upload image. Please try again with a smaller image or check your connection."
+            );
+          }
         } finally {
           setIsLoading(false);
         }
       }
     } catch (error) {
+      console.error("Error in image picker:", error);
       Alert.alert("Error", "Failed to pick image");
+      setIsLoading(false);
     }
   };
 

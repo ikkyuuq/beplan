@@ -17,15 +17,38 @@ import Animated, {
 import { LinearGradient } from "expo-linear-gradient";
 
 // ====================== Type Definitions ======================
+type Task = {
+  title: string;
+  description?: string;
+  repeat_type: string;
+  week_interval?: number[];
+};
+
+type Goal = {
+  id: string;
+  title: string;
+  tasks: Task[];
+};
+
 type Template = {
+  id: number;
   title: string;
   category: string;
   description: string;
-  image_url: string; 
-  created_by: string; 
+  image_url: string;
+  created_by: {
+    user_id: string;
+    username: string | null;
+    image: string | null;
+    occupation: string | null;
+    about: string | null;
+  };
+  type: string;
+  goals: Goal[];
+  status: string;
+  duration: number;
   isFavorite: boolean;
-  duration?: number;
-  goals: { id: string }[]; 
+  isListed?: boolean;
 };
 
 type TemplateCardProps = {

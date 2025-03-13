@@ -8,8 +8,10 @@ import {
   FlatList,
   ScrollView,
   Alert,
+  RefreshControl,
+  ActivityIndicator,
 } from "react-native";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import TemplateCard from "@/components/TemplateCard";
 import TemplateModal from "@/components/TemplateModal";
 import Header from "@/components/Header";
@@ -23,16 +25,9 @@ type Task = {
 };
 
 type Goal = {
+  id: string;
   title: string;
   tasks: Task[];
-};
-
-type CreateBy = {
-  user_id: string;
-  username?: string;
-  occupation?: string;
-  image_url?: string;
-  about?: string;
 };
 
 type Template = {
@@ -41,12 +36,19 @@ type Template = {
   category: string;
   description: string;
   image_url: string;
-  created_by: string;
+  created_by: {
+    user_id: string;
+    username: string | null;
+    image: string | null;
+    occupation: string | null;
+    about: string | null;
+  };
   type: string;
   goals: Goal[];
   status: string;
   duration: number;
   isFavorite: boolean;
+  isListed?: boolean;
 };
 
 // ====================== Main Component ======================
@@ -54,14 +56,17 @@ export default function Community() {
   // ====================== State Management ======================
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
-    null,
+    null
   );
   const [selectedFilter, setSelectedFilter] = useState<string>("ALL");
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [availableGoals, setAvailableGoals] = useState<Record<string, string>>(
-    {},
+    {}
   );
+  const [refreshing, setRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useUser();
 
   // ====================== Category Configuration ======================
@@ -78,13 +83,9 @@ export default function Community() {
   ];
 
   // ====================== Fetch Data from API ======================
-  useEffect(() => {
-    fetchTemplates();
-    fetchAvailableGoals();
-  }, []);
-
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
+      setError(null);
       // ดึงข้อมูล templates จาก API
       const response = await fetch("http://10.0.2.2:8000/api/v1/template/");
       if (!response.ok) {
@@ -97,32 +98,61 @@ export default function Community() {
         data.map(async (template: any) => {
           const isFavorite = await fetchFavoriteStatus(template.id);
           return { ...template, isFavorite };
-        }),
+        })
       );
 
       setTemplates(templatesWithFavoriteStatus);
     } catch (error) {
       console.error("Failed to fetch templates:", error);
-      Alert.alert("Error", "Failed to fetch templates. Please try again.");
+      setError("Failed to fetch templates. Pull down to try again.");
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
-  const fetchAvailableGoals = async () => {
+  const fetchAvailableGoals = useCallback(async () => {
     try {
       const response = await fetch(
-        "http://10.0.2.2:8000/api/v1/template/available_goals",
+        "http://10.0.2.2:8000/api/v1/template/available_goals"
       );
+
+      // Check if the response is not ok
+      if (!response.ok) {
+        // Get the response text if possible to see the actual error
+        const responseText = await response
+          .text()
+          .catch(() => "No response text");
+        console.error(
+          `HTTP error when fetching goals: status=${response.status}, body=${responseText}`
+        );
+
+        // If it's a 422 error, log it but don't throw since this is recoverable
+        if (response.status === 422) {
+          console.warn(
+            "422 error when fetching available goals - continuing with empty goals list"
+          );
+          // Set to empty object instead of throwing
+          setAvailableGoals({});
+          return;
+        }
+
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       setAvailableGoals(data);
     } catch (error) {
       console.error("Failed to fetch available goals:", error);
+      // Don't let this error fail the whole component - just use empty goals
+      setAvailableGoals({});
     }
-  };
+  }, []);
 
   const fetchFavoriteStatus = async (templateId: number) => {
     try {
       const response = await fetch(
-        `http://10.0.2.2:8000/api/v1/template/favorite/1`,
+        `http://10.0.2.2:8000/api/v1/template/favorite/1`
       );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -134,6 +164,30 @@ export default function Community() {
       return false; // หากเกิดข้อผิดพลาด ให้คืนค่าเริ่มต้นเป็น false
     }
   };
+
+  // ====================== Pull-to-Refresh Handler ======================
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchTemplates();
+    fetchAvailableGoals();
+  }, [fetchTemplates, fetchAvailableGoals]);
+
+  // ====================== Initial Data Loading ======================
+  useEffect(() => {
+    setIsLoading(true);
+
+    // Load templates - this is critical for the page
+    fetchTemplates().catch((error) => {
+      console.error("Error in initial template loading:", error);
+      setIsLoading(false);
+    });
+
+    // Try to load available goals, but consider it optional
+    fetchAvailableGoals().catch((error) => {
+      console.error("Error in initial goals loading (non-critical):", error);
+      // We can still continue since this isn't critical
+    });
+  }, [fetchTemplates, fetchAvailableGoals]);
 
   // ====================== Event Handlers ======================
   const handleTemplateSelect = (template: Template) => {
@@ -160,7 +214,7 @@ export default function Community() {
             user_id: user.id,
             template_id: id, // ใช้ id ของ template ที่ส่งเข้ามา
           }),
-        },
+        }
       );
 
       // ตรวจสอบว่า response ใช้งานได้หรือไม่
@@ -175,8 +229,8 @@ export default function Community() {
         prev.map((template) =>
           template.id === id
             ? { ...template, isFavorite: !template.isFavorite } // สลับค่า isFavorite
-            : template,
-        ),
+            : template
+        )
       );
 
       console.log("Favorite toggled successfully:", data);
@@ -192,21 +246,26 @@ export default function Community() {
 
   // ====================== Filtering Logic ======================
   const filteredTemplates = templates.filter((template) => {
+    // Check FAVORITES filter
     if (selectedFilter === "FAVORITES" && !template.isFavorite) return false;
+
+    // Check category filter (ALL passes everything)
     if (
       selectedFilter !== "ALL" &&
       selectedFilter !== "FAVORITES" &&
-      template.category !== selectedFilter.toLowerCase()
+      template.category.toLowerCase() !== selectedFilter.toLowerCase()
     ) {
       return false;
     }
 
-    if (
-      searchQuery &&
-      !template.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !template.description.toLowerCase().includes(searchQuery.toLowerCase())
-    ) {
-      return false;
+    // Check search query against title and description
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesTitle = template.title.toLowerCase().includes(query);
+      const matchesDescription = template.description
+        .toLowerCase()
+        .includes(query);
+      if (!matchesTitle && !matchesDescription) return false;
     }
 
     return true;
@@ -280,30 +339,58 @@ export default function Community() {
 
       {/* Template List */}
       <View style={styles.templateContainer}>
-        <FlatList
-          data={filteredTemplates}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <TemplateCard
-              template={item}
-              onSelect={() => handleTemplateSelect(item)}
-              onToggleFavorite={() => toggleFavorite(item.id)}
-            />
-          )}
-          showsVerticalScrollIndicator={false}
-          numColumns={2}
-          columnWrapperStyle={styles.templateRow}
-          contentContainerStyle={styles.templateList}
-          ListEmptyComponent={
-            <View style={styles.emptyListContainer}>
-              <Ionicons name="search-outline" size={50} color="#ccc" />
-              <Text style={styles.emptyListText}>No templates found</Text>
-              <Text style={styles.emptyListSubtext}>
-                Try adjusting your search or filters
-              </Text>
-            </View>
-          }
-        />
+        {isLoading && !refreshing ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4E5A94" />
+            <Text style={styles.loadingText}>Loading templates...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredTemplates}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <TemplateCard
+                template={item}
+                onSelect={() => handleTemplateSelect(item)}
+                onToggleFavorite={() => toggleFavorite(item.id)}
+              />
+            )}
+            showsVerticalScrollIndicator={false}
+            numColumns={2}
+            columnWrapperStyle={styles.templateRow}
+            contentContainerStyle={styles.templateList}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#4E5A94"]}
+                tintColor="#4E5A94"
+              />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyListContainer}>
+                {error ? (
+                  <>
+                    <Ionicons
+                      name="alert-circle-outline"
+                      size={50}
+                      color="#FF5733"
+                    />
+                    <Text style={styles.errorText}>{error}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="search-outline" size={50} color="#ccc" />
+                    <Text style={styles.emptyListText}>No templates found</Text>
+                    <Text style={styles.emptyListSubtext}>
+                      Try adjusting your search or filters
+                    </Text>
+                  </>
+                )}
+              </View>
+            }
+          />
+        )}
       </View>
 
       {/* Template Preview Modal */}
@@ -327,8 +414,8 @@ export default function Community() {
                   title: selectedTemplate.title,
                   category: selectedTemplate.category,
                   description: selectedTemplate.description,
-                  image: selectedTemplate.image_url, // Map image_url to image
-                  owner: selectedTemplate.created_by.user_id, // Map created_by to owner
+                  image: selectedTemplate.image_url,
+                  owner: selectedTemplate.created_by.user_id, // Direct access to user_id
                   duration: selectedTemplate.duration,
                   goals: selectedTemplate.goals.map((goal) => ({
                     id: goal.id,
@@ -399,6 +486,7 @@ const styles = StyleSheet.create({
   templateList: {
     padding: 16,
     paddingBottom: 80,
+    minHeight: "100%",
   },
   templateRow: {
     justifyContent: "space-between",
@@ -440,6 +528,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
+  // Loading State
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F8F8F8",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#4E5A94",
+  },
+
   // Empty State
   emptyListContainer: {
     alignItems: "center",
@@ -458,5 +559,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "center",
   },
+  errorText: {
+    marginTop: 10,
+    color: "#FF5733",
+    fontSize: 16,
+    textAlign: "center",
+  },
 });
-
