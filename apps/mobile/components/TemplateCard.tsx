@@ -16,18 +16,18 @@ import Animated, {
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
+// ====================== Type Definitions ======================
 type Template = {
   title: string;
   category: string;
   description: string;
-  image: string;
-  owner: string;
+  image_url: string; 
+  created_by: string; 
   isFavorite: boolean;
   duration?: number;
-  goals_id: string[];
+  goals: { id: string }[]; 
 };
 
-// ====================== Type Definitions ======================
 type TemplateCardProps = {
   template: Template;
   onSelect: () => void;
@@ -35,25 +35,24 @@ type TemplateCardProps = {
 };
 
 // ====================== Helper Functions ======================
-// Format duration helper
 const formatDuration = (days: number): string => {
-  if (days >= 365) {
-    return "1 Year";
-  } else if (days >= 30) {
+  if (days >= 365) return "1 Year";
+  if (days >= 30) {
     const months = Math.floor(days / 30);
-    return `${months} ${months === 1 ? "Month" : "Months"}`;
-  } else {
-    return `${days} ${days === 1 ? "Day" : "Days"}`;
+    if (months === 1) {
+      return "1 Month";
+    } else {
+      return `${months} Months`;
+    }
   }
+  return `${days} Days`;
 };
 
-// ====================== Main Component ======================
 export default function TemplateCard({
   template,
   onSelect,
   onToggleFavorite,
 }: TemplateCardProps) {
-  // ====================== Animation Values ======================
   const scale = useSharedValue(1);
   const favoriteScale = useSharedValue(1);
 
@@ -65,27 +64,21 @@ export default function TemplateCard({
     transform: [{ scale: favoriteScale.value }],
   }));
 
-  // ====================== Animation Handlers ======================
   const handlePressIn = () => {
-    scale.value = withSpring(0.97, { damping: 10, stiffness: 100 });
+    scale.value = withSpring(0.97);
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 10, stiffness: 100 });
+    scale.value = withSpring(1);
   };
 
   const handleToggleFavorite = () => {
-    favoriteScale.value = withSpring(0.8, { damping: 10 }, () => {
-      favoriteScale.value = withSpring(1, { damping: 10 });
+    favoriteScale.value = withSpring(0.8, {}, () => {
+      favoriteScale.value = withSpring(1);
     });
-
-    if (onToggleFavorite) {
-      onToggleFavorite();
-    }
+    onToggleFavorite();
   };
 
-  // ====================== Helper Functions ======================
-  // Get appropriate icon for category
   const getCategoryIcon = (): keyof typeof Ionicons.glyphMap => {
     switch (template.category.toLowerCase()) {
       case "fitness":
@@ -105,7 +98,6 @@ export default function TemplateCard({
     }
   };
 
-  // ====================== Render UI ======================
   return (
     <Animated.View
       style={[styles.cardContainer, animatedStyle]}
@@ -117,17 +109,16 @@ export default function TemplateCard({
         onPressOut={handlePressOut}
       >
         <View style={styles.card}>
-          {/* Full Image Container */}
+          {/* Image */}
           <View style={styles.imageContainer}>
-            <Image source={{ uri: template.image }} style={styles.image} />
+            <Image source={{ uri: template.image_url }} style={styles.image} />
             <LinearGradient
               colors={["transparent", "rgba(0,0,0,0.7)"]}
               style={styles.gradient}
             />
 
-            {/* Badges Container */}
+            {/* Badges */}
             <View style={styles.badgesContainer}>
-              {/* Category Badge */}
               <View style={styles.categoryBadge}>
                 <Ionicons
                   name={getCategoryIcon()}
@@ -142,26 +133,21 @@ export default function TemplateCard({
               </View>
 
               {/* Goals Badge */}
-              {template.goals_id && template.goals_id.length > 0 && (
+              {template.goals.length > 0 && (
                 <View style={styles.goalsBadge}>
                   <Ionicons name="flag-outline" size={12} color="#fff" />
                   <Text style={styles.goalsText}>
-                    {template.goals_id.length}{" "}
-                    {template.goals_id.length === 1 ? "Goal" : "Goals"}
+                    {template.goals.length}{" "}
+                    {template.goals.length === 1 ? "Goal" : "Goals"}
                   </Text>
                 </View>
               )}
             </View>
 
-            {/* Duration Badge */}
+            {/* Duration */}
             {template.duration && (
               <View style={styles.durationBadge}>
-                <Ionicons
-                  name="time-outline"
-                  size={12}
-                  color="#fff"
-                  style={styles.durationIcon}
-                />
+                <Ionicons name="time-outline" size={12} color="#fff" />
                 <Text style={styles.durationText}>
                   {formatDuration(template.duration)}
                 </Text>
@@ -184,12 +170,12 @@ export default function TemplateCard({
                 <Ionicons
                   name={template.isFavorite ? "heart" : "heart-outline"}
                   size={18}
-                  color={template.isFavorite ? "#fff" : "#fff"}
+                  color="#fff"
                 />
               </Animated.View>
             </TouchableOpacity>
 
-            {/* Content Section */}
+            {/* Title */}
             <View style={styles.contentContainer}>
               <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">
                 {template.title}

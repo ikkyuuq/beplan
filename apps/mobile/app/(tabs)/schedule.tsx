@@ -29,6 +29,7 @@ import CollapseItem from "@/components/CollapseItem";
 import Collapsable from "@/components/Collapsable";
 import Header from "@/components/Header";
 import { useUser } from "@clerk/clerk-expo";
+import { useRouter } from "expo-router";
 
 type Task = {
   id: number;
@@ -56,6 +57,7 @@ export default function schedule() {
   const [data, setData] = useState<Goal[]>([]);
 
   const { user } = useUser();
+  const router = useRouter();
 
   const dayNames = ["S", "M", "T", "W", "T", "F", "S"];
   const today = new Date();
@@ -323,6 +325,46 @@ export default function schedule() {
     }
   };
 
+  const handleCustomizeGoal = async (goal: Goal) => {
+    setIsLoading(true);
+    try {
+      const baseUrl =
+        Platform.OS === "android"
+          ? "http://10.0.2.2:8000"
+          : "http://127.0.0.1:8000";
+
+      const resp = await fetch(`${baseUrl}/api/v1/goal/${goal.id}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log(goal.id);
+
+      if (!resp.ok) throw new Error(`Error: ${resp.status}`);
+      const responseData = await resp.json();
+      const goalData = responseData.goal;
+
+      console.log(
+        "Customize Goal Response:",
+        JSON.stringify(goalData, null, 2)
+      );
+
+      setTimeout(() => {
+        router.push({
+          pathname: "/(other)/customGoal",
+          params: { initialGoalData: JSON.stringify(goalData) },
+        });
+        setIsLoading(false);
+      }, 500);
+    } catch (error) {
+      console.error("Failed to fetch goal for customization:", error);
+      setError("Failed to load goal data. Please try again.");
+      setIsLoading(false);
+    }
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <Header>
@@ -508,6 +550,7 @@ export default function schedule() {
                     goal.tasks.map((t) => t.id)
                   )
                 }
+                onCustomize={() => handleCustomizeGoal(goal)}
                 onCollapseFinish={() => {
                   setTimeout(() => {
                     setData((prev) => prev.filter((g) => g.id !== goal.id));
