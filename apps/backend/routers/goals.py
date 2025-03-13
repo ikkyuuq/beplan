@@ -2,12 +2,11 @@ import logging
 from datetime import date
 from typing import List, Optional
 
+from const import types as T
+from database import get_db_pool
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-
-from const import types as T
-from database import get_db_pool
 from utils import date_calculation, goal_creation
 
 logging.basicConfig(level=logging.INFO)
@@ -384,7 +383,7 @@ async def get_goals_today(
         for ag in assigned_goals:
             tasks = await conn.fetch(
                 """
-                SELECT at.*, ati.*
+                SELECT at.*, ati.interval_date
                 FROM public.assigned_task at
                 JOIN public.assigned_task_interval ati ON at.id = ati.assigned_task_id
                 WHERE at.assigned_goal_id = $1 
@@ -404,7 +403,7 @@ async def get_goals_today(
                 )
                 task_list.append(
                     FetchTask(
-                        id=task["task_id"],
+                        id=task["id"],
                         title=task_detail["title"],
                         description=task_detail["description"],
                         status=T.Status(task["status"]),
@@ -441,8 +440,7 @@ async def update_task_status(request: TaskUpdateRequest):
             WHERE at.id = ANY($1)
             AND ag.user_id = $2
             AND at.status = 'pending'
-
-        """,
+            """,
             request.assigned_task_id,
             request.user_id,
         )
