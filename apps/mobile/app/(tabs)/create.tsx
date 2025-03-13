@@ -664,6 +664,7 @@ export default function CreateScreen() {
                 <Ionicons name="close" size={22} color="#666" />
               </TouchableOpacity>
             </View>
+            
             {/* Templates Grid using TemplateCard */}
             <View style={styles.fullScreenModalContent}>
               <ScrollView style={styles.templatesScrollView}>
