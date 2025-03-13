@@ -157,10 +157,13 @@ async def generate_questions(request: PredictionResult):
 
             OUTPUT FORMAT:
             {{
-                "[criteria_name]": {{
+              "result": [
+                {{
+                  "label": "specific|measurable|achievable|relevant|time_bound",
                   "question": "Your follow-up question here",
                   "type": "date|yes-no|open-ended"
                 }}
+              ]
             }}
 
             RULES:
@@ -184,14 +187,18 @@ async def generate_questions(request: PredictionResult):
 
             Example Output:
             {{
-                "achievable": {{
+              "result": [
+                {{
+                  "label": "achievable",
                   "question": "Is losing 10 pounds in one week a safe and realistic goal for you?",
                   "type": "yes-no"
                 }},
-                "time_bound": {{
+                {{
+                  "label": "time_bound",
                   "question": "What is your exact target date for losing the 10 pounds?",
                   "type": "date"
                 }}
+              ]
             }}
 
             Note: Return only valid JSON without comments or explanations.
@@ -374,7 +381,11 @@ async def create_goal(req: T.GoalCreateRequest):
         async with pool.acquire() as conn:
             async with conn.transaction():
                 await goal_creation.Create(conn, req, req.user_id)
-        return {"status": "success", "message": "Goal with tasks created successfully"}
+
+                return {
+                    "status": "success",
+                    "message": "Goal with tasks created successfully",
+                }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
