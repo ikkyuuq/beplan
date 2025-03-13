@@ -1,4 +1,3 @@
-// CollapseItem.tsx
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { View, Text, LayoutChangeEvent } from "react-native";
 import Animated, {
@@ -117,8 +116,8 @@ export default function CollapseItem({
     opacity: opacity.value,
     backgroundColor: interpolateColor(
       translateX.value,
-      [-65, -20, 0, 20, 65],
-      ["#F05353", "#1E1F29", "#1E1F29", "#53F07D", "#53F07D"],
+      [-40, -10, 0, 10, 40], // Adjusted threshold from [-65, -20, 0, 20, 65]
+      ["#F05353", "#1E1F29", "#1E1F29", "#53F07D", "#53F07D"]
     ),
     height: withSpring(containerHeight.value + innerCollapseHeight.value, {
       damping: 20,

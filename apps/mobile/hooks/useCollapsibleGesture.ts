@@ -31,16 +31,13 @@ export interface UseCollapsibleGestureProps {
   collapseConfig?: CollapseConfig;
 }
 
-/**
- * A reusable hook for collapse + swipe gestures.
- */
 export function useCollapsibleGesture({
   onComplete,
   onFail,
   onToggleCollapse,
   onLongPress,
-  minSwipeDistance = 60,
-  swipeThreshold = 0.4,
+  minSwipeDistance = 30, // Reduced from 60 to 30
+  swipeThreshold = 0.2, // Reduced from 0.4 to 0.2
   velocityThreshold = 800,
   resistance = 0.3,
   collapseConfig,
@@ -184,7 +181,6 @@ export function useCollapsibleGesture({
           opacity.value = withTiming(0, { duration: 300 });
         } else if (translateX.value < 0) {
           runOnJS(handleFail)();
-
           translateX.value = withSpring(-containerWidth.value);
           opacity.value = withTiming(0, { duration: 300 });
         }

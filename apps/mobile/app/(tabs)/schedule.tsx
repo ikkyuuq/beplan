@@ -4,6 +4,9 @@ import {
   Pressable,
   LayoutChangeEvent,
   ScrollView,
+  Alert,
+  ActivityIndicator,
+  Platform,
 } from "react-native";
 import {
   addDays,
@@ -25,11 +28,35 @@ import Animated, {
 import CollapseItem from "@/components/CollapseItem";
 import Collapsable from "@/components/Collapsable";
 import Header from "@/components/Header";
+import { useUser } from "@clerk/clerk-expo";
+
+type Task = {
+  id: number;
+  title: string;
+  description: string | null;
+  status: "pending" | "completed" | "failed" | "deleted";
+};
+
+type Goal = {
+  id: number;
+  title: string;
+  type?: string;
+  status: "pending" | "completed" | "failed";
+  start_date: string;
+  due_date: string;
+  tasks: Task[];
+};
 
 export default function schedule() {
   const [currentMonth, setCurrentMonth] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [latestIndex, setLatestIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<Goal[]>([]);
+
+  const { user } = useUser();
+
   const dayNames = ["S", "M", "T", "W", "T", "F", "S"];
   const today = new Date();
   const startDate = startOfWeek(subDays(today, 60), { weekStartsOn: 0 });
@@ -64,24 +91,19 @@ export default function schedule() {
 
   const todayIndex = dayNames.findIndex((_, index) => index === today.getDay());
   const datePosX = useSharedValue((dimensions.width / 7) * todayIndex);
-
   const initialPage = dates.findIndex((week) =>
     week.some((day) => isSameDay(day, today))
   );
 
   useEffect(() => {
     const dayIndex = selectedDate.getDay();
-    (datePosX.value = withSpring((dimensions.width / 7) * dayIndex)),
-      {
-        mass: 1,
-        damping: 20,
-        stiffness: 200,
-        overshootClamping: false,
-        restDisplacementThreshold: 0.01,
-        restSpeedThreshold: 2,
-      };
+    datePosX.value = withSpring((dimensions.width / 7) * dayIndex, {
+      mass: 1,
+      damping: 20,
+      stiffness: 200,
+    });
     setLatestIndex(dayIndex);
-  }, [selectedDate, dimensions.width, latestIndex]);
+  }, [selectedDate, dimensions.width]);
 
   const scale = useSharedValue(1);
 
@@ -94,9 +116,6 @@ export default function schedule() {
           mass: 1,
           damping: 20,
           stiffness: 200,
-          overshootClamping: false,
-          restDisplacementThreshold: 0.01,
-          restSpeedThreshold: 2,
         });
       }, 200);
     }
@@ -109,150 +128,199 @@ export default function schedule() {
     };
   });
 
-  const [data, setData] = useState([
-    {
-      id: "1",
-      title: "I want to save $5000 by the end of the months",
-      type: "SMART GOALS",
-      status: "pending",
-      startDate: new Date(),
-      dueDate: new Date(startDate.getDate() + 30),
-      tasks: [
-        {
-          id: "1",
-          title: "Save $100",
-          status: "pending",
-          description:
-            "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
-          repeat: {
-            type: "daily",
-            interval: [],
-            interval_date: ["2025-02-28", "2025-03-02", "2025-03-05"],
-          },
-        },
-        {
-          id: "2",
-          title: "Save $200",
-          status: "pending",
-          description:
-            "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
-          repeat: {
-            type: "weekly",
-            interval: [1, 3, 5], // Monday, Wednesday, Friday
-            interval_date: ["2025-02-28", "2025-03-02", "2025-03-05"],
-          },
-        },
-      ],
-    },
-    {
-      id: "2",
-      title: "I want to save $5000 by the end of the months",
-      type: "SMART GOALS",
-      status: "pending",
-      startDate: new Date(),
-      dueDate: new Date(startDate.getDate() + 30),
-      tasks: [
-        {
-          id: "3",
-          title: "Save $1000",
-          status: "pending",
-          description:
-            "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
-          repeat: {
-            type: "daily",
-            interval: [],
-            interval_date: [
-              "2025-02-28",
-              "2025-03-01",
-              "2025-03-02",
-              "2025-03-03",
-            ],
-          },
-        },
-        {
-          id: "4",
-          title: "Save $2000",
-          status: "pending",
-          description:
-            "Start your day with a structured morning routine including exercise, meditation, and healthy breakfast to boost productivity and wellness",
-          repeat: {
-            type: "weekly",
-            interval: [1, 3, 5],
-            interval_date: [
-              "2025-02-28",
-              "2025-03-01",
-              "2025-03-02",
-              "2025-03-03",
-            ],
-          },
-        },
-      ],
-    },
-  ]);
-
-  const handleFailAllTasks = (goalId: string) => {
-    setTimeout(
-      () => setData((prev) => prev.filter((goal) => goal.id !== goalId)),
-      300
-    );
+  const fetchGoals = async (selectedDate: Date, userId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const baseUrl =
+        Platform.OS === "android"
+          ? "http://10.0.2.2:8000"
+          : "http://127.0.0.1:8000";
+      const resp = await fetch(
+        `${baseUrl}/api/v1/goal?user_id=${userId}&today=${format(
+          selectedDate,
+          "yyyy-MM-dd"
+        )}`
+      );
+      if (!resp.ok) throw new Error(`Error: ${resp.status}`);
+      const data = await resp.json();
+      setData(data);
+    } catch (error) {
+      console.error("Failed to fetch goals:", error);
+      setError("Failed to load your goals. Please try again.");
+      setData([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleCompleteAllTasks = (goalId: string) => {
-    setTimeout(
-      () => setData((prev) => prev.filter((goal) => goal.id !== goalId)),
-      300
-    );
+  useEffect(() => {
+    if (!user || !user.id) return;
+    fetchGoals(selectedDate, user.id);
+  }, [selectedDate, user]);
+
+  const handleCompleteAllTasks = async (
+    index: number,
+    userId: string,
+    taskIds: number[]
+  ) => {
+    try {
+      const baseUrl =
+        Platform.OS === "android"
+          ? "http://10.0.2.2:8000"
+          : "http://127.0.0.1:8000";
+      await fetch(`${baseUrl}/api/v1/goal/update_task_status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          assigned_task_id: taskIds,
+          assigned_goal_id: data[index].id,
+          to: "success",
+        }),
+      });
+      setTimeout(() => {
+        setData((prev) => prev.filter((_, i) => i !== index));
+      }, 300);
+    } catch (error) {
+      console.error("Failed to complete all tasks:", error);
+    }
   };
 
-  const handleCompleteTask = (goalId: string, taskId: string) => {
-    setData((prev) =>
-      prev.map((goal) =>
-        goal.id === goalId
-          ? {
-              ...goal,
-              tasks: goal.tasks.filter((t) => t.id !== taskId),
-            }
-          : goal
-      )
-    );
+  const handleFailAllTasks = async (
+    index: number,
+    userId: string,
+    taskIds: number[]
+  ) => {
+    try {
+      const baseUrl =
+        Platform.OS === "android"
+          ? "http://10.0.2.2:8000"
+          : "http://127.0.0.1:8000";
+      await fetch(`${baseUrl}/api/v1/goal/update_task_status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          assigned_task_id: taskIds,
+          assigned_goal_id: data[index].id,
+          to: "failed",
+        }),
+      });
+      setTimeout(() => {
+        setData((prev) => prev.filter((_, i) => i !== index));
+      }, 300);
+    } catch (error) {
+      console.error("Failed to fail all tasks:", error);
+    }
   };
 
-  const handleFailTask = (goalId: string, taskId: string) => {
-    setData((prev) =>
-      prev.map((goal) =>
-        goal.id === goalId
-          ? {
-              ...goal,
-              tasks: goal.tasks.filter((t) => t.id !== taskId),
-            }
-          : goal
-      )
-    );
+  const handleCompleteTask = async (
+    taskId: number,
+    userId: string,
+    taskIds: number[],
+    goalId: number
+  ) => {
+    try {
+      const baseUrl =
+        Platform.OS === "android"
+          ? "http://10.0.2.2:8000"
+          : "http://127.0.0.1:8000";
+      await fetch(`${baseUrl}/api/v1/goal/update_task_status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          assigned_task_id: taskIds,
+          assigned_goal_id: goalId,
+          to: "success",
+        }),
+      });
+      setData((prev) =>
+        prev.map((goal) => ({
+          ...goal,
+          tasks: goal.tasks.filter((task) => task.id !== taskId),
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to complete task:", error);
+    }
   };
 
-  const handleReschedule = (goalId: string, taskId: string, date: string) => {
-    setData((prev) =>
-      prev.map((goal) =>
-        goal.id === goalId
-          ? {
-              ...goal,
-              tasks: goal.tasks.map((task) =>
-                task.id === taskId
-                  ? {
-                      ...task,
-                      repeat: {
-                        ...task.repeat,
-                        interval_date: [...task.repeat.interval_date, date],
-                      },
-                    }
-                  : task
-              ),
-            }
-          : goal
-      )
-    );
-    console.log("Reschedule", goalId, taskId, date);
-    // Re-fetch data from the server using react query
+  const handleFailTask = async (
+    userId: string,
+    taskId: number,
+    goalId: number
+  ) => {
+    try {
+      const baseUrl =
+        Platform.OS === "android"
+          ? "http://10.0.2.2:8000"
+          : "http://127.0.0.1:8000";
+      await fetch(`${baseUrl}/api/v1/goal/update_task_status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          assigned_task_id: [taskId],
+          assigned_goal_id: goalId,
+          to: "failed",
+        }),
+      });
+      setData((prev) =>
+        prev.map((goal) => ({
+          ...goal,
+          tasks: goal.tasks.filter((task) => task.id !== taskId),
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to fail task:", error);
+    }
+  };
+
+  const handleReschedule = async (
+    goalId: number,
+    taskId: number,
+    date: string
+  ) => {
+    try {
+      const baseUrl =
+        Platform.OS === "android"
+          ? "http://10.0.2.2:8000"
+          : "http://127.0.0.1:8000";
+      await fetch(`${baseUrl}/api/v1/task/reschedule`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          task_id: taskId,
+          assigned_goal_id: goalId,
+          new_date: date,
+        }),
+      });
+      setData((prev) =>
+        prev.map((goal) =>
+          goal.id === goalId
+            ? {
+                ...goal,
+                tasks: goal.tasks.filter((task) => task.id !== taskId),
+              }
+            : goal
+        )
+      );
+      Alert.alert("Success", "Task has been rescheduled");
+    } catch (error) {
+      console.error("Failed to reschedule task:", error);
+    }
   };
 
   return (
@@ -277,7 +345,6 @@ export default function schedule() {
         </View>
 
         <View onLayout={onDateLayout}>
-          {/* Animated Selected Date Indicator */}
           <Animated.View
             style={[
               animateDateSelected,
@@ -292,7 +359,6 @@ export default function schedule() {
             ]}
           />
 
-          {/* Day Names */}
           <View
             style={{
               flexDirection: "row",
@@ -311,7 +377,6 @@ export default function schedule() {
             ))}
           </View>
 
-          {/* Date Pager View */}
           <PagerView
             style={{ height: 80 }}
             initialPage={initialPage}
@@ -333,10 +398,7 @@ export default function schedule() {
                   {week.map((day, i) => (
                     <View key={i} style={{ alignItems: "center", gap: 10 }}>
                       <Pressable
-                        onPress={(e) => {
-                          e.preventDefault();
-                          setSelectedDate(day);
-                        }}
+                        onPress={() => setSelectedDate(day)}
                         style={{
                           width: 48,
                           height: 48,
@@ -376,45 +438,102 @@ export default function schedule() {
         </View>
       </Header>
 
-      {/* Task List */}
       <ScrollView>
         <Animated.View style={{ marginTop: 20, marginBottom: 120 }}>
-          {data.map((goal) => {
-            const filteredTasks = goal.tasks.filter((task) => {
-              const selectedDateString = format(selectedDate, "yyyy-MM-dd");
-              return task.repeat.interval_date.includes(selectedDateString);
-            });
-
-            return (
+          {isLoading ? (
+            <View
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 50,
+              }}
+            >
+              <ActivityIndicator size="large" color="#4E5A94" />
+              <Text style={{ marginTop: 10, color: "#666" }}>
+                Loading your goals...
+              </Text>
+            </View>
+          ) : error ? (
+            <View
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 50,
+              }}
+            >
+              <Text style={{ color: "red" }}>{error}</Text>
+              <Pressable
+                style={{
+                  marginTop: 20,
+                  backgroundColor: "#4E5A94",
+                  padding: 10,
+                  borderRadius: 5,
+                }}
+                onPress={() => user && fetchGoals(selectedDate, user.id)}
+              >
+                <Text style={{ color: "white" }}>Try Again</Text>
+              </Pressable>
+            </View>
+          ) : data.length === 0 ? (
+            <View
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 50,
+              }}
+            >
+              <Text style={{ color: "#666" }}>
+                No goals scheduled for today
+              </Text>
+            </View>
+          ) : (
+            data.map((goal, i) => (
               <Collapsable
                 key={goal.id}
                 title={goal.title}
-                type={goal.type}
-                onComplete={() => handleCompleteAllTasks(goal.id)}
-                onFail={() => handleFailAllTasks(goal.id)}
+                type={goal.type || "Goal"}
+                onComplete={() =>
+                  user &&
+                  handleCompleteAllTasks(
+                    i,
+                    user.id,
+                    goal.tasks.map((t) => t.id)
+                  )
+                }
+                onFail={() =>
+                  user &&
+                  handleFailAllTasks(
+                    i,
+                    user.id,
+                    goal.tasks.map((t) => t.id)
+                  )
+                }
                 onCollapseFinish={() => {
-                  setTimeout(
-                    () =>
-                      setData((prev) => prev.filter((g) => g.id !== goal.id)),
-                    300
-                  );
+                  setTimeout(() => {
+                    setData((prev) => prev.filter((g) => g.id !== goal.id));
+                  }, 300);
                 }}
               >
-                {filteredTasks.map((task) => (
+                {goal.tasks.map((task) => (
                   <CollapseItem
                     key={task.id}
                     title={task.title}
-                    description={task.description}
-                    onComplete={() => handleCompleteTask(goal.id, task.id)}
-                    onFail={() => handleFailTask(goal.id, task.id)}
+                    description={task.description || ""}
+                    onComplete={() =>
+                      user &&
+                      handleCompleteTask(task.id, user.id, [task.id], goal.id)
+                    }
+                    onFail={() =>
+                      user && handleFailTask(user.id, task.id, goal.id)
+                    }
                     onReschedule={(date) =>
                       handleReschedule(goal.id, task.id, date)
                     }
                   />
                 ))}
               </Collapsable>
-            );
-          })}
+            ))
+          )}
         </Animated.View>
       </ScrollView>
     </View>
