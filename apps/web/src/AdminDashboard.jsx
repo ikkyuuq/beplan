@@ -1,27 +1,37 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import "./AdminDashboard.css";
 
 const AdminDashboard = () => {
-    const [templates, setTemplates] = useState([
-        {
-            id: 1,
-            name: "Health Goal",
-            description: "Track your daily habits for better health.",
-            image: null,
-            category: "Workout Routine",
-            goals: [],
-        },
-        {
-            id: 2,
-            name: "Career Planning",
-            description: "Set milestones for your career growth.",
-            image: null,
-            category: "Personal Budgeting",
-            goals: [],
-        },
-    ]);
+    const [templates, setTemplates] = useState([]);
+    const [template, setTemplate] = useState({
+        title: "",
+        description: "",
+        image_url: "",
+        created_by: "BePlan",
+        category: "",
+        goals: [{
+            title: "",
+            type: "template",
+            start_date: "",
+            due_date: "",
+            tasks: [{
+                title: "",
+                description: "",
+                type: "",
+                date_interval: [],
+                week_interval: [],
+            }]
+        }]
+    });
 
-    const [editingTemplate, setEditingTemplate] = useState(null);
+    const [editingTemplate, setEditingTemplate] = useState({
+        name: "",
+        description: "",
+        image: null,
+        category: "",
+        goals: [], // กำหนดค่าเริ่มต้นเป็น array ว่าง
+    });
     const [newName, setNewName] = useState("");
     const [newDescription, setNewDescription] = useState("");
     const [newImage, setNewImage] = useState(null);
@@ -45,15 +55,68 @@ const AdminDashboard = () => {
     const [creatingTemplate, setCreatingTemplate] = useState(false);
 
     useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        if (storedUser && storedUser.username) {
-            setUserAccount({ ...userAccount, name: storedUser.username });
-        }
+        const fetchTemplates = async () => {
+            try {
+                const response = await axios.get("http://localhost:8000/api/v1/template");
+                setTemplates(response.data);
+                console.log("✅ Templates fetched:", response.data);
+            } catch (error) {
+                console.error("Error fetching templates:", error);
+            }
+        };
+
+        fetchTemplates();  // โหลด template จาก backend
     }, []);
 
-    const handleCreateTemplate = () => {
+    const handleCreateTemplates = async () => {
+        try {
+            const templateData = {
+                title: newName || "New Template", // ตั้งค่าเริ่มต้นหาก newName เป็นค่าว่าง
+                description: newDescription || "Edit this template.", // ตั้งค่าเริ่มต้นหาก newDescription เป็นค่าว่าง
+                image_url: newImage || "https://example.com/default-image.jpg", // ตั้งค่าเริ่มต้นหาก newImage เป็นค่าว่าง
+                created_by: userAccount.name,
+                category: newCategory || "Workout Routine", // ตั้งค่าเริ่มต้นหาก newCategory เป็นค่าว่าง
+                goals: editingTemplate.goals.map(goal => ({
+                    title: goal.text || "New Goal", // ตั้งค่าเริ่มต้นหาก goal.text เป็นค่าว่าง
+                    type: "template",
+                    start_date: goal.start_date || new Date().toISOString().split('T')[0], // ตั้งค่าเริ่มต้นหากไม่มี start_date
+                    due_date: goal.due_date || new Date().toISOString().split('T')[0], // ตั้งค่าเริ่มต้นหากไม่มี due_date
+                    tasks: goal.tasks.map(task => ({
+                        title: task.text || "New Task", // ตั้งค่าเริ่มต้นหาก task.text เป็นค่าว่าง
+                        description: task.description || "",
+                        repeat_type: task.type || "aily", // ตั้งค่าเริ่มต้นหาก task.type เป็นค่าว่าง
+                        date_interval: [],
+                        week_interval: task.selectedDays ? task.selectedDays.map(day => {
+                            switch (day) {
+                                case "Sunday": return 0;
+                                case "Monday": return 1;
+                                case "Tuesday": return 2;
+                                case "Wednesday": return 3;
+                                case "Thursday": return 4;
+                                case "Friday": return 5;
+                                case "Saturday": return 6;
+                                default: return -1;
+                            }
+                        }) : []
+                    }))
+                }))
+            };
+
+            const response = await axios.post("http://localhost:8000/api/v1/template/create", templateData, {
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            });
+            console.log("✅ Template created:", response.data);
+            setTemplates([...templates, response.data]);
+        } catch (error) {
+            console.error("❌ Error creating template:", error.response.data);
+        }
+    };
+
+
+    const handleCreateTemplate = async () => {
         const newTemplate = {
-            id: Date.now(),
             name: "", // ตั้งชื่อเริ่มต้นเป็นค่าว่าง
             description: "Edit this template.",
             image: null,
@@ -66,6 +129,7 @@ const AdminDashboard = () => {
         setNewDescription("Edit this template."); // ตั้งค่า newDescription เป็นค่าเริ่มต้น
         setNewImage(null); // ตั้งค่า newImage เป็นค่าเริ่มต้น
         setNewCategory("Workout Routine"); // ตั้งค่า newCategory เป็นค่าเริ่มต้น
+
     };
 
     const handleEditTemplate = (template) => {
@@ -91,7 +155,6 @@ const AdminDashboard = () => {
                     let width = img.width;
                     let height = img.height;
 
-                    // ปรับขนาดรูปภาพให้พอดีกับขนาดสูงสุด
                     if (width > height) {
                         if (width > MAX_WIDTH) {
                             height *= MAX_WIDTH / width;
@@ -104,14 +167,12 @@ const AdminDashboard = () => {
                         }
                     }
 
-                    // สร้าง canvas เพื่อปรับขนาดรูปภาพ
                     const canvas = document.createElement("canvas");
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // แปลง canvas เป็น data URL และตั้งค่าเป็นรูปภาพใหม่
                     const resizedImage = canvas.toDataURL("image/jpeg", 0.8);
                     setNewImage(resizedImage);
                 };
@@ -121,6 +182,11 @@ const AdminDashboard = () => {
     };
 
     const handleSaveEdit = () => {
+        if (!editingTemplate) {
+            console.error("Editing template is not defined.");
+            return;
+        }
+
         let templateToSave;
 
         if (creatingTemplate) {
@@ -137,12 +203,12 @@ const AdminDashboard = () => {
                 image_url: newImage,
                 created_by: userAccount.name,
                 category: newCategory,
-                goals: editingTemplate.goals.map(goal => ({
+                goals: editingTemplate.goals ? editingTemplate.goals.map(goal => ({
                     title: goal.text,
                     type: "template",
                     start_date: goal.start_date,
                     due_date: goal.due_date,
-                    tasks: goal.tasks.map(task => ({
+                    tasks: goal.tasks ? goal.tasks.map(task => ({
                         title: task.text,
                         description: task.description || "",
                         type: task.type,
@@ -156,14 +222,16 @@ const AdminDashboard = () => {
                                 case "Thursday": return 4;
                                 case "Friday": return 5;
                                 case "Saturday": return 6;
-                                default: return -1; // Handle unexpected day names
+                                default: return -1;
                             }
                         }) : []
-                    }))
-                }))
+                    })) : [] // ตรวจสอบว่า goal.tasks ไม่เป็น undefined
+                })) : [] // ตรวจสอบว่า editingTemplate.goals ไม่เป็น undefined
             };
             setTemplates([...templates, newTemplate]);
             setCreatingTemplate(false);
+            setTemplate(templateToSave);
+            handleCreateTemplates();
         } else {
             templateToSave = {
                 title: newName,
@@ -171,12 +239,12 @@ const AdminDashboard = () => {
                 image_url: newImage,
                 created_by: userAccount.name,
                 category: newCategory,
-                goals: editingTemplate.goals.map(goal => ({
+                goals: editingTemplate.goals ? editingTemplate.goals.map(goal => ({
                     title: goal.text,
                     type: "template",
                     start_date: goal.start_date,
                     due_date: goal.due_date,
-                    tasks: goal.tasks.map(task => ({
+                    tasks: goal.tasks ? goal.tasks.map(task => ({
                         title: task.text,
                         description: task.description || "",
                         type: task.type,
@@ -190,11 +258,11 @@ const AdminDashboard = () => {
                                 case "Thursday": return 4;
                                 case "Friday": return 5;
                                 case "Saturday": return 6;
-                                default: return -1; // Handle unexpected day names
+                                default: return -1;
                             }
                         }) : []
-                    }))
-                }))
+                    })) : [] // ตรวจสอบว่า goal.tasks ไม่เป็น undefined
+                })) : [] // ตรวจสอบว่า editingTemplate.goals ไม่เป็น undefined
             };
             setTemplates(templates.map((t) =>
                 t.id === editingTemplate.id ? {
@@ -211,7 +279,13 @@ const AdminDashboard = () => {
         console.log("✅ Template to save:", templateToSave);
     };
 
-    const handleDeleteTemplate = (id) => {
+    const handleDeleteTemplate = async (id) => {
+        try {
+            await axios.delete(`http://localhost:8000/api/v1/template/delete?template_id=${id}`);
+            fetchTemplates();
+        } catch (error) {
+            console.error("Error deleting template:", error);
+        }
         setTemplates(templates.filter((template) => template.id !== id));
     };
 
@@ -234,7 +308,7 @@ const AdminDashboard = () => {
                 goals: [...editingTemplate.goals, {
                     id: Date.now(),
                     text: newGoal,
-                    tasks: [],
+                    tasks: [], // กำหนดค่าเริ่มต้นเป็น array ว่าง
                     start_date: newGoalStartDate,
                     due_date: newGoalDueDate
                 }]
@@ -268,7 +342,7 @@ const AdminDashboard = () => {
                                     id: Date.now(),
                                     text: newTask,
                                     type: newTaskType, // Add the type of the task (Daily or Weekly)
-                                    selectedDays: newTaskType === "Weekly" ? selectedDays : null, // Only set selectedDays if Weekly
+                                    selectedDays: newTaskType === "weekly" ? selectedDays : null, // Only set selectedDays if Weekly
                                 }
                             ]
                         }
@@ -325,15 +399,6 @@ const AdminDashboard = () => {
                 </div>
             </nav>
 
-            {/* Sidebar */}
-            <aside className="sidebar">
-                <ul>
-                    <li>📋 Dashboard</li>
-                    <li>🎯 Template</li>
-                    <li>⚙️ Settings</li>
-                </ul>
-            </aside>
-
             {/* Main Content */}
             <div className="dashboard-content">
                 <header>
@@ -349,6 +414,7 @@ const AdminDashboard = () => {
                             <th>Image</th>
                             <th>Category</th>
                             <th>Goals</th>
+                            <th>Task</th> {/* เพิ่มคอลัมน์ Task */}
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -356,9 +422,13 @@ const AdminDashboard = () => {
                         {templates.map((template, index) => (
                             <tr key={template.id}>
                                 <td>{index + 1}</td>
-                                <td>{template.name}</td>
+                                <td>{template.title}</td>
                                 <td>
-                                    {template.image ? <img src={template.image} alt="Template" className="template-img" /> : "No Image"}
+                                    {template.image ? (
+                                        <img src={template.image} alt="Template" className="template-img" />
+                                    ) : (
+                                        "No Image"
+                                    )}
                                 </td>
                                 <td>{template.category}</td>
                                 <td>
@@ -373,9 +443,29 @@ const AdminDashboard = () => {
                                     </ul>
                                 </td>
                                 <td>
-                                    <button className="description-btn" onClick={() => toggleDescription(template.id)}>Description</button>
-                                    <button className="edit-btn" onClick={() => handleEditTemplate(template)}>Edit</button>
-                                    <button className="delete-btn" onClick={() => handleDeleteTemplate(template.id)}>Delete</button>
+                                    <ul>
+                                        {template.goals.map((goal) => (
+                                            <li key={goal.id}>
+                                                <ul>
+                                                    {goal.tasks.map((task) => (
+                                                        <li key={task.id}>
+                                                            <strong>Task: {task.text} {task.type === "weekly" && task.selectedDays && (
+                                                                <p>Selected Days: {task.selectedDays.join(", ")}</p>
+                                                            )}</strong>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </td>
+                                <td>
+                                    <button className="description-btn" onClick={() => toggleDescription(template.id)}>
+                                        Description
+                                    </button>
+                                    <button className="delete-btn" onClick={() => handleDeleteTemplate(template.id)}>
+                                        Delete
+                                    </button>
                                 </td>
                             </tr>
                         ))}
@@ -484,7 +574,7 @@ const AdminDashboard = () => {
                                                                 >
                                                                     <span>
                                                                         {task.text}
-                                                                        {task.type === "Weekly" && task.selectedDays && task.selectedDays.length > 0 && (
+                                                                        {task.type === "weekly" && task.selectedDays && task.selectedDays.length > 0 && (
                                                                             <span className="selected-days">
                                                                                 ({task.selectedDays.join(", ")})
                                                                             </span>
@@ -512,9 +602,9 @@ const AdminDashboard = () => {
                                                                     <input
                                                                         type="radio"
                                                                         name="taskType"
-                                                                        value="Daily"
-                                                                        checked={newTaskType === "Daily"}
-                                                                        onChange={() => setNewTaskType("Daily")}
+                                                                        value="daily"
+                                                                        checked={newTaskType === "daily"}
+                                                                        onChange={() => setNewTaskType("daily")}
                                                                     />
                                                                     Daily
                                                                 </label>
@@ -522,15 +612,15 @@ const AdminDashboard = () => {
                                                                     <input
                                                                         type="radio"
                                                                         name="taskType"
-                                                                        value="Weekly"
-                                                                        checked={newTaskType === "Weekly"}
-                                                                        onChange={() => setNewTaskType("Weekly")}
+                                                                        value="weekly"
+                                                                        checked={newTaskType === "weekly"}
+                                                                        onChange={() => setNewTaskType("weekly")}
                                                                     />
                                                                     Weekly
                                                                 </label>
                                                             </div>
 
-                                                            {newTaskType === "Weekly" && (
+                                                            {newTaskType === "weekly" && (
                                                                 <div className="weekly-days-container">
                                                                     <label>Select Days of the Week:</label>
                                                                     <div className="days-checkbox-container">

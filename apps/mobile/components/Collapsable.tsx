@@ -253,6 +253,10 @@ export default function Collapsable({
       600
     );
   };
+  const handleCustomizeContextMenu = () => {
+    handleContextMenuClose();
+    onCustomize?.();
+  };
 
   return (
     <>
@@ -326,10 +330,9 @@ export default function Collapsable({
               />
             ),
             type: "default",
-            status: type === "custom" ? "enabled" : "disabled",
+            status: "enabled",
             onPress: () => {
-              handleContextMenuClose();
-              onCustomize?.();
+              handleCustomizeContextMenu();
             },
           },
           {

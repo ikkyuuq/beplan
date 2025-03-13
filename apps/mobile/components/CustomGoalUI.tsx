@@ -26,6 +26,13 @@ type Task = {
 
 // ====================== Type Definitions ======================
 type CustomGoalUIProps = {
+  // Animation Styles
+  headerAnimatedStyle: any;
+  titleAnimatedStyle: any;
+  formAnimatedStyle: any;
+  taskListAnimatedStyle: any;
+  buttonAnimatedStyle: any;
+
   // Data
   goalTitle: string;
   startDate: string;
@@ -43,8 +50,13 @@ type CustomGoalUIProps = {
   setDueDatePickerVisible: (visible: boolean) => void;
   handleEditTask: (index: number) => void;
   handleDeleteTask: (index: number) => void;
+
   setTaskModalVisible: (visible: boolean) => void;
   handleSubmit: () => void;
+  handleUpdate: () => void;
+
+  // Debug Functions
+  testLogData: () => void;
 };
 
 // Helper Functions
@@ -80,6 +92,13 @@ const getStatusColor = (status: string) => {
 
 // ====================== Main Component ======================
 const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
+  // Animation Styles
+  headerAnimatedStyle,
+  titleAnimatedStyle,
+  formAnimatedStyle,
+  taskListAnimatedStyle,
+  buttonAnimatedStyle,
+
   // Data
   goalTitle,
   startDate,
@@ -97,16 +116,15 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
   setDueDatePickerVisible,
   handleEditTask,
   handleDeleteTask,
+
   setTaskModalVisible,
   handleSubmit,
+  handleUpdate,
 }) => {
   return (
     <>
       {/* Header with Back Button */}
-      <Animated.View
-        entering={FadeInDown.delay(100).duration(500)}
-        style={styles.header}
-      >
+      <Animated.View style={[styles.header, headerAnimatedStyle]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color="white" />
           <Text style={styles.backText}>Back</Text>
@@ -120,17 +138,17 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
       >
         {/* Title Section */}
         <Animated.View entering={FadeInDown.delay(200).duration(500)}>
-          <View style={styles.titleContainer}>
+          <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
             <Text style={styles.title}>Create Custom Goal</Text>
             <Text style={styles.subtitle}>
               Design your path to success, one step at a time
             </Text>
-          </View>
+          </Animated.View>
         </Animated.View>
 
         {/* Form Section */}
         <Animated.View entering={FadeInDown.delay(400).duration(500)}>
-          <View style={styles.formSection}>
+          <Animated.View style={[styles.formSection, formAnimatedStyle]}>
             {/* Goal Title Input */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>
@@ -214,12 +232,12 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                 </Text>
               </View>
             )}
-          </View>
+          </Animated.View>
         </Animated.View>
 
         {/* Task Section */}
         <Animated.View entering={FadeInDown.delay(600).duration(500)}>
-          <View style={styles.taskSection}>
+          <Animated.View style={[styles.taskSection, taskListAnimatedStyle]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Tasks</Text>
               <Text style={styles.sectionDescription}>
@@ -301,20 +319,17 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                 Add Task
               </Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         </Animated.View>
 
         {/* Create Button */}
-        <Animated.View
-          entering={FadeInDown.delay(800).duration(500)}
-          style={{ width: "100%" }}
-        >
+        <Animated.View style={[buttonAnimatedStyle, { width: "100%" }]}>
           <TouchableOpacity
             style={[
               styles.createButton,
               !isFormValid && styles.disabledCreateButton,
             ]}
-            onPress={handleSubmit}
+            onPress={isEditingGoal ? handleUpdate : handleSubmit}
             disabled={!isFormValid || isLoading}
           >
             {isLoading ? (
@@ -851,6 +866,25 @@ const styles = StyleSheet.create({
   },
   disabledCreateButton: {
     backgroundColor: "#2A2C3A",
+  },
+
+  // Test Buttons
+  testButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  testButton: {
+    backgroundColor: "rgba(79, 70, 229, 0.7)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  testButtonText: {
+    color: "#FFF",
+    fontWeight: "500",
+    fontSize: 14,
   },
 
   // Loading Overlay

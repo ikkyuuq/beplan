@@ -471,6 +471,25 @@ async def update_task_status(request: TaskUpdateRequest):
         }
 
 
+@router.delete("/delete/{assigned_goal_id}")
+async def delete_goal(assigned_goal_id: int):
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            DELETE FROM public.assigned_goal
+            WHERE id = $1
+            """,
+            assigned_goal_id,
+        )
+        return JSONResponse(
+            content={
+                "status": "success",
+                "message": "Goal deleted successfully",
+            }
+        )
+
+
 async def check_goal_status(conn, assigned_goal_id: int):
     """
     Check if the goal should be marked as 'success' or 'failed'
