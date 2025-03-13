@@ -30,6 +30,9 @@ import Collapsable from "@/components/Collapsable";
 import Header from "@/components/Header";
 import { useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from 'expo-router';
+import React from "react";
+
 
 type Task = {
   id: number;
@@ -367,6 +370,14 @@ export default function schedule() {
       setIsLoading(false);
     }
   };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user && user.id) {
+        fetchGoals(selectedDate, user.id);
+      }
+    }, [selectedDate, user])
+  );
 
   return (
     <View style={{ flex: 1 }}>
