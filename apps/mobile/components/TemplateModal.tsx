@@ -1,3 +1,5 @@
+// This is the updated TemplateModal.tsx component with a new Creator Tab
+
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -10,6 +12,7 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
   Keyboard,
+  Platform,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,12 +25,21 @@ import Animated, {
 import Modal from "react-native-modal";
 
 // ====================== Type Definitions ======================
+type Creator = {
+  user_id: string;
+  username: string | null;
+  image: string | null;
+  occupation: string | null;
+  about: string | null;
+};
+
 type TemplateModalProps = {
   isVisible: boolean;
   onClose: () => void;
   onAddToList: () => void;
   onToggleFavorite?: () => void;
   data: {
+    id: number;
     isListed: boolean;
     isFavorite?: boolean;
     title: string;
@@ -35,6 +47,8 @@ type TemplateModalProps = {
     description?: string;
     image: string;
     owner: string;
+    creator?: Creator;
+    creatorId?: string; // User ID of the current user
     duration?: number;
     goals?: { id: string; title: string }[];
   };
@@ -88,9 +102,9 @@ export default function TemplateModal({
 }: TemplateModalProps) {
   // ====================== State Management ======================
   const [showFullDescription, setShowFullDescription] = useState(false);
-  const [activeTab, setActiveTab] = useState<"description" | "goals">(
-    "description"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "description" | "goals" | "creator"
+  >("description");
   const [isFavorite, setIsFavorite] = useState(data.isFavorite || false);
 
   // ====================== Animation Values ======================
@@ -139,9 +153,61 @@ export default function TemplateModal({
         },
         {
           text: "Add",
-          onPress: () => {
-            onAddToList();
-            onClose();
+          onPress: async () => {
+            try {
+              // Get today's date in YYYY-MM-DD format
+              const today = new Date().toISOString().split("T")[0];
+
+              // Get base URL based on platform
+              const baseUrl =
+                Platform.OS === "android"
+                  ? "http://10.0.2.2:8000"
+                  : "http://127.0.0.1:8000";
+
+              // Prepare request body
+              const requestBody = {
+                template_id: data.id,
+                user_id: data.creatorId, // This should be the current user's ID
+                start_date: today,
+              };
+
+              // Make API call
+              const response = await fetch(
+                `${baseUrl}/api/v1/template/assign`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify(requestBody),
+                }
+              );
+
+              if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(
+                  `Failed to assign template: ${response.status} ${errorText}`
+                );
+              }
+
+              // Handle successful response
+              const responseData = await response.json();
+              console.log("Template assigned successfully:", responseData);
+
+              // Show success message and close modal
+              Alert.alert("Success", "Template added to your list!", [
+                { text: "OK", onPress: () => onClose() },
+              ]);
+
+              // Call the onAddToList callback to update UI if needed
+              onAddToList();
+            } catch (error) {
+              console.error("Error assigning template:", error);
+              Alert.alert(
+                "Error",
+                "Failed to add template to your list. Please try again later."
+              );
+            }
           },
         },
       ]
@@ -223,7 +289,9 @@ export default function TemplateModal({
                             data.owner !== "BePlan" ? "#D6D6D6" : "#FFD700"
                           }
                         />
-                        <Text style={styles.ownerText}>{data.owner}</Text>
+                        <Text style={styles.ownerText}>
+                          {data.creator?.username || data.owner}
+                        </Text>
                       </View>
 
                       {/* Category Badge */}
@@ -301,6 +369,29 @@ export default function TemplateModal({
                       ]}
                     >
                       Goals ({data.goals?.length || 0})
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Creator Tab */}
+                  <TouchableOpacity
+                    style={[
+                      styles.tab,
+                      activeTab === "creator" && styles.activeTab,
+                    ]}
+                    onPress={() => setActiveTab("creator")}
+                  >
+                    <Ionicons
+                      name="person-outline"
+                      size={20}
+                      color={activeTab === "creator" ? "#4E5A94" : "#888"}
+                    />
+                    <Text
+                      style={[
+                        styles.tabText,
+                        activeTab === "creator" && styles.activeTabText,
+                      ]}
+                    >
+                      Creator
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -390,6 +481,110 @@ export default function TemplateModal({
                             </Text>
                           </View>
                         )}
+                      </Animated.View>
+                    )}
+
+                    {/* Creator Tab Content */}
+                    {activeTab === "creator" && (
+                      <Animated.View
+                        entering={FadeIn.duration(300)}
+                        style={styles.tabContent}
+                      >
+                        <View style={styles.creatorContainer}>
+                          {/* Creator Profile */}
+                          <View style={styles.creatorProfile}>
+                            {/* Creator Image */}
+                            <View style={styles.creatorImageContainer}>
+                              {data.creator?.image ? (
+                                <Image
+                                  source={{ uri: data.creator.image }}
+                                  style={styles.creatorImage}
+                                />
+                              ) : (
+                                <View style={styles.creatorImagePlaceholder}>
+                                  <Ionicons
+                                    name="person"
+                                    size={40}
+                                    color="#CCCCCC"
+                                  />
+                                </View>
+                              )}
+                            </View>
+
+                            {/* Creator Details */}
+                            <View style={styles.creatorDetails}>
+                              <Text style={styles.creatorName}>
+                                {data.creator?.username ||
+                                  data.owner ||
+                                  "BePlan User"}
+                              </Text>
+                              {data.creator?.occupation && (
+                                <Text style={styles.creatorOccupation}>
+                                  {data.creator.occupation}
+                                </Text>
+                              )}
+                              <View style={styles.creatorIdContainer}>
+                                <Ionicons
+                                  name="at-outline"
+                                  size={16}
+                                  color="#888"
+                                />
+                                <Text style={styles.creatorId}>
+                                  {data.creator?.user_id || data.owner}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+
+                          {/* Creator Bio */}
+                          {data.creator?.about && (
+                            <>
+                              <Text style={styles.aboutTitle}>About</Text>
+                              <View style={styles.aboutContainer}>
+                                <Text style={styles.aboutText}>
+                                  {data.creator.about}
+                                </Text>
+                              </View>
+                            </>
+                          )}
+
+                          {/* Official Badge if BePlan */}
+                          {(data.owner === "BePlan" ||
+                            data.creator?.user_id === "BePlan") && (
+                            <View style={styles.officialBadgeContainer}>
+                              <View style={styles.officialBadge}>
+                                <Ionicons
+                                  name="checkmark-circle"
+                                  size={18}
+                                  color="#FFD700"
+                                />
+                                <Text style={styles.officialText}>
+                                  Official Template Creator
+                                </Text>
+                              </View>
+                              <Text style={styles.officialDescription}>
+                                This template was created by the BePlan team to
+                                help you achieve your goals.
+                              </Text>
+                            </View>
+                          )}
+
+                          {/* No Creator Info State */}
+                          {!data.creator?.username &&
+                            !data.creator?.about &&
+                            !data.creator?.occupation && (
+                              <View style={styles.noCreatorInfoContainer}>
+                                <Ionicons
+                                  name="information-circle-outline"
+                                  size={40}
+                                  color="#CCC"
+                                />
+                                <Text style={styles.noCreatorInfoText}>
+                                  No additional creator information available
+                                </Text>
+                              </View>
+                            )}
+                        </View>
                       </Animated.View>
                     )}
                   </View>
@@ -676,6 +871,119 @@ const styles = StyleSheet.create({
     marginTop: 12,
     color: "#888",
     fontSize: 16,
+  },
+
+  // Creator Tab Styles
+  creatorContainer: {
+    backgroundColor: "#F8F8F8",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#EEEEEE",
+  },
+  creatorProfile: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  creatorImageContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#EEEEEE",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+    overflow: "hidden",
+  },
+  creatorImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 40,
+  },
+  creatorImagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 40,
+    backgroundColor: "#E5E5E5",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  creatorDetails: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  creatorName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 4,
+  },
+  creatorOccupation: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 8,
+  },
+  creatorIdContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  creatorId: {
+    fontSize: 12,
+    color: "#888",
+    marginLeft: 4,
+  },
+  aboutTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
+  },
+  aboutContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  aboutText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#555",
+  },
+  officialBadgeContainer: {
+    marginTop: 16,
+    backgroundColor: "#FFF9E5",
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#FFE082",
+  },
+  officialBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  officialText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+  },
+  officialDescription: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
+  },
+  noCreatorInfoContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 30,
+  },
+  noCreatorInfoText: {
+    marginTop: 12,
+    color: "#888",
+    fontSize: 16,
+    textAlign: "center",
   },
 
   // Action Button with Green Gradient

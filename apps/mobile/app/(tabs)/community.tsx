@@ -10,6 +10,7 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useState, useEffect, useCallback } from "react";
 import TemplateCard from "@/components/TemplateCard";
@@ -85,41 +86,53 @@ export default function Community() {
   // ====================== Fetch Data from API ======================
   const fetchTemplates = useCallback(async () => {
     try {
+      if (!user || !user.id) {
+        setError("User authentication required");
+        setIsLoading(false);
+        return;
+      }
+
       setError(null);
-      // ดึงข้อมูล templates จาก API
-      const response = await fetch("http://10.0.2.2:8000/api/v1/template/");
+      const baseUrl =
+        Platform.OS === "android"
+          ? "http://10.0.2.2:8000"
+          : "http://127.0.0.1:8000";
+      const response = await fetch(
+        `${baseUrl}/api/v1/template?user_id=${user.id}`
+      );
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
 
-      // ดึงสถานะ isFavorite ของแต่ละ template
-      const templatesWithFavoriteStatus = await Promise.all(
-        data.map(async (template: any) => {
-          const isFavorite = await fetchFavoriteStatus(template.id);
-          return { ...template, isFavorite };
-        })
-      );
-
-      setTemplates(templatesWithFavoriteStatus);
+      setTemplates(data);
     } catch (error) {
       console.error("Failed to fetch templates:", error);
-      setError("Failed to fetch templates. Pull down to try again.");
+      setError("Failed to fetch templates. Please try again.");
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user]);
 
   const fetchAvailableGoals = useCallback(async () => {
     try {
+      if (!user || !user.id) {
+        console.log("No user ID available for goals fetch");
+        setAvailableGoals({});
+        return;
+      }
+
+      const baseUrl =
+        Platform.OS === "android"
+          ? "http://10.0.2.2:8000"
+          : "http://127.0.0.1:8000";
       const response = await fetch(
-        "http://10.0.2.2:8000/api/v1/template/available_goals"
+        `${baseUrl}/api/v1/template/available_goals?user_id=${user.id}`
       );
 
-      // Check if the response is not ok
       if (!response.ok) {
-        // Get the response text if possible to see the actual error
         const responseText = await response
           .text()
           .catch(() => "No response text");
@@ -127,12 +140,10 @@ export default function Community() {
           `HTTP error when fetching goals: status=${response.status}, body=${responseText}`
         );
 
-        // If it's a 422 error, log it but don't throw since this is recoverable
         if (response.status === 422) {
           console.warn(
             "422 error when fetching available goals - continuing with empty goals list"
           );
-          // Set to empty object instead of throwing
           setAvailableGoals({});
           return;
         }
@@ -144,10 +155,9 @@ export default function Community() {
       setAvailableGoals(data);
     } catch (error) {
       console.error("Failed to fetch available goals:", error);
-      // Don't let this error fail the whole component - just use empty goals
       setAvailableGoals({});
     }
-  }, []);
+  }, [user]);
 
   const fetchFavoriteStatus = async (templateId: number) => {
     try {
@@ -158,10 +168,10 @@ export default function Community() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      return data.isFavorite; // สมมติว่า API ส่งกลับ { isFavorite: true/false }
+      return data.isFavorite;
     } catch (error) {
       console.error("Failed to fetch favorite status:", error);
-      return false; // หากเกิดข้อผิดพลาด ให้คืนค่าเริ่มต้นเป็น false
+      return false;
     }
   };
 
@@ -176,16 +186,13 @@ export default function Community() {
   useEffect(() => {
     setIsLoading(true);
 
-    // Load templates - this is critical for the page
     fetchTemplates().catch((error) => {
       console.error("Error in initial template loading:", error);
       setIsLoading(false);
     });
 
-    // Try to load available goals, but consider it optional
     fetchAvailableGoals().catch((error) => {
       console.error("Error in initial goals loading (non-critical):", error);
-      // We can still continue since this isn't critical
     });
   }, [fetchTemplates, fetchAvailableGoals]);
 
@@ -197,38 +204,34 @@ export default function Community() {
 
   const toggleFavorite = async (id: number) => {
     try {
-      // ตรวจสอบว่า user.id มีค่าหรือไม่
       if (!user?.id) {
         throw new Error("User ID is missing. Please log in.");
       }
 
-      // ส่ง request ไปยัง API เพื่อบันทึกสถานะ favorite
       const response = await fetch(
         `http://10.0.2.2:8000/api/v1/template/toggle_favorite/`,
         {
-          method: "PUT", // ใช้ PUT เพื่อบันทึกข้อมูล
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             user_id: user.id,
-            template_id: id, // ใช้ id ของ template ที่ส่งเข้ามา
+            template_id: id,
           }),
         }
       );
 
-      // ตรวจสอบว่า response ใช้งานได้หรือไม่
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
 
-      // อัปเดต state templates ตามผลลัพธ์ที่ได้จาก API
       setTemplates((prev) =>
         prev.map((template) =>
           template.id === id
-            ? { ...template, isFavorite: !template.isFavorite } // สลับค่า isFavorite
+            ? { ...template, isFavorite: !template.isFavorite }
             : template
         )
       );
@@ -246,10 +249,11 @@ export default function Community() {
 
   // ====================== Filtering Logic ======================
   const filteredTemplates = templates.filter((template) => {
-    // Check FAVORITES filter
+    if (template.type !== "community" || template.status !== "unused") {
+      return false;
+    }
     if (selectedFilter === "FAVORITES" && !template.isFavorite) return false;
 
-    // Check category filter (ALL passes everything)
     if (
       selectedFilter !== "ALL" &&
       selectedFilter !== "FAVORITES" &&
@@ -258,7 +262,6 @@ export default function Community() {
       return false;
     }
 
-    // Check search query against title and description
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const matchesTitle = template.title.toLowerCase().includes(query);
@@ -409,13 +412,18 @@ export default function Community() {
           data={
             selectedTemplate
               ? {
+                  id: selectedTemplate.id,
                   isListed: selectedTemplate.isListed || false,
                   isFavorite: selectedTemplate.isFavorite || false,
                   title: selectedTemplate.title,
                   category: selectedTemplate.category,
                   description: selectedTemplate.description,
                   image: selectedTemplate.image_url,
-                  owner: selectedTemplate.created_by.user_id, // Direct access to user_id
+                  owner:
+                    selectedTemplate.created_by.username ||
+                    selectedTemplate.created_by.user_id,
+                  creator: selectedTemplate.created_by,
+                  creatorId: user?.id,
                   duration: selectedTemplate.duration,
                   goals: selectedTemplate.goals.map((goal) => ({
                     id: goal.id,
@@ -423,6 +431,7 @@ export default function Community() {
                   })),
                 }
               : {
+                  id: 0,
                   isListed: false,
                   isFavorite: false,
                   title: "",
@@ -432,6 +441,7 @@ export default function Community() {
                   owner: "Community User",
                   duration: 0,
                   goals: [],
+                  creatorId: user?.id,
                 }
           }
         />
