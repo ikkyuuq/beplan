@@ -118,7 +118,7 @@ export default function createTemplate() {
             : "http://127.0.0.1:8000";
 
         const response = await fetch(
-          `${baseUrl}/api/v1/template/available_goals?user_id=${userId}`
+          `${baseUrl}/api/v1/template/available_goals?user_id=${userId}`,
         );
 
         if (!response.ok) {
@@ -142,7 +142,7 @@ export default function createTemplate() {
         console.error("Failed to fetch available goals:", error);
         Alert.alert(
           "Error",
-          "Failed to fetch your goals. Please check network connection and server status."
+          "Failed to fetch your goals. Please check network connection and server status.",
         );
 
         setAvailableGoals([]);
@@ -164,7 +164,7 @@ export default function createTemplate() {
       if (status !== "granted") {
         Alert.alert(
           "Permission Required",
-          "We need access to your photos to upload an image."
+          "We need access to your photos to upload an image.",
         );
         return;
       }
@@ -183,14 +183,14 @@ export default function createTemplate() {
         const formData = new FormData();
 
         const fileType = uploadedImage.uri.substring(
-          uploadedImage.uri.lastIndexOf(".") + 1
+          uploadedImage.uri.lastIndexOf(".") + 1,
         );
         const mimeType =
           fileType === "jpg" || fileType === "jpeg"
             ? "image/jpeg"
             : fileType === "png"
-            ? "image/png"
-            : "image/jpg";
+              ? "image/png"
+              : "image/jpg";
 
         formData.append("file", {
           uri:
@@ -211,8 +211,8 @@ export default function createTemplate() {
           const timeoutPromise = new Promise((_, reject) =>
             setTimeout(
               () => reject(new Error("Upload request timed out")),
-              30000
-            )
+              30000,
+            ),
           );
 
           // Create the fetch promise
@@ -234,10 +234,10 @@ export default function createTemplate() {
             // Try to get more information about the error
             const errorText = await uploadResponse.text();
             console.error(
-              `Upload failed with status ${uploadResponse.status}: ${errorText}`
+              `Upload failed with status ${uploadResponse.status}: ${errorText}`,
             );
             throw new Error(
-              `Failed to upload image (status ${uploadResponse.status})`
+              `Failed to upload image (status ${uploadResponse.status})`,
             );
           }
 
@@ -255,12 +255,12 @@ export default function createTemplate() {
             Alert.alert(
               "Network Error",
               "Failed to connect to the server. Please check your internet connection and try again.",
-              [{ text: "OK" }]
+              [{ text: "OK" }],
             );
           } else {
             Alert.alert(
               "Upload Failed",
-              "Failed to upload image. Please try again with a smaller image or check your connection."
+              "Failed to upload image. Please try again with a smaller image or check your connection.",
             );
           }
         } finally {
@@ -311,7 +311,7 @@ export default function createTemplate() {
               setGoalDates(updatedGoalDates);
             },
           },
-        ]
+        ],
       );
     }
   };
@@ -349,7 +349,7 @@ export default function createTemplate() {
     if (!isFormValid) {
       Alert.alert(
         "Missing Information",
-        "Please provide a title, cover image, and select at least one goal."
+        "Please provide a title, cover image, and select at least one goal.",
       );
       return;
     }
@@ -357,7 +357,7 @@ export default function createTemplate() {
     if (!isLoaded || !isSignedIn) {
       Alert.alert(
         "Authentication Error",
-        "Please sign in to save your template."
+        "Please sign in to save your template.",
       );
       return;
     }
@@ -371,7 +371,7 @@ export default function createTemplate() {
     if (!image.startsWith("http")) {
       Alert.alert(
         "Error",
-        "Image upload failed. Please select an image again."
+        "Image upload failed. Please select an image again.",
       );
       return;
     }
@@ -402,7 +402,9 @@ export default function createTemplate() {
         title,
         description,
         image_url: image,
+        created_by: userId,
         category,
+        type: "community",
         existing_goals: existingGoals,
       };
 
@@ -421,7 +423,7 @@ export default function createTemplate() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.message || `Server error: ${response.status}`
+          errorData.message || `Server error: ${response.status}`,
         );
       }
 
