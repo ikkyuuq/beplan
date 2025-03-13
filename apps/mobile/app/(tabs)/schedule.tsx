@@ -369,7 +369,6 @@ export default function schedule() {
       setIsLoading(false);
     }
   };
-
   const handleDeleteGoal = async (goalId: number) => {
     try {
       const baseUrl =

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Platform } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Platform, TouchableOpacity } from "react-native";
 import { useUser } from "@clerk/clerk-expo";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useNavigation } from "expo-router";
+import { Ionicons } from "@expo/vector-icons"; // สำหรับไอคอนปุ่มย้อนกลับ
 
 type Task = {
   id: number;
@@ -16,7 +17,7 @@ type Task = {
 type Goal = {
   id: number;
   title: string;
-  status: string;
+  type: string;
   start_date: string;
   due_date: string;
   tasks: Task[];
@@ -55,6 +56,7 @@ export default function AllGoalAllTask() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigation = useNavigation(); // ใช้ useNavigation เพื่อนำทาง
 
   // ดึงข้อมูล Goal และ Task ทั้งหมด
   const fetchData = async () => {
@@ -86,6 +88,15 @@ export default function AllGoalAllTask() {
 
   return (
     <View style={styles.container}>
+      {/* ปุ่มย้อนกลับ */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.goBack()} // นำทางกลับไปหน้าก่อนหน้า
+      >
+        <Ionicons name="arrow-back" size={24} color="#4E5A94" />
+        <Text style={styles.backButtonText}>Back to Schedule</Text>
+      </TouchableOpacity>
+
       <Text style={styles.title}>All Goals and Tasks</Text>
       {isLoading ? (
         <ActivityIndicator size="large" color="#4E5A94" />
@@ -98,7 +109,7 @@ export default function AllGoalAllTask() {
           {goals.map((goal) => (
             <View key={goal.id} style={styles.goalContainer}>
               <Text style={styles.goalTitle}>{goal.title}</Text>
-              <Text style={styles.goalStatus}>Status: {goal.status}</Text>
+              <Text style={styles.goalType}>Type: {goal.type}</Text>
               <Text style={styles.goalDates}>
                 Start Date: {goal.start_date} | Due Date: {goal.due_date}
               </Text>
@@ -106,6 +117,21 @@ export default function AllGoalAllTask() {
                 <View key={task.id} style={styles.taskContainer}>
                   <Text style={styles.taskTitle}>{task.title}</Text>
                   <Text style={styles.taskDescription}>{task.description}</Text>
+                  {task.repeat_type && (
+                    <Text style={styles.taskRepeatType}>
+                      Repeat Type: {task.repeat_type}
+                    </Text>
+                  )}
+                  {task.date_interval && task.date_interval.length > 0 && (
+                    <Text style={styles.taskDateInterval}>
+                      Date Interval: {task.date_interval.join(", ")}
+                    </Text>
+                  )}
+                  {task.week_interval && (
+                    <Text style={styles.taskWeekInterval}>
+                      Week Interval: {task.week_interval}
+                    </Text>
+                  )}
                   <Text style={styles.taskStatus}>Status: {task.status}</Text>
                 </View>
               ))}
@@ -142,7 +168,7 @@ const styles = StyleSheet.create({
     color: "#4E5A94",
     marginBottom: 10,
   },
-  goalStatus: {
+  goalType: {
     fontSize: 14,
     color: "#666",
     marginBottom: 5,
@@ -165,6 +191,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
   },
+  taskRepeatType: {
+    fontSize: 14,
+    color: "#666",
+  },
+  taskDateInterval: {
+    fontSize: 14,
+    color: "#666",
+  },
+  taskWeekInterval: {
+    fontSize: 14,
+    color: "#666",
+  },
   taskStatus: {
     fontSize: 14,
     color: "#666",
@@ -176,5 +214,15 @@ const styles = StyleSheet.create({
   emptyText: {
     color: "#666",
     textAlign: "center",
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: "#4E5A94",
+    marginLeft: 5,
   },
 });
