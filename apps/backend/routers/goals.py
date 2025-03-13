@@ -2,11 +2,12 @@ import logging
 from datetime import date
 from typing import List, Optional
 
-from const import types as T
-from database import get_db_pool
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+
+from const import types as T
+from database import get_db_pool
 from utils import date_calculation, goal_creation
 
 logging.basicConfig(level=logging.INFO)
@@ -43,7 +44,6 @@ class FetchGoal(BaseModel):
     id: int
     title: str
     status: T.Status
-    type: str
     start_date: date
     due_date: date
     tasks: List[FetchTask] = []
@@ -279,7 +279,7 @@ async def get_goal(assigned_goal_id: int):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
-
+            
             goal_data = await conn.fetchrow(
                 """
                 SELECT g.id, g.title, g.type, ag.start_date, ag.due_date
@@ -319,9 +319,7 @@ async def get_goal(assigned_goal_id: int):
                         task["id"],
                         assigned_goal_id,
                     )
-                    date_interval = [
-                        row["interval_date"].isoformat() for row in date_interval
-                    ]
+                    date_interval = [row["interval_date"].isoformat() for row in date_interval]
 
                 tasks.append(
                     {
@@ -329,7 +327,7 @@ async def get_goal(assigned_goal_id: int):
                         "title": task["title"],
                         "description": task["description"],
                         "repeat_type": task["repeat_type"],
-                        "date_interval": date_interval,
+                        "date_interval": date_interval,  
                         "week_interval": task["week_interval"],
                         "status": task["status"],
                     }
@@ -367,7 +365,7 @@ async def get_goals_today(
         # Fetch assigned goals for the user and date range
         assigned_goals = await conn.fetch(
             """
-            SELECT ag.*, g.title, g.type
+            SELECT ag.*, g.title
             FROM public.assigned_goal ag
             JOIN public.goal g ON ag.goal_id = g.id
             WHERE ag.user_id = $1
@@ -383,7 +381,7 @@ async def get_goals_today(
         for ag in assigned_goals:
             tasks = await conn.fetch(
                 """
-                SELECT at.*, ati.interval_date
+                SELECT at.*, ati.*
                 FROM public.assigned_task at
                 JOIN public.assigned_task_interval ati ON at.id = ati.assigned_task_id
                 WHERE at.assigned_goal_id = $1 
@@ -403,7 +401,7 @@ async def get_goals_today(
                 )
                 task_list.append(
                     FetchTask(
-                        id=task["id"],
+                        id=task["task_id"],
                         title=task_detail["title"],
                         description=task_detail["description"],
                         status=T.Status(task["status"]),
@@ -416,7 +414,6 @@ async def get_goals_today(
                     FetchGoal(
                         id=ag["goal_id"],
                         title=ag["title"],
-                        type=ag["type"],
                         status=T.Status(ag["status"]),
                         start_date=ag["start_date"],
                         due_date=ag["due_date"],
@@ -440,7 +437,8 @@ async def update_task_status(request: TaskUpdateRequest):
             WHERE at.id = ANY($1)
             AND ag.user_id = $2
             AND at.status = 'pending'
-            """,
+
+        """,
             request.assigned_task_id,
             request.user_id,
         )

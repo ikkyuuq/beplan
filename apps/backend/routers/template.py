@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from enum import Enum
 from typing import List, Optional
 
@@ -102,10 +102,7 @@ class TaskTemplate(BaseModel):
 
 class GoalTemplate(BaseModel):
     title: str
-    type: T.GoalType
     tasks: List[TaskTemplate]
-    start_date: date
-    due_date: date
 
 
 class TemplateResponse(BaseModel):
@@ -119,6 +116,7 @@ class TemplateResponse(BaseModel):
     type: TemplateType
     status: TemplateStatus
     duration: int
+    is_favorite: bool
 
 
 @router.get("/")
@@ -193,6 +191,20 @@ async def fetch_template(
 
             templates_resp = []
             for tmpl in templates:
+                is_favorite = False
+                fav_tmpl_rec = await conn.fetchrow(
+                    """
+                    SELECT * FROM public.favorite_template
+                    WHERE user_id = $1
+                    AND template_id = $2
+                    """,
+                    user_id,
+                    tmpl["id"],
+                )
+                if fav_tmpl_rec:
+                    is_favorite = True
+                else:
+                    is_favorite = False
                 goal_templates = []
                 for tmpl_goal in goals_by_template.get(tmpl["id"], []):
                     goal_rec = goals_dict.get(tmpl_goal["goal_id"])
@@ -213,10 +225,7 @@ async def fetch_template(
                     goal_templates.append(
                         GoalTemplate(
                             title=goal_rec["title"],
-                            type=goal_rec["type"],
                             tasks=task_templates,
-                            start_date=tmpl_goal["start_date"],
-                            due_date=tmpl_goal["due_date"],
                         )
                     )
                 templates_resp.append(
@@ -235,6 +244,7 @@ async def fetch_template(
                             else TemplateStatus.UNUSED
                         ),
                         duration=duration,
+                        is_favorite=is_favorite,
                     )
                 )
 
@@ -857,33 +867,48 @@ class FavoriteTemplateRequest(BaseModel):
 
 
 @router.put("/toggle_favorite")
-async def toggle_favorite(req: FavoriteTemplateRequest):
+async def favorite_template(req: FavoriteTemplateRequest):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
             async with conn.transaction():
-                row = await conn.fetchrow(
+                existing = await conn.fetchrow(
                     """
-                    WITH deleted AS (
-                        DELETE FROM favorite_template
-                        WHERE user_id = $1 AND template_id = $2
-                        RETURNING *
-                    )
-                    SELECT 'unfavorited' AS action FROM deleted
-                    UNION ALL
-                    SELECT 'favorited' FROM (
-                        INSERT INTO public.favorite_template (user_id, template_id)
-                        SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM deleted)
-                        RETURNING 1
-                    )
-                    """,
+                    SELECT * FROM public.favorite_template
+                    WHERE user_id = $1
+                    AND template_id = $2
+                """,
                     req.user_id,
                     req.template_id,
                 )
-                if row:
-                    return {"message": f"Template {row['action']}"}
+                if existing:
+                    await conn.execute(
+                        """
+                        DELETE FROM public.favorite_template
+                        WHERE user_id = $1
+                        AND template_id = $2
+                    """,
+                        req.user_id,
+                        req.template_id,
+                    )
+                    return {"message": "Template unfavorited"}
                 else:
-                    raise HTTPException(status_code=500, detail="Unexpected error")
+                    await conn.execute(
+                        """
+                        INSERT INTO public.favorite_template (user_id, template_id)
+                        VALUES ($1, $2)
+                        """,
+                        req.user_id,
+                        req.template_id,
+                    )
+                    return {"message": "Template favorited"}
+
+        except UniqueViolationError:
+            raise HTTPException(
+                status_code=409, detail="Template already favorited by user"
+            )
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
@@ -902,7 +927,14 @@ async def get_favorite_templates(user_id: str):
                 """,
                 user_id,
             )
+
+            if not fav_templates:
+                return []
+
             return fav_templates
+
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
