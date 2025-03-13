@@ -7,174 +7,49 @@ import {
   TextInput,
   FlatList,
   ScrollView,
+  Alert,
 } from "react-native";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import TemplateCard from "@/components/TemplateCard";
 import TemplateModal from "@/components/TemplateModal";
 import Header from "@/components/Header";
+import { useUser } from "@clerk/clerk-expo";
 
 type Template = {
+  isListed: any;
+  id: number;
   title: string;
   category: string;
   description: string;
-  image: string;
-  owner: string;
+  image_url: string;
+  created_by: string;
+  type: string;
+  goals: Array<{
+    title: string;
+    tasks: Array<{
+      title: string;
+      description?: string;
+      repeat_type: string;
+      week_interval?: Array<number>;
+    }>;
+    id: string;
+  }>;
+  status: string;
+  duration: number;
   isFavorite: boolean;
-  duration?: number;
-  goals_id: string[];
 };
 
 // ====================== Main Component ======================
 export default function Community() {
   // ====================== State Management ======================
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>("ALL");
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [templates, setTemplates] = useState<Template[]>([
-    {
-      title: "Arnold Schwarzenegger Workout",
-      category: "fitness",
-      description: `A comprehensive fitness regimen inspired by Arnold's classic bodybuilding approach. Includes progressive strength training, strategic cardio, and recovery protocols for maximum muscle development.`,
-      image: "https://picsum.photos/seed/arnold/400/600",
-      owner: "John",
-      isFavorite: false,
-      duration: 90,
-      goals_id: ["goal_001", "goal_002", "goal_004", "goal_010"],
-    },
-    {
-      title: "Warren Buffett Investment",
-      description:
-        "Value investing strategy based on Warren Buffett's principles. Focus on long-term growth, company fundamentals, and patient capital allocation.",
-      category: "work",
-      image: "https://picsum.photos/seed/buffett/400/600",
-      owner: "Ben",
-      isFavorite: false,
-      duration: 365,
-      goals_id: ["goal_003", "goal_005", "goal_008"],
-    },
-    {
-      title: "Yoga for Flexibility",
-      description:
-        "Daily yoga practice focused on improving overall flexibility, mobility, and mind-body connection. Perfect for beginners and intermediate practitioners.",
-      category: "health",
-      image: "https://picsum.photos/seed/yoga/400/600",
-      owner: "Adison",
-      isFavorite: true,
-      duration: 30,
-      goals_id: ["goal_004", "goal_009", "goal_010", "goal_012"],
-    },
-    {
-      title: "Marathon Training Plan",
-      description:
-        "16-week progressive training plan to prepare for a full marathon. Includes run scheduling, nutrition guidance, and recovery techniques.",
-      category: "fitness",
-      image: "https://picsum.photos/seed/marathon/400/600",
-      owner: "Ryu",
-      isFavorite: false,
-      duration: 112,
-      goals_id: ["goal_002", "goal_010", "goal_011", "goal_014"],
-    },
-    {
-      title: "Mindfulness Meditation",
-      description:
-        "Daily meditation practice to reduce stress, improve focus, and enhance overall wellbeing. Includes guided sessions and breathing techniques.",
-      category: "health",
-      image: "https://picsum.photos/seed/meditation/400/600",
-      owner: "Boss",
-      isFavorite: true,
-      duration: 21,
-      goals_id: ["goal_009", "goal_010", "goal_012"],
-    },
-    {
-      title: "Reading Challenge",
-      description:
-        "Structured approach to reading 24 books in a year. Includes genre diversification, reading schedules, and comprehension techniques.",
-      category: "education",
-      image: "https://picsum.photos/seed/books/400/600",
-      owner: "David",
-      isFavorite: false,
-      duration: 365,
-      goals_id: ["goal_006", "goal_015"],
-    },
-    {
-      title: "Language Learning",
-      description:
-        "Comprehensive language acquisition strategy following proven polyglot methods. Daily practice routine with listening, speaking, reading, and writing.",
-      category: "education",
-      image: "https://picsum.photos/seed/language/400/600",
-      owner: "King",
-      isFavorite: false,
-      duration: 180,
-      goals_id: ["goal_007", "goal_015"],
-    },
-    {
-      title: "World Traveler",
-      description:
-        "Strategic approach to visiting multiple countries within a year. Includes budgeting, itinerary planning, and cultural immersion techniques.",
-      category: "travel",
-      image: "https://picsum.photos/seed/travel/400/600",
-      owner: "John",
-      isFavorite: false,
-      duration: 60,
-      goals_id: ["goal_013", "goal_007"],
-    },
-    {
-      title: "Side Hustle Blueprint",
-      description:
-        "Step-by-step framework for launching and growing a profitable side business while maintaining work-life balance.",
-      category: "work",
-      image: "https://picsum.photos/seed/business/400/600",
-      owner: "Emma",
-      isFavorite: false,
-      duration: 90,
-      goals_id: ["goal_003", "goal_005", "goal_008", "goal_015"],
-    },
-    {
-      title: "Healthy Eating Plan",
-      description:
-        "Balanced nutrition program focusing on whole foods, meal planning, and sustainable eating habits without restrictive dieting.",
-      category: "health",
-      image: "https://picsum.photos/seed/nutrition/400/600",
-      owner: "Vunsen",
-      isFavorite: true,
-      duration: 42,
-      goals_id: ["goal_010", "goal_011"],
-    },
-    {
-      title: "Public Speaking Mastery",
-      description:
-        "Progressive system to overcome speech anxiety and develop compelling presentation skills for professional and personal growth.",
-      category: "personal_development",
-      image: "https://picsum.photos/seed/speaking/400/600",
-      owner: "Nobita",
-      isFavorite: false,
-      duration: 56,
-      goals_id: ["goal_015", "goal_009"],
-    },
-    {
-      title: "Retirement Planning",
-      description:
-        "Comprehensive financial strategy for securing retirement through smart investments, tax optimization, and long-term wealth building.",
-      category: "work",
-      image: "https://picsum.photos/seed/retirement/400/600",
-      owner: "Taki",
-      isFavorite: false,
-      duration: 365,
-      goals_id: ["goal_003", "goal_005", "goal_008"],
-    },
-    {
-      title: "Home DIY Projects",
-      description:
-        "Collection of weekend home improvement projects with step-by-step instructions, tool lists, and budgeting advice.",
-      category: "other",
-      image: "https://picsum.photos/seed/diy/400/600",
-      owner: "Soma",
-      isFavorite: false,
-      duration: 120,
-      goals_id: ["goal_003"],
-    },
-  ]);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [availableGoals, setAvailableGoals] = useState<Record<string, string>>({});
+  const { user } = useUser();
+
 
   // ====================== Category Configuration ======================
   const categories = [
@@ -189,66 +64,118 @@ export default function Community() {
     { id: "other", label: "OTHER", icon: "ellipsis-horizontal-outline" },
   ];
 
-  // ====================== Mock Data ======================
-  const mockGoals = [
-    { id: "goal_001", title: "Build Strength" },
-    { id: "goal_002", title: "Improve Cardio" },
-    { id: "goal_003", title: "Financial Stability" },
-    { id: "goal_004", title: "Increase Flexibility" },
-    { id: "goal_005", title: "Save for Retirement" },
-    { id: "goal_006", title: "Read 24 Books This Year" },
-    { id: "goal_007", title: "Learn a New Language" },
-    { id: "goal_008", title: "Start a Side Business" },
-    { id: "goal_009", title: "Reduce Stress Levels" },
-    { id: "goal_010", title: "Improve Sleep Quality" },
-    { id: "goal_011", title: "Eat Healthier Meals" },
-    { id: "goal_012", title: "Master Meditation" },
-    { id: "goal_013", title: "Travel to 3 New Countries" },
-    { id: "goal_014", title: "Run a Marathon" },
-    { id: "goal_015", title: "Develop Public Speaking Skills" },
-  ];
+  // ====================== Fetch Data from API ======================
+  useEffect(() => {
+    fetchTemplates();
+    fetchAvailableGoals();
+  }, []);
+
+  const fetchTemplates = async () => {
+    try {
+      // ดึงข้อมูล templates จาก API
+      const response = await fetch("http://10.0.2.2:8000/api/v1/template/");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+
+      // ดึงสถานะ isFavorite ของแต่ละ template
+      const templatesWithFavoriteStatus = await Promise.all(
+        data.map(async (template: any) => {
+          const isFavorite = await fetchFavoriteStatus(template.id);
+          return { ...template, isFavorite };
+        })
+      );
+
+      setTemplates(templatesWithFavoriteStatus);
+    } catch (error) {
+      console.error("Failed to fetch templates:", error);
+      Alert.alert("Error", "Failed to fetch templates. Please try again.");
+    }
+  };
+
+  const fetchAvailableGoals = async () => {
+    try {
+      const response = await fetch("http://10.0.2.2:8000/api/v1/template/available_goals");
+      const data = await response.json();
+      setAvailableGoals(data);
+    } catch (error) {
+      console.error("Failed to fetch available goals:", error);
+    }
+  };
+
+  const fetchFavoriteStatus = async (templateId: number) => {
+    try {
+      const response = await fetch(
+        `http://10.0.2.2:8000/api/v1/template/favorite/1`
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.isFavorite; // สมมติว่า API ส่งกลับ { isFavorite: true/false }
+    } catch (error) {
+      console.error("Failed to fetch favorite status:", error);
+      return false; // หากเกิดข้อผิดพลาด ให้คืนค่าเริ่มต้นเป็น false
+    }
+  };
 
   // ====================== Event Handlers ======================
   const handleTemplateSelect = (template: Template) => {
-    const selectedTemplate = {
-      title: template.title,
-      category: template.category,
-      description: template.description || "",
-      image: template.image,
-      owner: template.owner,
-      isFavorite: template.isFavorite || false,
-      isListed: template.isFavorite || false,
-      duration: template.duration || null,
-      goals:
-        template.goals_id?.map(
-          (id) =>
-            mockGoals.find((goal) => goal.id === id) || {
-              id,
-              title: `Goal ${id}`,
-            }
-        ) || [],
-    };
-
-    setSelectedTemplate(selectedTemplate);
+    setSelectedTemplate(template);
     setIsModalVisible(true);
   };
 
-  const toggleFavorite = (title: string) => {
-    setTemplates((prev) =>
-      prev.map((template) =>
-        template.title === title
-          ? { ...template, isFavorite: !template.isFavorite }
-          : template
-      )
-    );
+  const toggleFavorite = async (id: number) => {
+    try {
+      // ตรวจสอบว่า user.id มีค่าหรือไม่
+      if (!user?.id) {
+        throw new Error("User ID is missing. Please log in.");
+      }
+
+      // ส่ง request ไปยัง API เพื่อบันทึกสถานะ favorite
+      const response = await fetch(
+        `http://10.0.2.2:8000/api/v1/template/toggle_favorite/`,
+        {
+          method: "PUT", // ใช้ PUT เพื่อบันทึกข้อมูล
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: user.id,
+            template_id: id, // ใช้ id ของ template ที่ส่งเข้ามา
+          }),
+        }
+      );
+
+      // ตรวจสอบว่า response ใช้งานได้หรือไม่
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // อัปเดต state templates ตามผลลัพธ์ที่ได้จาก API
+      setTemplates((prev) =>
+        prev.map((template) =>
+          template.id === id
+            ? { ...template, isFavorite: !template.isFavorite } // สลับค่า isFavorite
+            : template
+        )
+      );
+
+      console.log("Favorite toggled successfully:", data);
+    } catch (error) {
+      console.error("Failed to toggle favorite:", error);
+      Alert.alert("Error", "Failed to toggle favorite. Please try again.");
+    }
   };
 
   const handleFilterChange = (filter: string) => {
     setSelectedFilter(filter);
   };
 
-  // ====================== Helper Functions ======================
-  // Filtering Logic
+  // ====================== Filtering Logic ======================
   const filteredTemplates = templates.filter((template) => {
     if (selectedFilter === "FAVORITES" && !template.isFavorite) return false;
     if (
@@ -270,7 +197,7 @@ export default function Community() {
     return true;
   });
 
-  // Get Icon Color
+  // ====================== Get Icon Color ======================
   const getIconColor = (categoryId: string) => {
     if (categoryId === "FAVORITES" && selectedFilter === categoryId) {
       return "#FF0000";
@@ -340,12 +267,12 @@ export default function Community() {
       <View style={styles.templateContainer}>
         <FlatList
           data={filteredTemplates}
-          keyExtractor={(item) => item.title}
+          keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
             <TemplateCard
               template={item}
               onSelect={() => handleTemplateSelect(item)}
-              onToggleFavorite={() => toggleFavorite(item.title)}
+              onToggleFavorite={() => toggleFavorite(item.id)}
             />
           )}
           showsVerticalScrollIndicator={false}
@@ -378,14 +305,32 @@ export default function Community() {
             }
           }}
           data={
-            selectedTemplate || {
-              isListed: false,
-              title: "",
-              category: "",
-              image: "",
-              description: "",
-              owner: "Community User",
-            }
+            selectedTemplate
+              ? {
+                isListed: selectedTemplate.isListed || false,
+                isFavorite: selectedTemplate.isFavorite || false,
+                title: selectedTemplate.title,
+                category: selectedTemplate.category,
+                description: selectedTemplate.description,
+                image: selectedTemplate.image_url, // Map image_url to image
+                owner: selectedTemplate.created_by, // Map created_by to owner
+                duration: selectedTemplate.duration,
+                goals: selectedTemplate.goals.map((goal) => ({
+                  id: goal.id,
+                  title: goal.title,
+                })),
+              }
+              : {
+                isListed: false,
+                isFavorite: false,
+                title: "",
+                category: "",
+                description: "",
+                image: "",
+                owner: "Community User",
+                duration: 0,
+                goals: [],
+              }
           }
         />
       </View>
