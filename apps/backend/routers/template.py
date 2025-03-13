@@ -13,8 +13,13 @@ from pydantic import BaseModel
 from s3 import s3
 from utils import date_calculation
 
+import uuid
+from uuid import UUID
+from datetime import datetime
+
 router = APIRouter()
 
+BASE_URL = "https://beplan.com/templates/"
 
 class AssignedTask(BaseModel):
     id: int
@@ -128,6 +133,19 @@ class TemplateResponse(BaseModel):
     duration: int
     is_favorite: bool
 
+class ShareTemplateRequest(BaseModel):
+    template_id: int
+    user_id: str
+
+class SharedTemplateResponse(BaseModel):
+    id: str
+    template_id: int
+    user_id: str
+    url: str
+    created_at: datetime
+
+class SharedTemplateURLResponse(BaseModel):
+    url: str
 
 
 @router.get("/")
@@ -1003,3 +1021,63 @@ async def update_template(req: UpdateTemplateRequest):
             raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+
+# Make template shareable by generate URL
+@router.post("/shared_template",response_model = SharedTemplateResponse)
+async def shared_template(req: ShareTemplateRequest):
+    "Generate template unique shareabel URL"
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        unique_id = str(uuid.uuid4())
+        share_url = f"{BASE_URL}/{unique_id}"
+
+        try:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO  public.shared_tmpl (id, template_id, user_id, URL, created_at)
+                VALUES ($1, $2, $3, $4, NOW())
+                RETURNING id, template_id, user_id , URL, created_at
+                """,
+                unique_id,
+                req.template_id,
+                req.user_id,
+                share_url
+            )
+
+            if not row:
+                raise HTTPException(status_code=500, detail="Failed to insert shared template")
+            
+            return SharedTemplateResponse(
+                id=str(row["id"]),
+                template_id=row["template_id"],
+                user_id=row["user_id"],
+                url=row["url"],
+                created_at=row["created_at"],
+            )
+        
+        except Exception as e:
+            raise   HTTPException(status_code=500, detail=f"Error sharing template: {str(e)}")
+
+@router.get("/shared/{id}", response_model=SharedTemplateURLResponse)
+async def get_shared_template(id: str):
+    """Fetches shared template details using the unique template URL ID."""
+    try:
+        id = str(UUID(id))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid template ID format")
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT url FROM public.shared_tmpl WHERE id = $1
+            """,
+            id
+        )
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Template not found")
+
+        return SharedTemplateURLResponse(
+            url = row["url"],
+        )
