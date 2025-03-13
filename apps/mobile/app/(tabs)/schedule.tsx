@@ -49,7 +49,6 @@ type Goal = {
   due_date: string;
   tasks: Task[];
 };
-
 export default function schedule() {
   const [currentMonth, setCurrentMonth] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
