@@ -114,7 +114,9 @@ export default function UserSettings() {
       const loadUserData = async () => {
         try {
           setUsername(user.username || getDefaultUsername());
-          setProfileImage(user.imageUrl);
+          setProfileImage(
+            user?.unsafeMetadata.profileImageUrl || user?.imageUrl || "",
+          );
           setPrimaryEmail(user.primaryEmailAddress?.emailAddress || "");
           setDescription((user.unsafeMetadata?.description as string) || "");
           setOccupation((user.unsafeMetadata?.occupation as string) || "");
@@ -264,6 +266,7 @@ export default function UserSettings() {
           break;
 
         case "profileImage":
+          setIsEditingOccupation(false);
           if (!newProfileImage) return;
           setIsLoadingImage(true);
           if (newProfileImage.startsWith("https://img.clerk.com")) {
@@ -275,7 +278,7 @@ export default function UserSettings() {
               uri: uploadedImage.uri || newProfileImage,
               name: uploadedImage.fileName,
               type: uploadedImage.mimeType,
-            });
+            } as any);
 
             const uploadResp = await fetch(
               "http://10.0.2.2:8000/api/v1/user/upload_image",
@@ -292,7 +295,7 @@ export default function UserSettings() {
             }
             const data = await uploadResp.json();
 
-            // Using /initialize to when first entry
+            // Using `/initialize` when first entry
             const updateUserResp = await fetch(
               "http://10.0.2.2:8000/api/v1/user/update",
               {
@@ -315,6 +318,13 @@ export default function UserSettings() {
                 "Failed to update user profile. Please try again later.",
               );
             }
+
+            await user.update({
+              unsafeMetadata: {
+                ...user.unsafeMetadata,
+                profileImageUrl: data.url,
+              },
+            });
 
             formattedImageData = {
               uri: uploadedImage.uri,
