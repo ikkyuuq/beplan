@@ -414,7 +414,7 @@ async def get_goals_today(
             if task_list:
                 goals.append(
                     FetchGoal(
-                        id=ag["goal_id"],
+                        id=ag["id"],
                         title=ag["title"],
                         type=ag["type"],
                         status=T.Status(ag["status"]),
