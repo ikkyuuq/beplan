@@ -10,6 +10,7 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Platform,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -51,6 +52,7 @@ export default function UserSettings() {
   const [occupation, setOccupation] = useState("");
   const [externalAccounts, setExternalAccounts] = useState<any[]>([]);
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // ====================== Animation Values ======================
   const headerOpacity = useSharedValue(0);
@@ -151,6 +153,77 @@ export default function UserSettings() {
       loadUserData();
     }
   }, [isLoaded, user]);
+
+  // ====================== User Initialization ======================
+  useEffect(() => {
+    const initializeUser = async () => {
+      if (isLoaded && user && !isInitialized) {
+        try {
+          const userId = user.id;
+          if (userId) {
+            const baseUrl =
+              Platform.OS === "android"
+                ? "http://10.0.2.2:8000"
+                : "http://127.0.0.1:8000";
+
+            const userData = {
+              imageUrl: user?.imageUrl || "",
+              user_id: userId,
+              username: user.username || getDefaultUsername(),
+              occupation: (user.unsafeMetadata?.occupation as string) || "",
+              about: (user.unsafeMetadata?.description as string) || "",
+            };
+
+            console.log("Initializing user with data:", userData);
+
+            let response = await fetch(`${baseUrl}/api/v1/user/initialize`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(userData),
+            });
+
+            if (!response.ok) {
+              const responseText = await response.text();
+              console.log(
+                "User initialization response:",
+                response.status,
+                responseText
+              );
+              if (
+                response.status === 500 &&
+                responseText.includes("duplicate key value")
+              ) {
+                console.log("Duplicate user detected, updating instead...");
+                response = await fetch(`${baseUrl}/api/v1/user/update`, {
+                  method: "PUT",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify(userData),
+                });
+
+                if (!response.ok) {
+                  console.log("User update response:", response.status);
+                } else {
+                  console.log("User updated successfully");
+                  setIsInitialized(true);
+                }
+              }
+            } else {
+              console.log("User initialized successfully");
+              setIsInitialized(true);
+            }
+          }
+        } catch (error) {
+          console.error("Error initializing/updating user:", error);
+        }
+      }
+    };
+
+    initializeUser();
+  }, [isLoaded, user, isInitialized]);
 
   // ====================== Helper Functions ======================
   const getDefaultUsername = () => {
@@ -299,11 +372,10 @@ export default function UserSettings() {
             }
             const data = await uploadResp.json();
 
-            // Using `/initialize` when first entry
             const updateUserResp = await fetch(
               "http://10.0.2.2:8000/api/v1/user/update",
               {
-                method: "POST",
+                method: "PUT",
                 headers: {
                   "Content-Type": "application/json",
                 },
