@@ -27,8 +27,27 @@ import { LinearGradient } from "expo-linear-gradient";
 import TemplateCard from "@/components/TemplateCard";
 import TemplateModal from "@/components/TemplateModal";
 
+type Task = {
+  title: string;
+  description?: string;
+  repeat_type: string;
+  week_interval?: number[];
+};
+
+type Goal = {
+  title: string;
+  tasks: Task[];
+};
+
+type CreateBy = {
+  user_id: string;
+  username?: string;
+  occupation?: string;
+  image_url?: string;
+  about?: string;
+};
+
 type Template = {
-  isListed: any;
   id: number;
   title: string;
   category: string;
@@ -36,32 +55,10 @@ type Template = {
   image_url: string;
   created_by: string;
   type: string;
-  goals: Array<{
-    title: string;
-    tasks: Array<{
-      title: string;
-      description?: string;
-      repeat_type: string;
-      week_interval?: Array<number>;
-    }>;
-    id: string;
-  }>;
+  goals: Goal[];
   status: string;
   duration: number;
   isFavorite: boolean;
-};
-
-
-
-type TemplateType = {
-  id?: number;
-  title: string;
-  category: string;
-  description?: string;
-  image?: string;
-  owner?: string;
-  isFavorite: boolean;
-  goals_id: string[];
 };
 
 // ====================== Main Component ======================
@@ -72,7 +69,6 @@ export default function CreateScreen() {
   const searchInputTranslateY = useSharedValue(20);
   const templateSectionOpacity = useSharedValue(0);
   const communitySectionOpacity = useSharedValue(0);
-
 
   // ====================== Animation Setup ======================
   useEffect(() => {
@@ -89,17 +85,17 @@ export default function CreateScreen() {
       withTiming(0, {
         duration: 500,
         easing: Easing.out(Easing.cubic),
-      })
+      }),
     );
 
     // Content sections animation (staggered)
     templateSectionOpacity.value = withDelay(
       500,
-      withTiming(1, { duration: 500 })
+      withTiming(1, { duration: 500 }),
     );
     communitySectionOpacity.value = withDelay(
       700,
-      withTiming(1, { duration: 500 })
+      withTiming(1, { duration: 500 }),
     );
   }, []);
 
@@ -121,7 +117,7 @@ export default function CreateScreen() {
           templateSectionOpacity.value * 1 === 1 ? 0 : 20,
           {
             duration: 500,
-          }
+          },
         ),
       },
     ],
@@ -135,7 +131,7 @@ export default function CreateScreen() {
           communitySectionOpacity.value * 1 === 1 ? 0 : 20,
           {
             duration: 500,
-          }
+          },
         ),
       },
     ],
@@ -144,8 +140,10 @@ export default function CreateScreen() {
   // ====================== State Management ======================
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isOptionModalVisible, setIsOptionModalVisible] = useState(false);
-  const [isViewAllTemplatesVisible, setIsViewAllTemplatesVisible] = useState(false);
-  const [isViewAllCommunityVisible, setIsViewAllCommunityVisible] = useState(false);
+  const [isViewAllTemplatesVisible, setIsViewAllTemplatesVisible] =
+    useState(false);
+  const [isViewAllCommunityVisible, setIsViewAllCommunityVisible] =
+    useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -157,10 +155,13 @@ export default function CreateScreen() {
         const response = await fetch("http://10.0.2.2:8000/api/v1/template/");
         if (!response.ok) {
           throw new Error("Network response was not ok");
-        } 
+        }
         const data = await response.json();
-        setTemplateData(data);        
-        setCommunityData(data.filter((template: Template) => template.isFavorite));
+        setTemplateData(data);
+        setCommunityData(
+          // TODO : แก้ให้ sort จาก favorite มากไปน้อย
+          data.filter((template: any) => template.type === "community"),
+        );
       } catch (error) {
         console.error("Error fetching templates:", error);
       } finally {
@@ -192,89 +193,10 @@ export default function CreateScreen() {
   ];
 
   // Template data
-  const [templateData, setTemplateData] = useState<any[]>([
-    {
-      title: "Complete Fitness Transformation",
-      category: "Fitness",
-      description:
-        "Transform your physique with this comprehensive fitness regimen inspired by elite athletes. This goal combines progressive strength training, strategic cardio intervals, and recovery protocols designed for maximum muscle development and fat loss. Perfect for beginners and intermediate fitness enthusiasts looking to make significant physical changes in 90 days.",
-      image: "https://picsum.photos/seed/fitness101/400/600",
-      owner: "BePlan",
-      duration: 90,
-      isFavorite: false,
-      goals_id: ["goal_001", "goal_002", "goal_004"],
-    },
-    {
-      title: "Financial Freedom Blueprint",
-      category: "Finance",
-      description:
-        "Master your finances with this strategic roadmap to financial independence. Based on principles from top wealth advisors, this template helps you build smart saving habits, optimize investments, and develop passive income streams. Includes budgeting frameworks, investment strategies, and debt elimination techniques that work for any income level.",
-      image: "https://picsum.photos/seed/finance101/400/600",
-      owner: "BePlan",
-      duration: 365,
-      isFavorite: false,
-      goals_id: ["goal_003", "goal_005", "goal_008"],
-    },
-    {
-      title: "Mindfulness & Meditation Journey",
-      category: "Health",
-      description:
-        "Cultivate inner peace and mental clarity with this progressive meditation program. Designed for busy professionals, this template helps you build a consistent practice starting with just 5 minutes daily and gradually expanding to deeper meditative states. Includes guided sessions, breathing techniques, and mindfulness exercises to reduce stress and enhance overall wellbeing.",
-      image: "https://picsum.photos/seed/meditation101/400/600",
-      owner: "BePlan",
-      duration: 30,
-      isFavorite: false,
-      goals_id: ["goal_009", "goal_010", "goal_012"],
-    },
-    {
-      title: "Ultimate Language Learning System",
-      category: "Education",
-      description:
-        "Become conversational in any language within 6 months using this comprehensive language acquisition strategy. Following proven polyglot methods, this system combines daily practice routines with strategic immersion techniques. Perfect for travelers, professionals, and lifelong learners who want to develop practical language skills efficiently.",
-      image: "https://picsum.photos/seed/language101/400/600",
-      owner: "BePlan",
-      duration: 180,
-      isFavorite: false,
-      goals_id: ["goal_007", "goal_015"],
-    },
-  ]);
+  const [templateData, setTemplateData] = useState<Template[]>([]);
 
   // Community data
-  const [communityData, setCommunityData] = useState<any[]>([
-    {
-      title: "30-Day Healthy Habits Challenge",
-      category: "Health",
-      description:
-        "Transform your daily routine with this community-favorite health challenge. This template guides you through establishing 10 essential healthy habits that boost energy, improve sleep quality, and enhance overall vitality. Each habit is introduced gradually with specific action steps, making this perfect for health beginners and veterans alike.",
-      image: "https://picsum.photos/seed/health101/400/600",
-      owner: "John Doe",
-      duration: 30,
-      isFavorite: false,
-      goals_id: ["goal_010", "goal_011"],
-    },
-    {
-      title: "Ultimate HIIT Workout Series",
-      category: "Workout",
-      description:
-        "Maximize fat burning and muscle definition with this high-intensity interval training series. Created by a certified fitness trainer, this program features 24 unique workouts that progressively challenge your cardiovascular system and major muscle groups. Ideal for intermediate fitness enthusiasts who want maximum results in minimum time.",
-      image: "https://picsum.photos/seed/hiit101/400/600",
-      owner: "Jane Smith",
-      duration: 56,
-      isFavorite: true,
-      goals_id: ["goal_002", "goal_004"],
-    },
-    {
-      title: "Productivity Powerhouse System",
-      category: "Productivity",
-      description:
-        "Double your productivity while working fewer hours with this science-backed system. Drawing from the practices of top performers across industries, this template helps you implement time blocking, deep work sessions, and strategic rest periods. Perfect for entrepreneurs, professionals, and students who want to accomplish more without burnout.",
-      image: "https://picsum.photos/seed/productivity101/400/600",
-      owner: "Alex Johnson",
-      duration: 42,
-      isFavorite: false,
-      goals_id: ["goal_006", "goal_008"],
-    },
-  ]);
+  const [communityData, setCommunityData] = useState<Template[]>([]);
 
   // ====================== Event Handlers ======================
   const handleTemplateSelect = (template: any) => {
@@ -447,7 +369,10 @@ export default function CreateScreen() {
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          <Slider data={templateData} onCardPress={(template) => handleTemplateSelect(template)} />
+          <Slider
+            data={templateData}
+            onCardPress={(template) => handleTemplateSelect(template)}
+          />
         </Animated.View>
 
         {/* Most Popular Community Template */}
@@ -466,7 +391,10 @@ export default function CreateScreen() {
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          <Slider data={communityData} onCardPress={(template) => handleTemplateSelect(template)} />
+          <Slider
+            data={communityData}
+            onCardPress={(template) => handleTemplateSelect(template)}
+          />
         </Animated.View>
       </ScrollView>
 
@@ -486,30 +414,33 @@ export default function CreateScreen() {
           data={
             selectedTemplate
               ? {
-                isListed: selectedTemplate.isListed || false,
-                isFavorite: selectedTemplate.isFavorite || false,
-                title: selectedTemplate.title,
-                category: selectedTemplate.category,
-                description: selectedTemplate.description,
-                image: selectedTemplate.image_url, // ใช้ image_url จาก API
-                owner: selectedTemplate.created_by || "BePlan", // ใช้ created_by จาก API
-                duration: selectedTemplate.duration || 0,
-                goals: selectedTemplate.goals?.map((goal: { id: any; title: any; }) => ({
-                  id: goal.id,
-                  title: goal.title,
-                })) || [], // แสดง goals ทั้งหมด
-              }
+                  isListed: selectedTemplate.isListed || false,
+                  isFavorite: selectedTemplate.isFavorite || false,
+                  title: selectedTemplate.title,
+                  category: selectedTemplate.category,
+                  description: selectedTemplate.description,
+                  image: selectedTemplate.image_url, // ใช้ image_url จาก API
+                  owner: selectedTemplate.created_by.user_id || "BePlan", // ใช้ created_by จาก API
+                  duration: selectedTemplate.duration || 0,
+                  goals:
+                    selectedTemplate.goals?.map(
+                      (goal: { id: any; title: any }) => ({
+                        id: goal.id,
+                        title: goal.title,
+                      }),
+                    ) || [], // แสดง goals ทั้งหมด
+                }
               : {
-                isListed: false,
-                isFavorite: false,
-                title: "",
-                category: "",
-                description: "",
-                image: "",
-                owner: "Community User",
-                duration: 0,
-                goals: [],
-              }
+                  isListed: false,
+                  isFavorite: false,
+                  title: "",
+                  category: "",
+                  description: "",
+                  image: "",
+                  owner: "Community User",
+                  duration: 0,
+                  goals: [],
+                }
           }
         />
       </View>
@@ -662,7 +593,7 @@ export default function CreateScreen() {
                                 mockGoals.find((goal) => goal.id === id) || {
                                   id,
                                   title: `Goal ${id}`,
-                                }
+                                },
                             ) || [],
                         };
                         setSelectedTemplate(selectedTemplate);
@@ -674,16 +605,16 @@ export default function CreateScreen() {
                             prev.map((item) =>
                               item.title === template.title
                                 ? { ...item, isFavorite: !item.isFavorite }
-                                : item
-                            )
+                                : item,
+                            ),
                           );
                         } else {
                           setCommunityData((prev) =>
                             prev.map((item) =>
                               item.title === template.title
                                 ? { ...item, isFavorite: !item.isFavorite }
-                                : item
-                            )
+                                : item,
+                            ),
                           );
                         }
                       }}
@@ -768,10 +699,10 @@ const styles = StyleSheet.create({
   customGoalButton: {
     alignSelf: "center",
     //width: "50%",
-    width: Platform.OS === 'ios' ? '100%' : '50%',
+    width: Platform.OS === "ios" ? "100%" : "50%",
     alignItems: "center",
     borderRadius: 30,
-    marginTop: Platform.OS === 'ios' ? 0 : 6
+    marginTop: Platform.OS === "ios" ? 0 : 6,
   },
   buttonGradient: {
     flexDirection: "row",
@@ -958,3 +889,4 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
+

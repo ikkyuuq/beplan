@@ -15,8 +15,27 @@ import TemplateModal from "@/components/TemplateModal";
 import Header from "@/components/Header";
 import { useUser } from "@clerk/clerk-expo";
 
+type Task = {
+  title: string;
+  description?: string;
+  repeat_type: string;
+  week_interval?: number[];
+};
+
+type Goal = {
+  title: string;
+  tasks: Task[];
+};
+
+type CreateBy = {
+  user_id: string;
+  username?: string;
+  occupation?: string;
+  image_url?: string;
+  about?: string;
+};
+
 type Template = {
-  isListed: any;
   id: number;
   title: string;
   category: string;
@@ -24,16 +43,7 @@ type Template = {
   image_url: string;
   created_by: string;
   type: string;
-  goals: Array<{
-    title: string;
-    tasks: Array<{
-      title: string;
-      description?: string;
-      repeat_type: string;
-      week_interval?: Array<number>;
-    }>;
-    id: string;
-  }>;
+  goals: Goal[];
   status: string;
   duration: number;
   isFavorite: boolean;
@@ -43,13 +53,16 @@ type Template = {
 export default function Community() {
   // ====================== State Management ======================
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
+    null,
+  );
   const [selectedFilter, setSelectedFilter] = useState<string>("ALL");
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [availableGoals, setAvailableGoals] = useState<Record<string, string>>({});
+  const [availableGoals, setAvailableGoals] = useState<Record<string, string>>(
+    {},
+  );
   const { user } = useUser();
-
 
   // ====================== Category Configuration ======================
   const categories = [
@@ -84,7 +97,7 @@ export default function Community() {
         data.map(async (template: any) => {
           const isFavorite = await fetchFavoriteStatus(template.id);
           return { ...template, isFavorite };
-        })
+        }),
       );
 
       setTemplates(templatesWithFavoriteStatus);
@@ -96,7 +109,9 @@ export default function Community() {
 
   const fetchAvailableGoals = async () => {
     try {
-      const response = await fetch("http://10.0.2.2:8000/api/v1/template/available_goals");
+      const response = await fetch(
+        "http://10.0.2.2:8000/api/v1/template/available_goals",
+      );
       const data = await response.json();
       setAvailableGoals(data);
     } catch (error) {
@@ -107,7 +122,7 @@ export default function Community() {
   const fetchFavoriteStatus = async (templateId: number) => {
     try {
       const response = await fetch(
-        `http://10.0.2.2:8000/api/v1/template/favorite/1`
+        `http://10.0.2.2:8000/api/v1/template/favorite/1`,
       );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -145,7 +160,7 @@ export default function Community() {
             user_id: user.id,
             template_id: id, // ใช้ id ของ template ที่ส่งเข้ามา
           }),
-        }
+        },
       );
 
       // ตรวจสอบว่า response ใช้งานได้หรือไม่
@@ -160,8 +175,8 @@ export default function Community() {
         prev.map((template) =>
           template.id === id
             ? { ...template, isFavorite: !template.isFavorite } // สลับค่า isFavorite
-            : template
-        )
+            : template,
+        ),
       );
 
       console.log("Favorite toggled successfully:", data);
@@ -307,30 +322,30 @@ export default function Community() {
           data={
             selectedTemplate
               ? {
-                isListed: selectedTemplate.isListed || false,
-                isFavorite: selectedTemplate.isFavorite || false,
-                title: selectedTemplate.title,
-                category: selectedTemplate.category,
-                description: selectedTemplate.description,
-                image: selectedTemplate.image_url, // Map image_url to image
-                owner: selectedTemplate.created_by, // Map created_by to owner
-                duration: selectedTemplate.duration,
-                goals: selectedTemplate.goals.map((goal) => ({
-                  id: goal.id,
-                  title: goal.title,
-                })),
-              }
+                  isListed: selectedTemplate.isListed || false,
+                  isFavorite: selectedTemplate.isFavorite || false,
+                  title: selectedTemplate.title,
+                  category: selectedTemplate.category,
+                  description: selectedTemplate.description,
+                  image: selectedTemplate.image_url, // Map image_url to image
+                  owner: selectedTemplate.created_by.user_id, // Map created_by to owner
+                  duration: selectedTemplate.duration,
+                  goals: selectedTemplate.goals.map((goal) => ({
+                    id: goal.id,
+                    title: goal.title,
+                  })),
+                }
               : {
-                isListed: false,
-                isFavorite: false,
-                title: "",
-                category: "",
-                description: "",
-                image: "",
-                owner: "Community User",
-                duration: 0,
-                goals: [],
-              }
+                  isListed: false,
+                  isFavorite: false,
+                  title: "",
+                  category: "",
+                  description: "",
+                  image: "",
+                  owner: "Community User",
+                  duration: 0,
+                  goals: [],
+                }
           }
         />
       </View>
@@ -444,3 +459,4 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
+
