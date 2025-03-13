@@ -27,6 +27,10 @@ export default function Header({ children, containerStyle }: HeaderProps) {
     router.push("/userSettings");
   };
 
+  const handleNavigateToAllgoalAlltask = () => {
+    router.push("/AllGoalAllTask");
+  };
+
   // ====================== User Profile Image ======================
   const profileImageUrl =
     user?.unsafeMetadata.profileImageUrl || user?.imageUrl || "";
@@ -35,7 +39,12 @@ export default function Header({ children, containerStyle }: HeaderProps) {
   return (
     <View style={[styles.header, containerStyle]}>
       <View style={styles.headerContent}>
-        <Feather name="menu" size={24} color="#fff" />
+        <Feather
+          name="menu"
+          size={24}
+          color="#fff"
+          onPress={handleNavigateToAllgoalAlltask}
+        />
         <Pressable
           onPress={handleNavigateToSettings}
           style={styles.profileButton}
