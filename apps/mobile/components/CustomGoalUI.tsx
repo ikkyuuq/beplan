@@ -120,9 +120,6 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
   setTaskModalVisible,
   handleSubmit,
   handleUpdate,
-
-  // Debug Functions
-  testLogData,
 }) => {
   return (
     <>
@@ -332,7 +329,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
               styles.createButton,
               !isFormValid && styles.disabledCreateButton,
             ]}
-            onPress={handleUpdate}
+            onPress={isEditingGoal ? handleUpdate : handleSubmit}
             disabled={!isFormValid || isLoading}
           >
             {isLoading ? (
@@ -345,19 +342,12 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                   color="#FFF"
                 />
                 <Text style={styles.createButtonText}>
-                  {isEditingGoal ? "Update Goal" : "Create Goal"}{" "}
+                  {isEditingGoal ? "Update Goal" : "Create Goal"}
                 </Text>
               </>
             )}
           </TouchableOpacity>
         </Animated.View>
-
-        {/* Test Log Button */}
-        <View style={styles.testButtonsContainer}>
-          <TouchableOpacity style={styles.testButton} onPress={testLogData}>
-            <Text style={styles.testButtonText}>Log Current State</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
 
       {/* Loading Overlay */}

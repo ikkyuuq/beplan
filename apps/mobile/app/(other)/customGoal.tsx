@@ -78,7 +78,6 @@ export default function CustomGoal() {
   const initialGoalData = params.initialGoalData
     ? JSON.parse(params.initialGoalData as string)
     : null;
-  const assignedGoalId = params.assignedGoalId as string | undefined;
 
   // ====================== Animation Values ======================
   const headerOpacity = useSharedValue(0);
