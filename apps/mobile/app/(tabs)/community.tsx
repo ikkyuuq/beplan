@@ -171,46 +171,6 @@ export default function Community() {
     }
   };
 
-  const handleToggleFavorite = async (templateId: number) => {
-    try {
-      // ส่งคำขอไปยัง API เพื่อสลับสถานะ favorite
-      const response = await fetch("http://10.0.2.2/api/v1/template/toggle_favorite", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: "1", // แทนที่ด้วย user_id จริงของผู้ใช้
-          template_id: templateId,
-        }),
-      });
-  
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
-  
-      // อัปเดตสถานะ isFavorite ใน state
-      setTemplates((prev) =>
-        prev.map((template) =>
-          template.id === templateId
-            ? { ...template, isFavorite: !template.isFavorite }
-            : template
-        )
-      );
-  
-      setCommunityData((prev) =>
-        prev.map((template: { id: number; isFavorite: any; }) =>
-          template.id === templateId
-            ? { ...template, isFavorite: !template.isFavorite }
-            : template
-        )
-      );
-    } catch (error) {
-      console.error("Error toggling favorite:", error);
-      Alert.alert("Error", "Failed to toggle favorite. Please try again.");
-    }
-  };
-
   const handleFilterChange = (filter: string) => {
     setSelectedFilter(filter);
   };
@@ -484,7 +444,3 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
-function setCommunityData(arg0: (prev: any) => any) {
-  throw new Error("Function not implemented.");
-}
-

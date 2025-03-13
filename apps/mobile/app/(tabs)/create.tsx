@@ -51,6 +51,8 @@ type Template = {
   isFavorite: boolean;
 };
 
+
+
 type TemplateType = {
   id?: number;
   title: string;
@@ -71,6 +73,7 @@ export default function CreateScreen() {
   const templateSectionOpacity = useSharedValue(0);
   const communitySectionOpacity = useSharedValue(0);
 
+
   // ====================== Animation Setup ======================
   useEffect(() => {
     // Header animation
@@ -86,17 +89,17 @@ export default function CreateScreen() {
       withTiming(0, {
         duration: 500,
         easing: Easing.out(Easing.cubic),
-      }),
+      })
     );
 
     // Content sections animation (staggered)
     templateSectionOpacity.value = withDelay(
       500,
-      withTiming(1, { duration: 500 }),
+      withTiming(1, { duration: 500 })
     );
     communitySectionOpacity.value = withDelay(
       700,
-      withTiming(1, { duration: 500 }),
+      withTiming(1, { duration: 500 })
     );
   }, []);
 
@@ -118,7 +121,7 @@ export default function CreateScreen() {
           templateSectionOpacity.value * 1 === 1 ? 0 : 20,
           {
             duration: 500,
-          },
+          }
         ),
       },
     ],
@@ -132,7 +135,7 @@ export default function CreateScreen() {
           communitySectionOpacity.value * 1 === 1 ? 0 : 20,
           {
             duration: 500,
-          },
+          }
         ),
       },
     ],
@@ -141,10 +144,8 @@ export default function CreateScreen() {
   // ====================== State Management ======================
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isOptionModalVisible, setIsOptionModalVisible] = useState(false);
-  const [isViewAllTemplatesVisible, setIsViewAllTemplatesVisible] =
-    useState(false);
-  const [isViewAllCommunityVisible, setIsViewAllCommunityVisible] =
-    useState(false);
+  const [isViewAllTemplatesVisible, setIsViewAllTemplatesVisible] = useState(false);
+  const [isViewAllCommunityVisible, setIsViewAllCommunityVisible] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -156,12 +157,10 @@ export default function CreateScreen() {
         const response = await fetch("http://10.0.2.2:8000/api/v1/template/");
         if (!response.ok) {
           throw new Error("Network response was not ok");
-        }
+        } 
         const data = await response.json();
-        setTemplateData(data);
-        setCommunityData(
-          data.filter((template: Template) => template.isFavorite),
-        );
+        setTemplateData(data);        
+        setCommunityData(data.filter((template: Template) => template.isFavorite));
       } catch (error) {
         console.error("Error fetching templates:", error);
       } finally {
@@ -279,76 +278,8 @@ export default function CreateScreen() {
 
   // ====================== Event Handlers ======================
   const handleTemplateSelect = (template: any) => {
-    const selectedTemplate = {
-      title: template.title,
-      description: template.description,
-      category: template.category,
-      image: template.image,
-      isFavorite: template.isFavorite || false,
-      isListed: template.isFavorite || false,
-      owner: template.owner || "BePlan",
-      duration: template.duration || null,
-      goals:
-        template.goals_id?.map(
-          (id: string) =>
-            mockGoals.find((goal) => goal.id === id) || {
-              id,
-              title: `Goal ${id}`,
-            },
-        ) || [],
-    };
-
-    setSelectedTemplate(selectedTemplate);
+    setSelectedTemplate(template);
     setIsModalVisible(true);
-  };
-
-  const toggleFavorite = async (templateId: number) => {
-    try {
-      // ส่งคำขอไปยัง API เพื่อสลับสถานะ favorite
-      const response = await fetch(
-        "http://10.0.2.2:8000/api/v1/template/toggle_favorite",
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            user_id: "1", // แทนที่ด้วย user_id จริงของผู้ใช้
-            template_id: templateId,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          `Server error: ${errorData.message || response.statusText}`,
-        );
-      }
-
-      // อัปเดตสถานะ isFavorite ใน state
-      setTemplateData((prev) =>
-        prev.map((template) =>
-          template.id === templateId
-            ? { ...template, isFavorite: !template.isFavorite }
-            : template,
-        ),
-      );
-
-      setCommunityData((prev) =>
-        prev.map((template) =>
-          template.id === templateId
-            ? { ...template, isFavorite: !template.isFavorite }
-            : template,
-        ),
-      );
-    } catch (error) {
-      console.error("Error toggling favorite:", error);
-      Alert.alert(
-        "Error",
-        error.message || "Failed to toggle favorite. Please try again.",
-      );
-    }
   };
 
   const handleOpenOptionModal = () => {
@@ -440,20 +371,6 @@ export default function CreateScreen() {
     }, 600);
   };
 
-  const [textToProcess, setTextToProcess] = useState("");
-  const handleSubmitTextToProcess = () => {
-    setTimeout(() => {
-      setIsLoading(true);
-      setTimeout(() => {
-        router.push({
-          pathname: "/(other)/aiProcess",
-          params: { textToProcess: JSON.stringify(textToProcess) },
-        });
-        setIsLoading(false);
-      }, 500);
-    }, 600);
-  };
-
   // ====================== Render UI ======================
   return (
     <KeyboardAvoidingView
@@ -483,28 +400,7 @@ export default function CreateScreen() {
             style={styles.searchInput}
             placeholder="Describe your goal..."
             placeholderTextColor="#999"
-            onChangeText={(newText) => setTextToProcess(newText)}
           />
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={{
-              display: textToProcess.length > 0 ? "flex" : "none",
-            }}
-            onPress={handleSubmitTextToProcess}
-          >
-            <LinearGradient
-              colors={["#4F46E5", "#7C3AED"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{
-                borderRadius: 20,
-                padding: 10,
-              }}
-            >
-              <Ionicons name="send" size={18} color="white" />
-            </LinearGradient>
-          </TouchableOpacity>
         </Animated.View>
 
         {/* Custom Goal Button */}
@@ -551,10 +447,7 @@ export default function CreateScreen() {
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          <Slider
-            data={templateData}
-            onCardPress={(template) => handleTemplateSelect(template)}
-          />
+          <Slider data={templateData} onCardPress={(template) => handleTemplateSelect(template)} />
         </Animated.View>
 
         {/* Most Popular Community Template */}
@@ -573,17 +466,7 @@ export default function CreateScreen() {
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          <Slider
-            data={templateData}
-            onCardPress={(template) => handleTemplateSelect(template)}
-            onToggleFavorite={(template) => toggleFavorite(template.id)}
-          />
-
-          <Slider
-            data={communityData.filter((template) => template.isFavorite)} // กรองเฉพาะ template ที่ถูกใจ
-            onCardPress={(template) => handleTemplateSelect(template)}
-            onToggleFavorite={(template) => toggleFavorite(template.id)}
-          />
+          <Slider data={communityData} onCardPress={(template) => handleTemplateSelect(template)} />
         </Animated.View>
       </ScrollView>
 
@@ -603,33 +486,30 @@ export default function CreateScreen() {
           data={
             selectedTemplate
               ? {
-                  isListed: selectedTemplate.isListed || false,
-                  isFavorite: selectedTemplate.isFavorite || false,
-                  title: selectedTemplate.title,
-                  category: selectedTemplate.category,
-                  description: selectedTemplate.description,
-                  image: selectedTemplate.image_url, // ใช้ image_url จาก API
-                  owner: selectedTemplate.created_by || "BePlan", // ใช้ created_by จาก API
-                  duration: selectedTemplate.duration || 0,
-                  goals:
-                    selectedTemplate.goals?.map(
-                      (goal: { id: any; title: any }) => ({
-                        id: goal.id,
-                        title: goal.title,
-                      }),
-                    ) || [], // แสดง goals ทั้งหมด
-                }
+                isListed: selectedTemplate.isListed || false,
+                isFavorite: selectedTemplate.isFavorite || false,
+                title: selectedTemplate.title,
+                category: selectedTemplate.category,
+                description: selectedTemplate.description,
+                image: selectedTemplate.image_url, // ใช้ image_url จาก API
+                owner: selectedTemplate.created_by || "BePlan", // ใช้ created_by จาก API
+                duration: selectedTemplate.duration || 0,
+                goals: selectedTemplate.goals?.map((goal: { id: any; title: any; }) => ({
+                  id: goal.id,
+                  title: goal.title,
+                })) || [], // แสดง goals ทั้งหมด
+              }
               : {
-                  isListed: false,
-                  isFavorite: false,
-                  title: "",
-                  category: "",
-                  description: "",
-                  image: "",
-                  owner: "Community User",
-                  duration: 0,
-                  goals: [],
-                }
+                isListed: false,
+                isFavorite: false,
+                title: "",
+                category: "",
+                description: "",
+                image: "",
+                owner: "Community User",
+                duration: 0,
+                goals: [],
+              }
           }
         />
       </View>
@@ -713,11 +593,16 @@ export default function CreateScreen() {
 
       {/* View All Templates Modal */}
       <View>
-        {/* Modal สำหรับ Featured Templates */}
         <Modal
-          isVisible={isViewAllTemplatesVisible}
-          onBackdropPress={() => setIsViewAllTemplatesVisible(false)}
-          onBackButtonPress={() => setIsViewAllTemplatesVisible(false)}
+          isVisible={isViewAllTemplatesVisible || isViewAllCommunityVisible}
+          onBackdropPress={() => {
+            setIsViewAllTemplatesVisible(false);
+            setIsViewAllCommunityVisible(false);
+          }}
+          onBackButtonPress={() => {
+            setIsViewAllTemplatesVisible(false);
+            setIsViewAllCommunityVisible(false);
+          }}
           backdropTransitionOutTiming={0}
           animationIn="slideInUp"
           animationOut="slideOutDown"
@@ -726,10 +611,17 @@ export default function CreateScreen() {
         >
           <View style={styles.fullScreenModalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Featured Templates</Text>
+              <Text style={styles.modalTitle}>
+                {isViewAllTemplatesVisible
+                  ? "Featured Templates"
+                  : "Community Favorites"}
+              </Text>
               <TouchableOpacity
                 style={styles.closeModalButton}
-                onPress={() => setIsViewAllTemplatesVisible(false)}
+                onPress={() => {
+                  setIsViewAllTemplatesVisible(false);
+                  setIsViewAllCommunityVisible(false);
+                }}
               >
                 <Ionicons name="close" size={22} color="#666" />
               </TouchableOpacity>
@@ -739,7 +631,10 @@ export default function CreateScreen() {
             <View style={styles.fullScreenModalContent}>
               <ScrollView style={styles.templatesScrollView}>
                 <View style={styles.templatesGrid}>
-                  {templateData.map((template, index) => (
+                  {(isViewAllTemplatesVisible
+                    ? templateData
+                    : communityData
+                  ).map((template, index) => (
                     <TemplateCard
                       key={index}
                       template={{
@@ -767,7 +662,7 @@ export default function CreateScreen() {
                                 mockGoals.find((goal) => goal.id === id) || {
                                   id,
                                   title: `Goal ${id}`,
-                                },
+                                }
                             ) || [],
                         };
                         setSelectedTemplate(selectedTemplate);
@@ -779,16 +674,16 @@ export default function CreateScreen() {
                             prev.map((item) =>
                               item.title === template.title
                                 ? { ...item, isFavorite: !item.isFavorite }
-                                : item,
-                            ),
+                                : item
+                            )
                           );
                         } else {
                           setCommunityData((prev) =>
                             prev.map((item) =>
                               item.title === template.title
                                 ? { ...item, isFavorite: !item.isFavorite }
-                                : item,
-                            ),
+                                : item
+                            )
                           );
                         }
                       }}
@@ -855,7 +750,6 @@ const styles = StyleSheet.create({
 
   // Search
   searchContainer: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
@@ -873,10 +767,11 @@ const styles = StyleSheet.create({
   // Custom Goal Button
   customGoalButton: {
     alignSelf: "center",
-    width: Platform.OS === "ios" ? "100%" : "50%",
+    //width: "50%",
+    width: Platform.OS === 'ios' ? '100%' : '50%',
     alignItems: "center",
     borderRadius: 30,
-    marginTop: Platform.OS === "ios" ? 0 : 6,
+    marginTop: Platform.OS === 'ios' ? 0 : 6
   },
   buttonGradient: {
     flexDirection: "row",
