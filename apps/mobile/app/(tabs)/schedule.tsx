@@ -354,7 +354,10 @@ export default function schedule() {
       setTimeout(() => {
         router.push({
           pathname: "/(other)/customGoal",
-          params: { initialGoalData: JSON.stringify(goalData) },
+          params: {
+            initialGoalData: JSON.stringify(goalData),
+            assignedGoalId: goal.id,
+          },
         });
         setIsLoading(false);
       }, 500);

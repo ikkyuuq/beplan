@@ -53,6 +53,7 @@ type CustomGoalUIProps = {
 
   setTaskModalVisible: (visible: boolean) => void;
   handleSubmit: () => void;
+  handleUpdate: () => void;
 
   // Debug Functions
   testLogData: () => void;
@@ -118,6 +119,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
 
   setTaskModalVisible,
   handleSubmit,
+  handleUpdate,
 
   // Debug Functions
   testLogData,
@@ -330,7 +332,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
               styles.createButton,
               !isFormValid && styles.disabledCreateButton,
             ]}
-            onPress={handleSubmit}
+            onPress={handleUpdate}
             disabled={!isFormValid || isLoading}
           >
             {isLoading ? (
