@@ -142,7 +142,6 @@ export default function AllGoalAllTask() {
     </View>
   );
 }
-
 // ====================== Styles ======================
 const styles = StyleSheet.create({
   container: {

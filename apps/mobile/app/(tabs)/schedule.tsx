@@ -49,7 +49,6 @@ type Goal = {
   due_date: string;
   tasks: Task[];
 };
-
 export default function schedule() {
   const [currentMonth, setCurrentMonth] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -369,6 +368,36 @@ export default function schedule() {
       setIsLoading(false);
     }
   };
+  const handleDeleteGoal = async (goalId: number) => {
+    try {
+      const baseUrl =
+        Platform.OS === "android"
+          ? "http://10.0.2.2:8000"
+          : "http://127.0.0.1:8000";
+
+      const response = await fetch(`${baseUrl}/api/v1/goal/delete/${goalId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Goal deleted successfully:", result);
+
+      // Remove the deleted goal from the state
+      setData((prev) => prev.filter((goal) => goal.id !== goalId));
+      Alert.alert("Success", "Goal has been deleted successfully.");
+    } catch (error) {
+      console.error("Failed to delete goal:", error);
+      Alert.alert("Error", "Failed to delete the goal. Please try again.");
+    }
+  };
+
   const handleDeleteGoal = async (goalId: number) => {
     try {
       const baseUrl =
