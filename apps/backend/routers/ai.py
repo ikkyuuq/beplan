@@ -5,17 +5,17 @@ from enum import Enum
 from typing import Dict, List
 
 from anthropic import Anthropic
+from const import types as T
+from database import get_db_pool
 from fastapi import APIRouter, HTTPException
 from flair.data import Sentence
 from flair.models import SequenceTagger
 from huggingface_hub import hf_hub_download
 from pydantic import BaseModel
-
-from const import types as T
-from database import get_db_pool
 from utils import goal_creation
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+ANTHROPIC_MODEL = "claude-3-7-sonnet-20250219"
 if not ANTHROPIC_API_KEY:
     raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
 client = Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -157,10 +157,13 @@ async def generate_questions(request: PredictionResult):
 
             OUTPUT FORMAT:
             {{
-                "[criteria_name]": {{
+              "result": [
+                {{
+                  "label": "specific|measurable|achievable|relevant|time_bound",
                   "question": "Your follow-up question here",
                   "type": "date|yes-no|open-ended"
                 }}
+              ]
             }}
 
             RULES:
@@ -184,21 +187,25 @@ async def generate_questions(request: PredictionResult):
 
             Example Output:
             {{
-                "achievable": {{
+              "result": [
+                {{
+                  "label": "achievable",
                   "question": "Is losing 10 pounds in one week a safe and realistic goal for you?",
                   "type": "yes-no"
                 }},
-                "time_bound": {{
+                {{
+                  "label": "time_bound",
                   "question": "What is your exact target date for losing the 10 pounds?",
                   "type": "date"
                 }}
+              ]
             }}
 
             Note: Return only valid JSON without comments or explanations.
         """
 
         ai_response = call_anthropic_api(
-            model="claude-3-sonnet-20240229",
+            model=ANTHROPIC_MODEL,
             system="You are a SMART goal refinement assistant. Generate contextual questions to fill gaps in SMART criteria, ensuring each question includes a `type` (open-ended, yes-no, date).",
             prompt=prompt,
         )
@@ -276,21 +283,19 @@ async def generate_goal(request: PredictionResult):
 
             OUTPUT FORMAT:
             {{
-              "goal": {{
-                "title": "Goal tilte from the original_text",
-                "type": "smart goal (fixed value)",
-                "start_date": "YYYY-MM-DD from start_date input",
-                "due_date": "YYYY-MM-DD from due_date input",
-                "tasks": [
-                  {{
-                    "title": "Clear, action-oriented task title",
-                    "description": "Brief description of what needs to be done",
-                    "repeat_type": "date|daily|weekly|monthly",
-                    "interval": "[0, 1, 2, 3, 4, 5, 6]",
-                    "dates": ["YYYY-MM-DD", "YYYY-MM-DD"]
-                  }}
-                ]
-              }}
+              "title": "Goal tilte from the original_text",
+              "type": "smart goal (fixed value)",
+              "start_date": "YYYY-MM-DD from start_date input",
+              "due_date": "YYYY-MM-DD from due_date input",
+              "tasks": [
+                {{
+                  "title": "Clear, action-oriented task title",
+                  "description": "Brief description of what needs to be done",
+                  "repeat_type": "date|daily|weekly|monthly",
+                  "week_interval": "[0, 1, 2, 3, 4, 5, 6]",
+                  "date_interval": ["YYYY-MM-DD", "YYYY-MM-DD"]
+                }}
+              ]
             }}
 
             RULES:
@@ -326,42 +331,40 @@ async def generate_goal(request: PredictionResult):
 
             Example Output:
             {{
-              "goal": {{
-                "title": "Lose 10 pounds in 2 months",
-                "type": "smart goal",
-                "start_date": "2024-03-15",
-                "due_date": "2024-05-15",
-                "tasks": [
-                  {{
-                    "title": "Track daily calorie intake",
-                    "description": "Log all meals and snacks in fitness app, staying under 2000 calories",
-                    "repeat_type": "daily",
-                    "interval": null,
-                    "dates": null
-                  }},
-                  {{
-                    "title": "30-minute cardio workout",
-                    "description": "Complete either jogging, cycling, or swimming",
-                    "repeat_type": "weekly",
-                    "interval": [0, 2, 4],
-                    "dates": null
-                  }},
-                  {{
-                    "title": "Monthly weight check and progress photo",
-                    "description": "Record weight and take progress photos for tracking",
-                    "repeat_type": "monthly",
-                    "interval": null,
-                    "dates": ["2024-04-15", "2024-05-15", "2024-06-15"]
-                  }}
-                ]
-              }}
+              "title": "Lose 10 pounds in 2 months",
+              "type": "smart goal",
+              "start_date": "2024-03-15",
+              "due_date": "2024-05-15",
+              "tasks": [
+                {{
+                  "title": "Track daily calorie intake",
+                  "description": "Log all meals and snacks in fitness app, staying under 2000 calories",
+                  "repeat_type": "daily",
+                  "week_interval": null,
+                  "date_interval": null
+                }},
+                {{
+                  "title": "30-minute cardio workout",
+                  "description": "Complete either jogging, cycling, or swimming",
+                  "repeat_type": "weekly",
+                  "week_interval": [0, 2, 4],
+                  "date_interval": null
+                }},
+                {{
+                  "title": "Monthly weight check and progress photo",
+                  "description": "Record weight and take progress photos for tracking",
+                  "repeat_type": "monthly",
+                  "week_interval": null,
+                  "date_interval": ["2024-04-15", "2024-05-15", "2024-06-15"]
+                }}
+              ]
             }}
 
             Note: Return only valid JSON without comments or explanations.
         """
 
         ai_response = call_anthropic_api(
-            model="claude-3-sonnet-20240229",
+            model=ANTHROPIC_MODEL,
             system="You are a SMART goal task generation assistant. Break down SMART goals into actionable tasks with clear timelines and measurable outcomes.",
             prompt=prompt,
         )
@@ -378,7 +381,11 @@ async def create_goal(req: T.GoalCreateRequest):
         async with pool.acquire() as conn:
             async with conn.transaction():
                 await goal_creation.Create(conn, req, req.user_id)
-        return {"status": "success", "message": "Goal with tasks created successfully"}
+
+                return {
+                    "status": "success",
+                    "message": "Goal with tasks created successfully",
+                }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:

@@ -10,6 +10,7 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Platform,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -45,11 +46,13 @@ export default function UserSettings() {
   const [username, setUsername] = useState("");
   const [profileImage, setProfileImage] = useState("");
   const [newProfileImage, setNewProfileImage] = useState("");
+  const [uploadedImage, setUploadedImage] = useState<any>(null);
   const [primaryEmail, setPrimaryEmail] = useState("");
   const [description, setDescription] = useState("");
   const [occupation, setOccupation] = useState("");
   const [externalAccounts, setExternalAccounts] = useState<any[]>([]);
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // ====================== Animation Values ======================
   const headerOpacity = useSharedValue(0);
@@ -113,7 +116,13 @@ export default function UserSettings() {
       const loadUserData = async () => {
         try {
           setUsername(user.username || getDefaultUsername());
-          setProfileImage(user.imageUrl);
+          setProfileImage(
+            typeof user?.unsafeMetadata === "object" &&
+              user?.unsafeMetadata !== null &&
+              "profileImageUrl" in user?.unsafeMetadata
+              ? (user.unsafeMetadata as any).profileImageUrl
+              : user?.imageUrl || ""
+          );
           setPrimaryEmail(user.primaryEmailAddress?.emailAddress || "");
           setDescription((user.unsafeMetadata?.description as string) || "");
           setOccupation((user.unsafeMetadata?.occupation as string) || "");
@@ -144,6 +153,77 @@ export default function UserSettings() {
       loadUserData();
     }
   }, [isLoaded, user]);
+
+  // ====================== User Initialization ======================
+  useEffect(() => {
+    const initializeUser = async () => {
+      if (isLoaded && user && !isInitialized) {
+        try {
+          const userId = user.id;
+          if (userId) {
+            const baseUrl =
+              Platform.OS === "android"
+                ? "http://10.0.2.2:8000"
+                : "http://127.0.0.1:8000";
+
+            const userData = {
+              imageUrl: user?.imageUrl || "",
+              user_id: userId,
+              username: user.username || getDefaultUsername(),
+              occupation: (user.unsafeMetadata?.occupation as string) || "",
+              about: (user.unsafeMetadata?.description as string) || "",
+            };
+
+            console.log("Initializing user with data:", userData);
+
+            let response = await fetch(`${baseUrl}/api/v1/user/initialize`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(userData),
+            });
+
+            if (!response.ok) {
+              const responseText = await response.text();
+              console.log(
+                "User initialization response:",
+                response.status,
+                responseText
+              );
+              if (
+                response.status === 500 &&
+                responseText.includes("duplicate key value")
+              ) {
+                console.log("Duplicate user detected, updating instead...");
+                response = await fetch(`${baseUrl}/api/v1/user/update`, {
+                  method: "PUT",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify(userData),
+                });
+
+                if (!response.ok) {
+                  console.log("User update response:", response.status);
+                } else {
+                  console.log("User updated successfully");
+                  setIsInitialized(true);
+                }
+              }
+            } else {
+              console.log("User initialized successfully");
+              setIsInitialized(true);
+            }
+          }
+        } catch (error) {
+          console.error("Error initializing/updating user:", error);
+        }
+      }
+    };
+
+    initializeUser();
+  }, [isLoaded, user, isInitialized]);
 
   // ====================== Helper Functions ======================
   const getDefaultUsername = () => {
@@ -202,10 +282,11 @@ export default function UserSettings() {
       if (!result.canceled) {
         setIsEditingProfileImage(true);
         setNewProfileImage(result.assets[0].uri);
+        setUploadedImage(result.assets[0]);
       }
     } catch (error) {
-      console.error("Error picking image:", error);
-      Alert.alert("Error", "Failed to pick image");
+      console.error("Image picker error:", error);
+      Alert.alert("Error", "Failed to open image picker. Please try again.");
     }
   };
 
@@ -221,7 +302,9 @@ export default function UserSettings() {
     try {
       setIsSaving(true);
 
+      let formattedImageData: any;
       const updateLog = {
+        userId: user.id,
         profileImageURI:
           type === "profileImage" ? newProfileImage : profileImage || null,
         username: username || null,
@@ -260,11 +343,82 @@ export default function UserSettings() {
           break;
 
         case "profileImage":
+          setIsEditingOccupation(false);
           if (!newProfileImage) return;
           setIsLoadingImage(true);
-          setProfileImage(newProfileImage);
+          if (newProfileImage.startsWith("https://img.clerk.com")) {
+            formattedImageData = uploadedImage;
+          } else {
+            let formData = new FormData();
+
+            formData.append("file", {
+              uri: uploadedImage.uri || newProfileImage,
+              name: uploadedImage.fileName,
+              type: uploadedImage.mimeType,
+            } as any);
+
+            const uploadResp = await fetch(
+              "http://10.0.2.2:8000/api/v1/user/upload_image",
+              {
+                method: "POST",
+                body: formData,
+              }
+            );
+
+            if (!uploadResp.ok) {
+              throw new Error(
+                "Failed to upload image. Please try again later."
+              );
+            }
+            const data = await uploadResp.json();
+
+            const updateUserResp = await fetch(
+              "http://10.0.2.2:8000/api/v1/user/update",
+              {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  imageUrl: data.url,
+                  user_id: user.id,
+                  username: username,
+                  occupation: occupation,
+                  about: description,
+                }),
+              }
+            );
+
+            if (!updateUserResp.ok) {
+              throw new Error(
+                "Failed to update user profile. Please try again later."
+              );
+            }
+
+            await user.update({
+              unsafeMetadata: {
+                ...user.unsafeMetadata,
+                profileImageUrl: data.url,
+              },
+            });
+
+            formattedImageData = {
+              uri: uploadedImage.uri,
+              name: uploadedImage.fileName,
+              type: uploadedImage.mimeType,
+            };
+          }
+
+          if (!newProfileImage.startsWith("https://img.clerk.com")) {
+            setProfileImage(newProfileImage);
+          } else {
+            setProfileImage(newProfileImage);
+          }
+
           setNewProfileImage("");
           setIsEditingProfileImage(false);
+
+          updateLog.profileImageURI = formattedImageData;
           break;
 
         default:

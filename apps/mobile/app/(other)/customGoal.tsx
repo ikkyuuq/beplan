@@ -270,7 +270,7 @@ export default function CustomGoal() {
   };
 
   // ====================== Submit Handler ======================
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isFormValid) {
       Alert.alert(
         "Incomplete Goal",
@@ -287,7 +287,7 @@ export default function CustomGoal() {
 
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
       const userId = user?.id;
 
       if (!userId) {
@@ -304,10 +304,34 @@ export default function CustomGoal() {
       };
 
       const formattedGoalData = formatGoalForBackend(userId, newGoal, taskList);
+
       console.log(
         "📌 Formatted for Backend:",
         JSON.stringify(formattedGoalData, null, 2)
       );
+
+      const baseUrl =
+        Platform.OS === "android"
+          ? "http://10.0.2.2:8000"
+          : "http://127.0.0.1:8000";
+
+      const response = await fetch(`${baseUrl}/api/v1/goal/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formattedGoalData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `Server error: ${response.status}`
+        );
+      }
+
+      const responseData = await response.json();
+      console.log("📌 API Response:", JSON.stringify(responseData, null, 2));
 
       Alert.alert(
         "Success!",
@@ -319,8 +343,114 @@ export default function CustomGoal() {
           },
         ]
       );
+    } catch (error: any) {
+      console.error("Failed to create goal:", error);
+      Alert.alert(
+        "Error",
+        error.message || "Failed to create goal. Please try again later."
+      );
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
+  };
+
+  // ====================== Update Handler ======================
+  const handleUpdate = async () => {
+    if (!isLoaded || !isSignedIn) {
+      Alert.alert(
+        "Authentication Error",
+        "Please sign in to update your goal."
+      );
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const userId = user?.id;
+
+      if (!userId) {
+        Alert.alert("Error", "Could not get user ID. Please try again later.");
+        setIsLoading(false);
+        return;
+      }
+
+      const parsedGoalData = params.initialGoalData
+        ? JSON.parse(
+            Array.isArray(params.initialGoalData)
+              ? params.initialGoalData[0]
+              : params.initialGoalData
+          )
+        : null;
+
+      const formattedParams = {
+        user_id: userId || "unknown",
+        assigned_goal_id: params.assignedGoalId,
+        goal: parsedGoalData
+          ? {
+              ...parsedGoalData,
+              title: goalTitle,
+              start_date: startDate,
+              due_date: dueDate,
+              tasks: taskList.map((task, index) => ({
+                id: parsedGoalData.tasks[index]?.id,
+                title: task.title,
+                description: task.description || "",
+                repeat_type: task.type,
+                date_interval: task.selectedDates || [],
+                week_interval: task.selectedDaysOfWeek || [],
+                status: task.status,
+              })),
+            }
+          : null,
+      };
+
+      console.log(
+        "📌 Update Params:",
+        JSON.stringify(formattedParams, null, 2)
+      );
+
+      const baseUrl =
+        Platform.OS === "android"
+          ? "http://10.0.2.2:8000"
+          : "http://127.0.0.1:8000";
+
+      const response = await fetch(`${baseUrl}/api/v1/goal/update`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formattedParams),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `Server error: ${response.status}`
+        );
+      }
+
+      const responseData = await response.json();
+      console.log(
+        "📌 Update API Response:",
+        JSON.stringify(responseData, null, 2)
+      );
+
+      Alert.alert("Success!", "Your goal has been updated successfully.", [
+        {
+          text: "OK",
+          onPress: () => router.back(),
+        },
+      ]);
+    } catch (error: any) {
+      console.error("Failed to update goal:", error);
+      Alert.alert(
+        "Error",
+        error.message || "Failed to update goal. Please try again later."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // ====================== Back Button Handler ======================
@@ -362,19 +492,17 @@ export default function CustomGoal() {
     if (!initialDataLoaded && initialGoalData) {
       console.log("📌 Loading initial goal data");
 
-      // Set basic goal info
       setGoalTitle(initialGoalData.title || "");
-      setStartDate(initialGoalData.startDate || "");
-      setDueDate(initialGoalData.dueDate || "");
+      setStartDate(initialGoalData.start_date || "");
+      setDueDate(initialGoalData.due_date || "");
 
-      // Process tasks if they exist
       if (initialGoalData.tasks && Array.isArray(initialGoalData.tasks)) {
         const formattedTasks = initialGoalData.tasks.map((task: any) => ({
           title: task.title || "",
           description: task.description || "",
-          type: task.type || "normal",
-          selectedDates: task.selectedDates || [],
-          selectedDaysOfWeek: task.selectedDaysOfWeek || [],
+          type: task.repeat_type || "normal",
+          selectedDates: task.date_interval || [],
+          selectedDaysOfWeek: task.week_interval || [],
           status: task.status || "pending",
           monthlyMode: task.monthlyMode || "start",
         }));
@@ -430,6 +558,7 @@ export default function CustomGoal() {
         handleDeleteTask={handleDeleteTask}
         setTaskModalVisible={setTaskModalVisible}
         handleSubmit={handleSubmit}
+        handleUpdate={handleUpdate}
         // Debug
         testLogData={testLogData}
       />

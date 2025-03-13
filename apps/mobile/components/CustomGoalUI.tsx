@@ -13,7 +13,16 @@ import {
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { Task } from "@/types/taskTypes";
+
+type Task = {
+  title: string;
+  description?: string;
+  type: "normal" | "daily" | "weekly" | "monthly";
+  selectedDates?: string[];
+  selectedDaysOfWeek?: number[];
+  monthlyMode?: "start" | "mid" | "end";
+  status: "pending" | "completed" | "failed" | "deleted";
+};
 
 // ====================== Type Definitions ======================
 type CustomGoalUIProps = {
@@ -44,6 +53,7 @@ type CustomGoalUIProps = {
 
   setTaskModalVisible: (visible: boolean) => void;
   handleSubmit: () => void;
+  handleUpdate: () => void;
 
   // Debug Functions
   testLogData: () => void;
@@ -109,9 +119,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
 
   setTaskModalVisible,
   handleSubmit,
-
-  // Debug Functions
-  testLogData,
+  handleUpdate,
 }) => {
   return (
     <>
@@ -321,7 +329,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
               styles.createButton,
               !isFormValid && styles.disabledCreateButton,
             ]}
-            onPress={handleSubmit}
+            onPress={isEditingGoal ? handleUpdate : handleSubmit}
             disabled={!isFormValid || isLoading}
           >
             {isLoading ? (
@@ -334,19 +342,12 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                   color="#FFF"
                 />
                 <Text style={styles.createButtonText}>
-                  {isEditingGoal ? "Update Goal" : "Create Goal"}{" "}
+                  {isEditingGoal ? "Update Goal" : "Create Goal"}
                 </Text>
               </>
             )}
           </TouchableOpacity>
         </Animated.View>
-
-        {/* Test Log Button */}
-        <View style={styles.testButtonsContainer}>
-          <TouchableOpacity style={styles.testButton} onPress={testLogData}>
-            <Text style={styles.testButtonText}>Log Current State</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
 
       {/* Loading Overlay */}

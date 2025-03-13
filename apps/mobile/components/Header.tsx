@@ -27,7 +27,9 @@ export default function Header({ children, containerStyle }: HeaderProps) {
     router.push("/userSettings");
   };
 
-  const profileImageUrl = user?.imageUrl;
+  // ====================== User Profile Image ======================
+  const profileImageUrl =
+    user?.unsafeMetadata.profileImageUrl || user?.imageUrl || "";
 
   // ====================== Render UI ======================
   return (

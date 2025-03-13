@@ -143,10 +143,10 @@ export default function Collapsable({
                 if (finished && onCollapseFinish) {
                   runOnJS(onCollapseFinish)();
                 }
-              },
+              }
             );
           }
-        },
+        }
       );
     }
   }, [children]);
@@ -160,7 +160,7 @@ export default function Collapsable({
     color: interpolateColor(
       translateX.value,
       [-60, 0, 60],
-      ["#fff", "#000", "#000"],
+      ["#fff", "#000", "#000"]
     ),
   }));
 
@@ -191,7 +191,7 @@ export default function Collapsable({
     backgroundColor: interpolateColor(
       translateX.value,
       [-65, -20, 0, 20, 65],
-      ["#F05353", "#fff", "#fff", "#fff", "#53F07D"],
+      ["#F05353", "#fff", "#fff", "#fff", "#53F07D"]
     ),
     height: withSpring(containerHeight.value + innerCollapseHeight.value, {
       damping: 20,
@@ -211,7 +211,7 @@ export default function Collapsable({
     color: interpolateColor(
       translateX.value,
       [-65, -20, 0, 20, 65],
-      ["#fff", "#000", "#000", "#000", "#fff"],
+      ["#fff", "#000", "#000", "#000", "#fff"]
     ),
   }));
 
@@ -219,7 +219,7 @@ export default function Collapsable({
     color: interpolateColor(
       translateX.value,
       [-65, -20, 0, 20, 65],
-      ["#fff", "#8d8d8d", "#8d8d8d", "#8d8d8d", "#fff"],
+      ["#fff", "#8d8d8d", "#8d8d8d", "#8d8d8d", "#fff"]
     ),
   }));
 
@@ -241,7 +241,7 @@ export default function Collapsable({
       () => {
         onComplete?.();
       },
-      600,
+      600
     );
   };
   const handleFailContextMenu = () => {
@@ -250,8 +250,12 @@ export default function Collapsable({
       () => {
         onFail?.();
       },
-      600,
+      600
     );
+  };
+  const handleCustomizeContextMenu = () => {
+    handleContextMenuClose();
+    onCustomize?.();
   };
 
   return (
@@ -326,10 +330,9 @@ export default function Collapsable({
               />
             ),
             type: "default",
-            status: type === "custom" ? "enabled" : "disabled",
+            status: "enabled",
             onPress: () => {
-              handleContextMenuClose();
-              onCustomize?.();
+              handleCustomizeContextMenu();
             },
           },
           {

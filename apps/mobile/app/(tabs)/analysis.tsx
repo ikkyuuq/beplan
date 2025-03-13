@@ -93,7 +93,7 @@ export default function Analysis() {
       const baseUrl =
         Platform.OS === "android"
           ? "http://10.0.2.2:8000"
-          : "http://192.168.1.43:8000"; // iPhone
+          : "http://127.0.0.1:8000";
 
       const response = await fetch(
         `${baseUrl}/api/v1/analysis/?user_id=${user.id}`
@@ -108,7 +108,6 @@ export default function Analysis() {
     } catch (err) {
       console.error("Failed to fetch analytics data:", err);
       setError("Failed to load analytics data. Please try again later.");
-
       setAnalyticsData(null);
     } finally {
       setIsLoading(false);

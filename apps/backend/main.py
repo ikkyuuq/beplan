@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import lifespan
-from routers import ai, analysis, goals, reschedule, template
+from routers import ai, analysis, goals, reschedule, template, user
 
 app = FastAPI(lifespan=lifespan)
 
@@ -22,6 +22,7 @@ app.include_router(goals.router, prefix="/api/v1/goal")
 app.include_router(reschedule.router, prefix="/api/v1/reschedule")
 app.include_router(template.router, prefix="/api/v1/template")
 app.include_router(analysis.router, prefix="/api/v1/analysis")
+app.include_router(user.router, prefix="/api/v1/user")
 
 
 @app.get("/get")

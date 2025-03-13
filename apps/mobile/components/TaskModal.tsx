@@ -18,8 +18,17 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from "react-native-reanimated";
-import { Task } from "@/types/taskTypes";
 import { Ionicons } from "@expo/vector-icons";
+
+type Task = {
+  title: string;
+  description?: string;
+  type: "normal" | "daily" | "weekly" | "monthly";
+  selectedDates?: string[];
+  selectedDaysOfWeek?: number[];
+  monthlyMode?: "start" | "mid" | "end";
+  status: "pending" | "completed" | "failed" | "deleted";
+};
 
 // ====================== Type Definitions ======================
 type TaskModalProps = {
