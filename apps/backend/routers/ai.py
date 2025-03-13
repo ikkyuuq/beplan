@@ -58,15 +58,27 @@ class SubmitRequest(BaseModel):
 
 def parse_ai_response(response) -> dict:
     try:
-        raw_content = (
-            response.content[0].text
-            if isinstance(response.content, list)
-            else str(response.content)
-        )
-        return json.loads(raw_content)
-    except json.JSONDecodeError as e:
+        # Handle both list and single content cases
+        if isinstance(response.content, list) and len(response.content) > 0:
+            raw_content = response.content[0].text
+        else:
+            raw_content = (
+                response.content[0].text
+                if hasattr(response, "content")
+                else str(response)
+            )
+
+        # Clean up the response if needed
+        if raw_content.startswith("```json"):
+            raw_content = raw_content[7:-3]  # Remove json code block markers
+        elif raw_content.startswith("```"):
+            raw_content = raw_content[3:-3]  # Remove generic code block markers
+
+        return json.loads(raw_content.strip())
+    except (json.JSONDecodeError, AttributeError) as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to parse AI response: {str(e)}"
+            status_code=500,
+            detail=f"Failed to parse AI response: {str(e)}. Raw content: {response.content[0].text}",
         )
 
 

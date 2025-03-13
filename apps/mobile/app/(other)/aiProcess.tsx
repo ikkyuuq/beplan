@@ -107,9 +107,9 @@ export default function AiProcess() {
 
   // States for the question step
   type Question = {
+    label: string; // key to update the prediction result
     question: string;
     type: "yes-no" | "open-ended" | "date";
-    key: string; // key to update the prediction result
   };
   type Questions = Question[];
   const [questions, setQuestions] = useState<Questions>([]);
@@ -181,6 +181,7 @@ export default function AiProcess() {
   const fetchQuestionsForMissingKeys = async () => {
     try {
       setLoading(true);
+      if (!predictionRes) return;
       const formattedPrediction = Object.entries(
         predictionRes.prediction,
       ).reduce(
@@ -190,6 +191,8 @@ export default function AiProcess() {
         },
         {} as Record<string, any[]>,
       );
+
+      console.log("Formatted prediction:", formattedPrediction);
 
       const response = await fetch(
         "http://10.0.2.2:8000/api/v1/ai/generate-questions",
@@ -205,8 +208,8 @@ export default function AiProcess() {
         },
       );
       const data = await response.json();
-      console.log("Questions:", data);
-      // assuming data is an array of questions with a "key" property for each missing key
+      console.log("Questions:", data.result);
+
       setQuestions(data.result);
     } catch (error) {
       console.error("Error:", error);
