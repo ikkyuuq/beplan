@@ -27,7 +27,7 @@ type Task = {
 const formatGoalForBackend = (
   userId: string,
   goalData: any,
-  taskList: any[]
+  taskList: any[],
 ): any => {
   const formattedTasks = taskList.map((task) => {
     let repeatType = task.type.toLowerCase();
@@ -111,7 +111,7 @@ export default function CustomGoal() {
       withTiming(0, {
         duration: 400,
         easing: Easing.out(Easing.cubic),
-      })
+      }),
     );
   }, []);
 
@@ -180,7 +180,7 @@ export default function CustomGoal() {
       goalTitle.trim() !== "" &&
         startDate !== "" &&
         dueDate !== "" &&
-        taskList.length > 0
+        taskList.length > 0,
     );
   }, [goalTitle, startDate, dueDate, taskList]);
 
@@ -201,7 +201,7 @@ export default function CustomGoal() {
             style: "destructive",
             onPress: () => updateDate(newDate, type, true),
           },
-        ]
+        ],
       );
     }
     updateDate(newDate, type);
@@ -210,7 +210,7 @@ export default function CustomGoal() {
   const updateDate = (
     newDate: string,
     type: "start" | "due",
-    clearTasks = false
+    clearTasks = false,
   ) => {
     if (type === "start") {
       setStartDate(newDate);
@@ -237,7 +237,7 @@ export default function CustomGoal() {
       Alert.alert(
         "Limited Editing",
         "This goal has already started. You can only edit the task title.",
-        [{ text: "OK", onPress: () => setTaskModalVisible(true) }]
+        [{ text: "OK", onPress: () => setTaskModalVisible(true) }],
       );
     } else {
       setTaskModalVisible(true);
@@ -250,8 +250,8 @@ export default function CustomGoal() {
         prevTasks.map((t, index) =>
           index === editingIndex
             ? { ...t, title: task.title, description: task.description }
-            : t
-        )
+            : t,
+        ),
       );
     } else {
       const newTask = {
@@ -262,7 +262,7 @@ export default function CustomGoal() {
       setTaskList((prevTasks) =>
         editingIndex !== null
           ? prevTasks.map((t, index) => (index === editingIndex ? newTask : t))
-          : [...prevTasks, newTask]
+          : [...prevTasks, newTask],
       );
     }
 
@@ -275,7 +275,7 @@ export default function CustomGoal() {
       Alert.alert(
         "Incomplete Goal",
         "Please fill all required fields and add at least one task.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
       );
       return;
     }
@@ -306,7 +306,7 @@ export default function CustomGoal() {
       const formattedGoalData = formatGoalForBackend(userId, newGoal, taskList);
       console.log(
         "📌 Formatted for Backend:",
-        JSON.stringify(formattedGoalData, null, 2)
+        JSON.stringify(formattedGoalData, null, 2),
       );
 
       const baseUrl =
@@ -325,7 +325,7 @@ export default function CustomGoal() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.message || `Server error: ${response.status}`
+          errorData.message || `Server error: ${response.status}`,
         );
       }
 
@@ -340,13 +340,13 @@ export default function CustomGoal() {
             text: "OK",
             onPress: () => router.back(),
           },
-        ]
+        ],
       );
     } catch (error: any) {
       console.error("Failed to create goal:", error);
       Alert.alert(
         "Error",
-        error.message || "Failed to create goal. Please try again later."
+        error.message || "Failed to create goal. Please try again later.",
       );
     } finally {
       setIsLoading(false);
@@ -371,7 +371,7 @@ export default function CustomGoal() {
             style: "destructive",
             onPress: () => router.back(),
           },
-        ]
+        ],
       );
     } else {
       router.back();
@@ -393,16 +393,16 @@ export default function CustomGoal() {
       console.log("📌 Loading initial goal data");
 
       setGoalTitle(initialGoalData.title || "");
-      setStartDate(initialGoalData.startDate || "");
-      setDueDate(initialGoalData.dueDate || "");
+      setStartDate(initialGoalData.start_date || "");
+      setDueDate(initialGoalData.due_date || "");
 
       if (initialGoalData.tasks && Array.isArray(initialGoalData.tasks)) {
         const formattedTasks = initialGoalData.tasks.map((task: any) => ({
           title: task.title || "",
           description: task.description || "",
-          type: task.type || "normal",
-          selectedDates: task.selectedDates || [],
-          selectedDaysOfWeek: task.selectedDaysOfWeek || [],
+          type: task.repeat_type || "normal",
+          selectedDates: task.date_interval || [],
+          selectedDaysOfWeek: task.week_interval || [],
           status: task.status || "pending",
           monthlyMode: task.monthlyMode || "start",
         }));
