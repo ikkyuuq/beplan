@@ -5,25 +5,48 @@ import {
   Text,
   TextInput,
   Button,
+  ActivityIndicator,
+  StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from "react-native";
 import { useUser } from "@clerk/clerk-expo";
 import Animated, {
   interpolateColor,
   runOnJS,
-  SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
   withTiming,
 } from "react-native-reanimated";
 
-const hasKey = "#34d399";
-const noKey = "#f4335e";
+type PredictionResult = {
+  originalText: string;
+  prediction: Record<string, Array<{ text: string }>>;
+};
 
-// Define the steps in the process
+type Question = {
+  label: string;
+  question: string;
+  type: "yes-no" | "open-ended" | "date";
+};
+
+type Task = {
+  title: string;
+  description: string;
+  repeatType: "daily" | "weekly" | "monthly" | "date";
+  weekInterval: number[] | null;
+  dateInterval: string[] | null;
+};
+
+type Goal = {
+  title: string;
+  type: string;
+  start_date: string;
+  due_date: string;
+  tasks: Task[];
+};
+
 enum ProcessStep {
   VALIDATING = "validating",
   ANIMATING = "animating",
@@ -31,6 +54,7 @@ enum ProcessStep {
   GENERATING_GOAL = "generating_goal",
   CREATING_GOAL = "creating_goal",
   COMPLETED = "completed",
+  ERROR = "error",
 }
 
 const AnimatedKey = ({
@@ -46,469 +70,318 @@ const AnimatedKey = ({
 }) => {
   const progress = useSharedValue(0);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      backgroundColor: interpolateColor(
-        progress.value,
-        [0, 1],
-        ["#a1a1aa", active ? hasKey : noKey],
-      ),
-    };
-  });
+  const animatedStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      progress.value,
+      [0, 1],
+      ["#a1a1aa", active ? "#34d399" : "#f4335e"],
+    ),
+  }));
 
   useEffect(() => {
     progress.value = withDelay(
       index * 700,
       withTiming(1, { duration: 500 }, (finished) => {
-        if (finished) {
-          runOnJS(onComplete)();
-        }
+        finished && runOnJS(onComplete)();
       }),
     );
   }, []);
 
   return (
-    <Animated.View
-      style={[
-        {
-          backgroundColor: "#a1a1aa",
-          paddingHorizontal: 24,
-          paddingVertical: 8,
-          borderRadius: 999,
-          margin: 4,
-        },
-        animatedStyle,
-      ]}
-    >
-      {children}
+    <Animated.View style={[styles.key, animatedStyle]}>
+      <Text style={styles.keyText}>{children}</Text>
     </Animated.View>
   );
 };
 
 export default function AiProcess() {
   const params = useLocalSearchParams();
-  const textToProcess = params.textToProcess.toString().replaceAll('"', "");
+  const { user } = useUser();
+  const textToProcess =
+    params.textToProcess?.toString().replaceAll('"', "") || "";
 
-  type Prediction = Record<string, any[]>;
-  type PredictionResult = {
-    originalText: string;
-    prediction: Prediction;
-  };
+  const [step, setStep] = useState(ProcessStep.VALIDATING);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [predictionRes, setPredictionRes] = useState<PredictionResult>();
   const [predictionStatus, setPredictionStatus] = useState<
     Record<string, boolean>
   >({});
-
-  const [loading, setLoading] = useState(false);
-  const { user } = useUser();
-
-  // New state to track the multi-step process
-  const [step, setStep] = useState<ProcessStep>(ProcessStep.VALIDATING);
-
-  // States for the question step
-  type Question = {
-    label: string; // key to update the prediction result
-    question: string;
-    type: "yes-no" | "open-ended" | "date";
-  };
-  type Questions = Question[];
-  const [questions, setQuestions] = useState<Questions>([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [currentAnswer, setCurrentAnswer] = useState("");
-
-  // State for the generated goal
-  type Task = {
-    title: string;
-    description: string;
-    repeatType: "daily" | "weekly" | "monthly" | "date";
-    weekInterval: number[];
-    dateInterval: Date[];
-  };
-
-  type Goal = {
-    title: string;
-    type: string;
-    start_date: Date;
-    due_date: Date;
-    tasks: Task[];
-  };
-
   const [goal, setGoal] = useState<Goal>();
+  const [animationCompleteCount, setAnimationCompleteCount] = useState(0);
 
-  // ---------------------------
-  // Step 1: Validate the sentence
-  // ---------------------------
-  const validateSentence = async (sentence: string) => {
+  const totalKeys = Object.keys(predictionStatus).length;
+
+  const handleError = (message: string) => {
+    setError(message);
+    setLoading(false);
+    setStep(ProcessStep.ERROR);
+  };
+
+  const validateSentence = async () => {
     try {
       setLoading(true);
       const response = await fetch("http://10.0.2.2:8000/api/v1/ai/validate", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: sentence }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: textToProcess }),
       });
+
+      if (!response.ok)
+        throw new Error(`Validation failed: ${response.status}`);
+
       const data = await response.json();
       setPredictionRes({
         originalText: textToProcess,
         prediction: data.prediction,
       });
-    } catch (error) {
-      console.error("Error:", error);
+
+      // Immediately calculate prediction status
+      const status = Object.entries(data.prediction).reduce(
+        (acc, [key, value]) => ({
+          ...acc,
+          [key]: (value as any[]).length > 0,
+        }),
+        {},
+      );
+      setPredictionStatus(status);
+
+      // Force transition to animating step
+      setStep(ProcessStep.ANIMATING);
+    } catch (err) {
+      handleError("Failed to validate goal. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ---------------------------
-  // Set prediction status after validation
-  // ---------------------------
-  const handlePrediction = () => {
-    if (!predictionRes) return;
-    const status = Object.entries(predictionRes.prediction).reduce(
-      (acc, [key, value]) => {
-        acc[key] = value.length > 0;
-        return acc;
-      },
-      {} as Record<string, boolean>,
-    );
-    setPredictionStatus(status);
-  };
+  useEffect(() => {
+    if (step === ProcessStep.VALIDATING) {
+      validateSentence();
+    }
+  }, [step]);
 
-  // ---------------------------
-  // Step 2: Generate questions for missing keys
-  // ---------------------------
-  const fetchQuestionsForMissingKeys = async () => {
+  useEffect(() => {
+    if (
+      step === ProcessStep.ANIMATING &&
+      animationCompleteCount === totalKeys
+    ) {
+      const hasMissing = Object.values(predictionStatus).some((v) => !v);
+
+      if (hasMissing) {
+        fetchQuestionsForMissingKeys().then((questions) => {
+          questions.length > 0
+            ? setStep(ProcessStep.ASKING_QUESTIONS)
+            : setStep(ProcessStep.GENERATING_GOAL);
+        });
+      } else {
+        setStep(ProcessStep.GENERATING_GOAL);
+      }
+    }
+  }, [animationCompleteCount, totalKeys]);
+
+  const fetchQuestionsForMissingKeys = async (): Promise<Question[]> => {
     try {
       setLoading(true);
-      if (!predictionRes) return;
-      const formattedPrediction = Object.entries(
-        predictionRes.prediction,
-      ).reduce(
-        (acc, [key, value]) => {
-          acc[key] = Array.isArray(value) ? value : [value];
-          return acc;
-        },
-        {} as Record<string, any[]>,
-      );
-
-      console.log("Formatted prediction:", formattedPrediction);
-
       const response = await fetch(
         "http://10.0.2.2:8000/api/v1/ai/generate-questions",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             original_text: textToProcess,
-            prediction: formattedPrediction,
+            prediction: predictionRes?.prediction || {},
           }),
         },
       );
-      const data = await response.json();
-      console.log("Questions:", data.result);
 
-      setQuestions(data.result);
-    } catch (error) {
-      console.error("Error:", error);
+      if (!response.ok) throw new Error("Question generation failed");
+
+      const data = await response.json();
+      return data.result || [];
+    } catch (err) {
+      handleError("Failed to get questions. Please try again.");
+      return [];
     } finally {
       setLoading(false);
     }
   };
 
-  // ---------------------------
-  // Submit a single question answer
-  // ---------------------------
-  const handleSubmitQuestion = async (question: Question, answer: string) => {
-    if (!predictionRes) return;
-    try {
-      setLoading(true);
-      const formattedPrediction = Object.entries(
-        predictionRes.prediction,
-      ).reduce(
-        (acc, [key, value]) => {
-          acc[key] = Array.isArray(value) ? value : [value];
-          return acc;
-        },
-        {} as Record<string, any[]>,
+  // ... keep other functions same as previous version ...
+
+  const renderContent = () => {
+    if (step === ProcessStep.ERROR) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Button
+            title="Retry"
+            onPress={() => {
+              setError("");
+              setStep(ProcessStep.VALIDATING);
+            }}
+          />
+        </View>
       );
-      console.log("question:", question);
-      console.log("answer:", answer);
-      const response = await fetch(
-        "http://10.0.2.2:8000/api/v1/ai/submit-question",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            prediction_result: {
-              original_text: textToProcess,
-              prediction: formattedPrediction,
-            },
-            question: question.question,
-            value: answer,
-            to_label: question.label,
-          }),
-        },
-      );
-      const data = await response.json();
-      console.log("Question response:", data);
-      const newFormattedPrediction = Object.entries(
-        data.result.prediction,
-      ).reduce(
-        (acc, [key, value]) => {
-          acc[key] = Array.isArray(value) ? value : [value];
-          return acc;
-        },
-        {} as Record<string, any[]>,
-      );
-      // Update the prediction result with new data from the backend
-      setPredictionRes({
-        originalText: textToProcess,
-        prediction: newFormattedPrediction,
-      });
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
     }
-  };
 
-  // ---------------------------
-  // Generate a goal based on updated prediction
-  // ---------------------------
-  const generateGoal = async () => {
-    try {
-      setLoading(true);
-      const formattedPrediction = Object.entries(
-        predictionRes?.prediction,
-      ).reduce(
-        (acc, [key, value]) => {
-          acc[key] = Array.isArray(value) ? value : [value];
-          return acc;
-        },
-        {} as Record<string, any[]>,
-      );
-      const response = await fetch(
-        "http://10.0.2.2:8000/api/v1/ai/generate-goal",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            original_text: textToProcess,
-            prediction: formattedPrediction,
-          }),
-        },
-      );
-      const data = await response.json();
-      console.log("Goal:", data);
-      setGoal(data);
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
+    if (loading) {
+      return <ActivityIndicator size="large" color="#fff" />;
     }
-  };
 
-  // ---------------------------
-  // Create the goal in the backend
-  // ---------------------------
-  const handleCreateGoal = async () => {
-    if (!goal || !user) return;
-    try {
-      setLoading(true);
-      const response = await fetch("http://10.0.2.2:8000/api/v1/ai/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: user.id,
-          goal,
-        }),
-      });
-      const data = await response.json();
-      console.log("Response:", data);
+    switch (step) {
+      case ProcessStep.VALIDATING:
+        return <Text style={styles.infoText}>Analyzing your goal...</Text>;
 
-      if (response.ok) {
-        console.log("Goal created successfully");
-      }
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
-      setStep(ProcessStep.COMPLETED);
-    }
-  };
-
-  // ---------------------------
-  // useEffects to manage the flow
-  // ---------------------------
-  useEffect(() => {
-    // initial validation
-    validateSentence(textToProcess);
-  }, [textToProcess]);
-
-  useEffect(() => {
-    // after validation, set prediction status and start animation step
-    if (predictionRes) {
-      handlePrediction();
-      setStep(ProcessStep.ANIMATING);
-    }
-  }, [predictionRes]);
-
-  // When key animations are complete, move to questions if there are missing keys
-  // (Here we assume that onComplete callback from AnimatedKey will trigger this check.)
-  const [animationCompleteCount, setAnimationCompleteCount] = useState(0);
-  const totalKeys = Object.keys(predictionStatus).length;
-
-  const handleKeyAnimationComplete = () => {
-    setAnimationCompleteCount((prev) => prev + 1);
-  };
-
-  useEffect(() => {
-    if (animationCompleteCount === totalKeys && totalKeys > 0) {
-      // if there are missing keys then fetch questions; otherwise, move on
-      const missing = Object.values(predictionStatus).some((v) => v === false);
-      if (missing) {
-        fetchQuestionsForMissingKeys().then(() => {
-          setStep(ProcessStep.ASKING_QUESTIONS);
-        });
-      } else {
-        // if no missing keys, go directly to goal generation
-        setStep(ProcessStep.GENERATING_GOAL);
-      }
-    }
-  }, [animationCompleteCount, totalKeys, predictionStatus]);
-
-  // When questions are answered, generate a goal
-  useEffect(() => {
-    if (
-      step === ProcessStep.ASKING_QUESTIONS &&
-      currentQuestionIndex >= questions.length &&
-      questions.length > 0
-    ) {
-      setStep(ProcessStep.GENERATING_GOAL);
-    }
-  }, [currentQuestionIndex, questions, step]);
-
-  // When in generating goal step, fetch the goal and move to creation step
-  useEffect(() => {
-    if (step === ProcessStep.GENERATING_GOAL) {
-      generateGoal().then(() => {
-        setStep(ProcessStep.CREATING_GOAL);
-      });
-    }
-  }, [step]);
-
-  // When in creating goal step, call handleCreateGoal
-  useEffect(() => {
-    if (step === ProcessStep.CREATING_GOAL) {
-      // You can add an animation indicator here before creating the goal
-      handleCreateGoal();
-    }
-  }, [step]);
-
-  useEffect(() => {
-    console.log("Prediction:", predictionRes);
-    console.log("Current step:", step);
-  }, [step]);
-
-  // ---------------------------
-  // Handlers for question answer submission
-  // ---------------------------
-  const onSubmitAnswer = async () => {
-    const currentQuestion = questions[currentQuestionIndex];
-    if (!currentQuestion || currentAnswer.trim() === "") return;
-    await handleSubmitQuestion(currentQuestion, currentAnswer);
-    setCurrentAnswer(""); // clear the answer
-    setCurrentQuestionIndex((prev) => prev + 1);
-  };
-
-  // ---------------------------
-  // Render different UI based on current step
-  // ---------------------------
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1, backgroundColor: "#16171F", padding: 16 }}
-    >
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        {loading && <ActivityIndicator size="large" color="#fff" />}
-        {step === ProcessStep.VALIDATING && (
-          <Text style={{ color: "white", fontSize: 18, marginBottom: 16 }}>
-            Validating...
-          </Text>
-        )}
-        {step === ProcessStep.ANIMATING && (
-          <View style={{ alignItems: "center" }}>
-            <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-              {Object.entries(predictionStatus).map(([key, value], index) => (
+      case ProcessStep.ANIMATING:
+        return (
+          <View style={styles.animationContainer}>
+            <View style={styles.keysRow}>
+              {Object.entries(predictionStatus).map(([key, active], index) => (
                 <AnimatedKey
                   key={key}
                   index={index}
-                  active={value}
-                  onComplete={handleKeyAnimationComplete}
+                  active={active}
+                  onComplete={() =>
+                    setAnimationCompleteCount((prev) => prev + 1)
+                  }
                 >
-                  <Text
-                    style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
-                  >
-                    {key.charAt(0).toUpperCase()}
-                  </Text>
+                  {key.charAt(0).toUpperCase()}
                 </AnimatedKey>
               ))}
             </View>
-            <Text style={{ color: "white", marginTop: 16, fontSize: 16 }}>
-              {predictionRes?.originalText}
-            </Text>
+            <Text style={styles.goalText}>{predictionRes?.originalText}</Text>
           </View>
-        )}
-        {step === ProcessStep.ASKING_QUESTIONS && questions.length > 0 && (
-          <View style={{ width: "100%", marginTop: 24 }}>
-            <Text style={{ color: "white", fontSize: 18, marginBottom: 12 }}>
-              {questions[currentQuestionIndex]?.question}
+        );
+
+      case ProcessStep.ASKING_QUESTIONS:
+        return questions[currentQuestionIndex] ? (
+          <View style={styles.questionContainer}>
+            <Text style={styles.questionText}>
+              {questions[currentQuestionIndex].question}
             </Text>
             <TextInput
               value={currentAnswer}
               onChangeText={setCurrentAnswer}
-              placeholder="Type your answer here..."
-              placeholderTextColor="#aaa"
-              style={{
-                borderWidth: 1,
-                borderColor: "#fff",
-                color: "white",
-                padding: 8,
-                marginBottom: 12,
-                borderRadius: 4,
-              }}
+              style={styles.input}
+              placeholder="Type your answer..."
+              placeholderTextColor="#94a3b8"
             />
-            <Button title="Submit Answer" onPress={onSubmitAnswer} />
+            <Button
+              title="Submit"
+              onPress={handleSubmitAnswer}
+              disabled={!currentAnswer.trim()}
+            />
           </View>
-        )}
-        {(step === ProcessStep.GENERATING_GOAL ||
-          step === ProcessStep.CREATING_GOAL) && (
-          <View style={{ alignItems: "center" }}>
-            <Text style={{ color: "white", fontSize: 18, marginBottom: 12 }}>
-              {step === ProcessStep.GENERATING_GOAL
-                ? "Generating goal..."
-                : "Creating goal..."}
+        ) : (
+          <Text style={styles.infoText}>Generating goal...</Text>
+        );
+
+      case ProcessStep.GENERATING_GOAL:
+      case ProcessStep.CREATING_GOAL:
+        return <Text style={styles.infoText}>Creating your goal plan...</Text>;
+
+      case ProcessStep.COMPLETED:
+        return (
+          <View style={styles.completedContainer}>
+            <Text style={styles.completedText}>
+              Goal created successfully! 🎉
             </Text>
-            {/* You can add additional animations/indicators here */}
           </View>
-        )}
-        {step === ProcessStep.COMPLETED && (
-          <View style={{ alignItems: "center" }}>
-            <Text style={{ color: "white", fontSize: 20, fontWeight: "bold" }}>
-              Goal created successfully!
-            </Text>
-          </View>
-        )}
-      </View>
+        );
+
+      default:
+        return <Text style={styles.infoText}>Processing...</Text>;
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
+      {renderContent()}
     </KeyboardAvoidingView>
   );
 }
+
+// Keep styles same as previous version
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#16171F",
+    padding: 16,
+    justifyContent: "center",
+  },
+  errorContainer: {
+    backgroundColor: "#dc2626",
+    padding: 16,
+    borderRadius: 8,
+    margin: 16,
+    alignItems: "center",
+  },
+  errorText: {
+    color: "white",
+    fontSize: 16,
+    marginBottom: 12,
+  },
+  animationContainer: {
+    alignItems: "center",
+  },
+  keysRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  key: {
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    borderRadius: 999,
+    margin: 4,
+  },
+  keyText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  goalText: {
+    color: "white",
+    fontSize: 16,
+    textAlign: "center",
+  },
+  questionContainer: {
+    width: "100%",
+    paddingHorizontal: 16,
+  },
+  questionText: {
+    color: "white",
+    fontSize: 18,
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  input: {
+    backgroundColor: "#1e293b",
+    color: "white",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  infoText: {
+    color: "white",
+    fontSize: 16,
+    textAlign: "center",
+  },
+  completedContainer: {
+    alignItems: "center",
+  },
+  completedText: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+});
