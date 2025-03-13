@@ -1,13 +1,11 @@
-import os
-from typing import Any, Optional
+from typing import Optional
 
-from boto3.session import Session
-from botocore.exceptions import NoCredentialsError
-from clerk_backend_api import Clerk
+from boto3.session import NoCredentialsError
+from const import s3 as S3C
+from database import get_db_pool
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
-
-from database import get_db_pool
+from s3 import s3
 
 router = APIRouter()
 
@@ -15,21 +13,9 @@ router = APIRouter()
 class User(BaseModel):
     imageUrl: Optional[str] = None
     user_id: str
-    username: str
+    username: Optional[str] = None
     occupation: Optional[str] = None
     about: Optional[str] = None
-
-
-ACCESS_KEY = os.environ.get("AWS_BUCKET_ACCESS_KEY_ID")
-SECRET_KEY = os.environ.get("AWS_BUCKET_SECRET_ACCESS_KEY")
-REGION = os.environ.get("AWS_BUCKET_REGION")
-BUCKET_NAME = os.environ.get("AWS_BUCKET_NAME")
-
-session = Session(
-    aws_access_key_id=ACCESS_KEY, aws_secret_access_key=SECRET_KEY, region_name=REGION
-)
-
-s3 = session.client("s3")
 
 
 @router.post("/upload_image")
@@ -38,17 +24,18 @@ async def upload_image(file: UploadFile = File(...)):
         file_content = await file.read()
 
         s3.put_object(
-            Bucket=BUCKET_NAME,
+            Bucket=S3C.BUCKET_NAME,
             Key=file.filename,
             Body=file_content,
             ContentType=file.content_type,
             ACL="public-read",
         )
 
-        s3_url = f"https://{BUCKET_NAME}.s3.{REGION}.amazonaws.com/{file.filename}"
+        s3_url = (
+            f"https://{S3C.BUCKET_NAME}.s3.{S3C.REGION}.amazonaws.com/{file.filename}"
+        )
 
         return {"filename": file.filename, "url": s3_url, "status": "uploaded"}
-
     except NoCredentialsError:
         raise HTTPException(status_code=500, detail="AWS credentials not found")
 

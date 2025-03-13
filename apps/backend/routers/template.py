@@ -3,12 +3,14 @@ from enum import Enum
 from typing import List, Optional
 
 from asyncpg import UniqueViolationError
-from dateutil.relativedelta import relativedelta
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-
+from boto3.session import NoCredentialsError
+from const import s3 as S3C
 from const import types as T
 from database import get_db_pool
+from dateutil.relativedelta import relativedelta
+from fastapi import APIRouter, File, HTTPException, UploadFile
+from pydantic import BaseModel
+from s3 import s3
 from utils import date_calculation
 
 router = APIRouter()
@@ -285,6 +287,28 @@ async def fetch_goal_for_create_template(user_id: str):
             raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+
+
+@router.post("/upload_image")
+async def upload_image(file: UploadFile = File(...)):
+    try:
+        file_content = await file.read()
+
+        s3.put_object(
+            Bucket=S3C.BUCKET_NAME,
+            Key=file.filename,
+            Body=file_content,
+            ContentType=file.content_type,
+            ACL="public-read",
+        )
+
+        s3_url = (
+            f"https://{S3C.BUCKET_NAME}.s3.{S3C.REGION}.amazonaws.com/{file.filename}"
+        )
+
+        return {"filename": file.filename, "url": s3_url, "status": "uploaded"}
+    except NoCredentialsError:
+        raise HTTPException(status_code=500, detail="AWS credentials not found")
 
 
 @router.post("/create")
