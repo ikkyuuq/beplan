@@ -130,11 +130,14 @@ class ShareTemplateRequest(BaseModel):
     user_id: str
 
 class SharedTemplateResponse(BaseModel):
-    id: int
+    id: str
     template_id: int
     user_id: str
     url: str
     created_at: datetime
+
+class SharedTemplateURLResponse(BaseModel):
+    url: str
 
 @router.get("/")
 async def fetch_template(
@@ -1004,33 +1007,51 @@ async def shared_template(req: ShareTemplateRequest):
         try:
             row = await conn.fetchrow(
                 """
-                INSERT INTO  public.shared_tmpl (id, template_id, user_id, url, created_at)
+                INSERT INTO  public.shared_tmpl (id, template_id, user_id, URL, created_at)
                 VALUES ($1, $2, $3, $4, NOW())
-                RETURNING id, template_id, user_id , url, create_at 
+                RETURNING id, template_id, user_id , URL, created_at
                 """,
                 unique_id,
                 req.template_id,
                 req.user_id,
                 share_url
             )
-            return SharedTemplateResponse(**row)
+
+            if not row:
+                raise HTTPException(status_code=500, detail="Failed to insert shared template")
+            
+            return SharedTemplateResponse(
+                id=str(row["id"]),
+                template_id=row["template_id"],
+                user_id=row["user_id"],
+                url=row["url"],
+                created_at=row["created_at"],
+            )
+        
         except Exception as e:
             raise   HTTPException(status_code=500, detail=f"Error sharing template: {str(e)}")
 
-@router.get("/shared/{template_id}", response_model=SharedTemplateResponse)
-async def get_shared_template(template_id: str):
+@router.get("/shared/{id}", response_model=SharedTemplateURLResponse)
+async def get_shared_template(id: str):
     """Fetches shared template details using the unique template URL ID."""
+    try:
+        id = str(UUID(id))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid template ID format")
+    
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            SELECT * FROM public.shared_tmpl WHERE id = $1
+            SELECT url FROM public.shared_tmpl WHERE id = $1
             """,
-            template_id
+            id
         )
 
         if not row:
             raise HTTPException(status_code=404, detail="Template not found")
 
-        return SharedTemplateResponse(**row)
+        return SharedTemplateURLResponse(
+            url = row["url"],
+        )
 
