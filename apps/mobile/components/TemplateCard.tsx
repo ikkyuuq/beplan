@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Template } from "@/types/templateTypes";
 import Animated, {
   useSharedValue,
   withSpring,
@@ -16,6 +15,17 @@ import Animated, {
   FadeIn,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
+
+type Template = {
+  title: string;
+  category: string;
+  description: string;
+  image: string;
+  owner: string;
+  isFavorite: boolean;
+  duration?: number;
+  goals_id: string[];
+};
 
 // ====================== Type Definitions ======================
 type TemplateCardProps = {
@@ -206,7 +216,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    height: 180, 
+    height: 180,
   },
   card: {
     overflow: "hidden",
@@ -215,7 +225,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
 
-  // Image Section 
+  // Image Section
   imageContainer: {
     height: "100%",
     position: "relative",
