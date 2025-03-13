@@ -2,12 +2,11 @@ import logging
 from datetime import date
 from typing import List, Optional
 
+from const import types as T
+from database import get_db_pool
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-
-from const import types as T
-from database import get_db_pool
 from utils import date_calculation, goal_creation
 
 logging.basicConfig(level=logging.INFO)
@@ -43,6 +42,7 @@ class FetchTask(BaseModel):
 class FetchGoal(BaseModel):
     id: int
     title: str
+    type: str
     status: T.Status
     start_date: date
     due_date: date
@@ -279,7 +279,7 @@ async def get_goal(assigned_goal_id: int):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
-            
+
             goal_data = await conn.fetchrow(
                 """
                 SELECT g.id, g.title, g.type, ag.start_date, ag.due_date
@@ -319,7 +319,9 @@ async def get_goal(assigned_goal_id: int):
                         task["id"],
                         assigned_goal_id,
                     )
-                    date_interval = [row["interval_date"].isoformat() for row in date_interval]
+                    date_interval = [
+                        row["interval_date"].isoformat() for row in date_interval
+                    ]
 
                 tasks.append(
                     {
@@ -327,7 +329,7 @@ async def get_goal(assigned_goal_id: int):
                         "title": task["title"],
                         "description": task["description"],
                         "repeat_type": task["repeat_type"],
-                        "date_interval": date_interval,  
+                        "date_interval": date_interval,
                         "week_interval": task["week_interval"],
                         "status": task["status"],
                     }
@@ -365,7 +367,7 @@ async def get_goals_today(
         # Fetch assigned goals for the user and date range
         assigned_goals = await conn.fetch(
             """
-            SELECT ag.*, g.title
+            SELECT ag.*, g.title, g.type
             FROM public.assigned_goal ag
             JOIN public.goal g ON ag.goal_id = g.id
             WHERE ag.user_id = $1
@@ -414,6 +416,7 @@ async def get_goals_today(
                     FetchGoal(
                         id=ag["id"],
                         title=ag["title"],
+                        type=ag["type"],
                         status=T.Status(ag["status"]),
                         start_date=ag["start_date"],
                         due_date=ag["due_date"],
