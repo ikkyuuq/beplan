@@ -159,7 +159,6 @@ export default function createTemplate() {
     try {
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
-
       if (status !== "granted") {
         Alert.alert(
           "Permission Required",
@@ -169,14 +168,53 @@ export default function createTemplate() {
       }
 
       let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: "images",
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [16, 9],
         quality: 1,
       });
 
       if (!result.canceled) {
-        setImage(result.assets[0].uri);
+        setIsLoading(true);
+        const uploadedImage = result.assets[0];
+
+        const formData = new FormData();
+        formData.append("file", {
+          uri: uploadedImage.uri,
+          name: uploadedImage.fileName,
+          type: uploadedImage.mimeType,
+        } as any);
+
+        try {
+          const baseUrl =
+            Platform.OS === "android"
+              ? "http://10.0.2.2:8000"
+              : "http://127.0.0.1:8000";
+          const uploadResponse = await fetch(
+            `${baseUrl}/api/v1/user/upload_image`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+              body: formData,
+            }
+          );
+
+          if (!uploadResponse.ok) {
+            throw new Error("Failed to upload image");
+          }
+
+          const uploadData = await uploadResponse.json();
+          console.log("📌 Uploaded Image URL:", uploadData.url);
+
+          setImage(uploadData.url);
+        } catch (error) {
+          console.error("Image upload failed:", error);
+          Alert.alert("Error", "Failed to upload image. Please try again.");
+        } finally {
+          setIsLoading(false);
+        }
       }
     } catch (error) {
       Alert.alert("Error", "Failed to pick image");
@@ -185,10 +223,8 @@ export default function createTemplate() {
 
   const toggleGoalSelection = (goalId: string) => {
     if (selectedGoalIds.includes(goalId)) {
-      // If the goal is being deselected, remove it from both arrays
       setSelectedGoalIds((prev) => prev.filter((id) => id !== goalId));
 
-      // Also remove from goalDates if exists
       const updatedGoalDates = new Map(goalDates);
       updatedGoalDates.delete(goalId);
       setGoalDates(updatedGoalDates);
@@ -279,7 +315,14 @@ export default function createTemplate() {
       return;
     }
 
-    // Set loading state
+    if (!image.startsWith("http")) {
+      Alert.alert(
+        "Error",
+        "Image upload failed. Please select an image again."
+      );
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -297,9 +340,7 @@ export default function createTemplate() {
             new_due_date: goalDateInfo.newDueDate,
           };
         } else {
-          return {
-            assigned_goal_id: goalId,
-          };
+          return { assigned_goal_id: goalId };
         }
       });
 
@@ -318,12 +359,9 @@ export default function createTemplate() {
         Platform.OS === "android"
           ? "http://10.0.2.2:8000"
           : "http://127.0.0.1:8000";
-
       const response = await fetch(`${baseUrl}/api/v1/template/create/user`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newTemplate),
       });
 
@@ -346,12 +384,13 @@ export default function createTemplate() {
           },
         },
       ]);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to create template:", error);
-      Alert.alert(
-        "Error",
-        error.message || "Failed to create template. Please try again later."
-      );
+      let errorMessage = "Failed to create template. Please try again later.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      Alert.alert("Error", errorMessage);
     } finally {
       setIsLoading(false);
     }
