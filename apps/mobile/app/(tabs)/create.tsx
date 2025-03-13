@@ -157,9 +157,9 @@ export default function CreateScreen() {
         const response = await fetch("http://10.0.2.2:8000/api/v1/template/");
         if (!response.ok) {
           throw new Error("Network response was not ok");
-        } 
+        }
         const data = await response.json();
-        setTemplateData(data);        
+        setTemplateData(data);
         setCommunityData(data.filter((template: Template) => template.isFavorite));
       } catch (error) {
         console.error("Error fetching templates:", error);
@@ -280,6 +280,47 @@ export default function CreateScreen() {
   const handleTemplateSelect = (template: any) => {
     setSelectedTemplate(template);
     setIsModalVisible(true);
+  };
+
+  const toggleFavorite = async (templateId: number) => {
+    try {
+      // ส่งคำขอไปยัง API เพื่อสลับสถานะ favorite
+      const response = await fetch("http://10.0.2.2:8000/api/v1/template/toggle_favorite", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: "1", // แทนที่ด้วย user_id จริงของผู้ใช้
+          template_id: templateId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Server error: ${errorData.message || response.statusText}`);
+      }
+
+      // อัปเดตสถานะ isFavorite ใน state
+      setTemplateData((prev) =>
+        prev.map((template) =>
+          template.id === templateId
+            ? { ...template, isFavorite: !template.isFavorite }
+            : template
+        )
+      );
+
+      setCommunityData((prev) =>
+        prev.map((template) =>
+          template.id === templateId
+            ? { ...template, isFavorite: !template.isFavorite }
+            : template
+        )
+      );
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      Alert.alert("Error", error.message || "Failed to toggle favorite. Please try again.");
+    }
   };
 
   const handleOpenOptionModal = () => {
@@ -466,7 +507,16 @@ export default function CreateScreen() {
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          <Slider data={communityData} onCardPress={(template) => handleTemplateSelect(template)} />
+          <Slider
+            data={templateData} onCardPress={(template) => handleTemplateSelect(template)}
+            onToggleFavorite={(template) => toggleFavorite(template.id)}
+          />
+
+          <Slider
+            data={communityData.filter((template) => template.isFavorite)} // กรองเฉพาะ template ที่ถูกใจ
+            onCardPress={(template) => handleTemplateSelect(template)}
+            onToggleFavorite={(template) => toggleFavorite(template.id)}
+          />
         </Animated.View>
       </ScrollView>
 
@@ -593,16 +643,11 @@ export default function CreateScreen() {
 
       {/* View All Templates Modal */}
       <View>
+        {/* Modal สำหรับ Featured Templates */}
         <Modal
-          isVisible={isViewAllTemplatesVisible || isViewAllCommunityVisible}
-          onBackdropPress={() => {
-            setIsViewAllTemplatesVisible(false);
-            setIsViewAllCommunityVisible(false);
-          }}
-          onBackButtonPress={() => {
-            setIsViewAllTemplatesVisible(false);
-            setIsViewAllCommunityVisible(false);
-          }}
+          isVisible={isViewAllTemplatesVisible}
+          onBackdropPress={() => setIsViewAllTemplatesVisible(false)}
+          onBackButtonPress={() => setIsViewAllTemplatesVisible(false)}
           backdropTransitionOutTiming={0}
           animationIn="slideInUp"
           animationOut="slideOutDown"
@@ -611,17 +656,10 @@ export default function CreateScreen() {
         >
           <View style={styles.fullScreenModalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {isViewAllTemplatesVisible
-                  ? "Featured Templates"
-                  : "Community Favorites"}
-              </Text>
+              <Text style={styles.modalTitle}>Featured Templates</Text>
               <TouchableOpacity
                 style={styles.closeModalButton}
-                onPress={() => {
-                  setIsViewAllTemplatesVisible(false);
-                  setIsViewAllCommunityVisible(false);
-                }}
+                onPress={() => setIsViewAllTemplatesVisible(false)}
               >
                 <Ionicons name="close" size={22} color="#666" />
               </TouchableOpacity>
@@ -631,10 +669,7 @@ export default function CreateScreen() {
             <View style={styles.fullScreenModalContent}>
               <ScrollView style={styles.templatesScrollView}>
                 <View style={styles.templatesGrid}>
-                  {(isViewAllTemplatesVisible
-                    ? templateData
-                    : communityData
-                  ).map((template, index) => (
+                  {templateData.map((template, index) => (
                     <TemplateCard
                       key={index}
                       template={{
@@ -669,23 +704,90 @@ export default function CreateScreen() {
                         setIsModalVisible(true);
                       }}
                       onToggleFavorite={() => {
-                        if (isViewAllTemplatesVisible) {
-                          setTemplateData((prev) =>
-                            prev.map((item) =>
-                              item.title === template.title
-                                ? { ...item, isFavorite: !item.isFavorite }
-                                : item
-                            )
-                          );
-                        } else {
-                          setCommunityData((prev) =>
-                            prev.map((item) =>
-                              item.title === template.title
-                                ? { ...item, isFavorite: !item.isFavorite }
-                                : item
-                            )
-                          );
-                        }
+                        setTemplateData((prev) =>
+                          prev.map((item) =>
+                            item.title === template.title
+                              ? { ...item, isFavorite: !item.isFavorite }
+                              : item
+                          )
+                        );
+                      }}
+                    />
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal สำหรับ Community Favorites */}
+        <Modal
+          isVisible={isViewAllCommunityVisible}
+          onBackdropPress={() => setIsViewAllCommunityVisible(false)}
+          onBackButtonPress={() => setIsViewAllCommunityVisible(false)}
+          backdropTransitionOutTiming={0}
+          animationIn="slideInUp"
+          animationOut="slideOutDown"
+          statusBarTranslucent
+          style={styles.modalWrapper}
+        >
+          <View style={styles.fullScreenModalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Community Favorites</Text>
+              <TouchableOpacity
+                style={styles.closeModalButton}
+                onPress={() => setIsViewAllCommunityVisible(false)}
+              >
+                <Ionicons name="close" size={22} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Templates Grid using TemplateCard */}
+            <View style={styles.fullScreenModalContent}>
+              <ScrollView style={styles.templatesScrollView}>
+                <View style={styles.templatesGrid}>
+                  {templateData.map((template, index) => (
+                    <TemplateCard
+                      key={index}
+                      template={{
+                        title: template.title,
+                        category: template.category,
+                        description: template.description || "",
+                        image: template.image || "",
+                        owner: template.owner || "BePlan",
+                        isFavorite: template.isFavorite || false,
+                        goals_id: template.goals_id || [],
+                        duration: template.duration || 0,
+                      }}
+                      onSelect={() => {
+                        const selectedTemplate = {
+                          title: template.title,
+                          description: template.description,
+                          category: template.category,
+                          image: template.image || "",
+                          isListed: template.isFavorite || false,
+                          owner: template.owner || "BePlan",
+                          duration: template.duration || null,
+                          goals:
+                            template.goals_id?.map(
+                              (id: string) =>
+                                mockGoals.find((goal) => goal.id === id) || {
+                                  id,
+                                  title: `Goal ${id}`,
+                                }
+                            ) || [],
+                        };
+                        setSelectedTemplate(selectedTemplate);
+                        setIsModalVisible(true);
+                      }}
+                      onToggleFavorite={() => {
+                        setTemplateData((prev) =>
+                          prev.map((item) =>
+                            item.title === template.title
+                              ? { ...item, isFavorite: !item.isFavorite }
+                              : item
+                          )
+                        );
                       }}
                     />
                   ))}
@@ -695,6 +797,7 @@ export default function CreateScreen() {
           </View>
         </Modal>
       </View>
+
 
       {/* Loading Indicator */}
       {isLoading && (
