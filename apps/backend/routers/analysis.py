@@ -3,9 +3,8 @@ from datetime import date, datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Tuple
 
-from fastapi import APIRouter, HTTPException
-
 from database import get_db_pool
+from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
 
@@ -17,13 +16,12 @@ class Status(str, Enum):
 
 
 class TemplateCategory(str, Enum):
-    FITNESS = "fitness"
+    WORKOUT = "workout"
     HEALTH = "health"
     EDUCATION = "education"
-    WORK = "work"
-    TRAVEL = "travel"
-    PD = "personal_development"
-    OTHER = "other"
+    PRODUCTIVITY = "productivity"
+    FINANCE = "finance"
+    ALL = "all"
 
 
 async def fetch_tasks_with_intervals(conn, user_id: str) -> List[Dict]:
@@ -263,7 +261,7 @@ async def compute_template_analysis(templates: List[Dict]) -> Dict:
         if category in analysis["category_usage"]:
             analysis["category_usage"][category] += 1
         else:
-            analysis["category_usage"][TemplateCategory.OTHER] += 1
+            analysis["category_usage"][TemplateCategory.ALL] += 1
     return analysis
 
 

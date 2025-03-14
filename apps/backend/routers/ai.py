@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from utils import goal_creation
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-ANTHROPIC_MODEL = "claude-3-haiku-20240307"
+ANTHROPIC_MODEL = "claude-3-5-sonnet-20241022"
 if not ANTHROPIC_API_KEY:
     raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
 client = Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -58,23 +58,42 @@ class SubmitRequest(BaseModel):
 
 def parse_ai_response(response) -> dict:
     try:
-        raw_content = (
-            response.content[0].text
-            if isinstance(response.content, list)
-            else str(response)
-        )
-        json_start = raw_content.find("{")
-        json_end = raw_content.rfind("}") + 1
-        if json_start == -1 or json_end == 0:
-            raise ValueError("No JSON found in AI response")
+        # Handle both list and single content cases
+        if isinstance(response.content, list) and len(response.content) > 0:
+            raw_content = response.content[0].text
+        else:
+            raw_content = (
+                response.content[0].text
+                if hasattr(response, "content")
+                else str(response)
+            )
 
-        json_str = raw_content[json_start:json_end]
-        return json.loads(json_str)
-    except (json.JSONDecodeError, ValueError, AttributeError) as e:
+        # Clean up the response if needed
+        if raw_content.startswith("```json"):
+            raw_content = raw_content[7:-3]  # Remove json code block markers
+        elif raw_content.startswith("```"):
+            raw_content = raw_content[3:-3]  # Remove generic code block markers
+
+        return json.loads(raw_content.strip())
+    except (json.JSONDecodeError, AttributeError) as e:
         raise HTTPException(
             status_code=500,
-            detail=f"AI response parsing failed: {str(e)}. Content: {raw_content}",
+            detail=f"Failed to parse AI response: {str(e)}. Raw content: {response.content[0].text}",
         )
+
+
+def call_anthropic_api(model: str, system: str, prompt: str) -> dict:
+    response = client.messages.create(
+        model=model,
+        max_tokens=1000,
+        system=system,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return parse_ai_response(response)
+
+
+def normalize_label(label: str) -> str:
+    return label.replace("-", "_")
 
 
 @router.post("/validate", tags=["ai"])
@@ -83,129 +102,269 @@ async def validate_sentence(input_data: AIInput):
         sentence = Sentence(input_data.text)
         tagger.predict(sentence)
 
-        smart_criteria = {label.value: [] for label in LabelType}
+        # Prepare empty lists for each SMART criterion.
+        smart_criteria = {
+            "specific": [],
+            "measurable": [],
+            "achievable": [],
+            "relevant": [],
+            "time_bound": [],
+        }
+
+        # Process NER spans and update the matching list.
         for entity in sentence.get_spans("ner"):
-            label = entity.labels[0].value.lower().replace("-", "_")
+            label = normalize_label(entity.labels[0].value)
             if label in smart_criteria:
                 smart_criteria[label].append(
                     {"text": entity.text, "from": "original_text"}
                 )
 
-        return PredictionResult(
-            original_text=input_data.text, prediction=smart_criteria
-        )
+        prediction_result = {
+            "original_text": input_data.text,
+            "prediction": smart_criteria,
+        }
+        return prediction_result
+
     except Exception as e:
-        raise HTTPException(500, f"Validation error: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error during prediction: {str(e)}"
+        )
 
 
 @router.post("/generate-questions", tags=["ai"])
 async def generate_questions(request: PredictionResult):
     try:
-        missing = [
-            label.value
-            for label in LabelType
-            if not request.prediction.get(label.value, [])
+        # Define the SMART criteria to check
+        criteria_to_check = [
+            "specific",
+            "measurable",
+            "achievable",
+            "relevant",
+            "time_bound",
         ]
-        if not missing:
+
+        # Identify missing criteria: empty list or missing key
+        missing_keys = [
+            key for key in criteria_to_check if not request.prediction.get(key)
+        ]
+
+        if not missing_keys:
+            # No criteria missing; no questions needed.
             return {"result": []}
 
-        prompt = f"""Generate follow-up questions for missing SMART criteria in this goal:
-        Original Text: {request.original_text}
-        Missing Criteria: {", ".join(missing)}
-        Current Predictions: {json.dumps(request.prediction, indent=2)}
-        
-        RULES:
-        - Generate 1 question per missing criteria
-        - Questions must reference the original text
-        - Use 'date' type only for time_bound questions
-        - Return JSON format with 'label', 'question' and 'type'
+        prompt = f"""
+            Generate Questions for Missing SMART Criteria
+
+            INPUT:
+            {json.dumps(request.dict(), indent=2)}
+
+            TASK:
+            1. Examine the prediction object's arrays.
+            2. For each empty array (for the criteria: {", ".join(missing_keys)}), generate an appropriate follow-up question:
+               - Questions should help complete the missing SMART criteria.
+               - Questions must directly relate to the original_text.
+               - Questions must be brief, precise, unambiguous, and impactful on the original_text.
+
+            QUESTION TYPES:
+            - time_bound: Use "date" type for deadline/timeline questions.
+            - achievable: Use "yes-no" for feasibility checks.
+            - All others: Use "open-ended" for detailed responses.
+
+            OUTPUT FORMAT:
+            {{
+              "result": [
+                {{
+                  "label": "specific|measurable|achievable|relevant|time_bound",
+                  "question": "Your follow-up question here",
+                  "type": "date|yes-no|open-ended"
+                }}
+              ]
+            }}
+
+            RULES:
+            - Only generate questions for empty arrays.
+            - Each question must help validate one specific SMART criterion.
+            - Questions should be contextual to the original goal.
+            - Avoid generic questions - reference specific details from original_text.
+            - Use "date" type only for time_bound questions.
+
+            Note: Return only valid JSON without comments or explanations.
         """
 
         ai_response = call_anthropic_api(
             model=ANTHROPIC_MODEL,
-            system="You are a SMART goal assistant. Generate specific, context-aware questions.",
+            system="You are a SMART goal refinement assistant. Generate contextual questions to fill gaps in SMART criteria, ensuring each question includes a `type` (open-ended, yes-no, date).",
             prompt=prompt,
         )
 
-        valid_questions = [
-            q
-            for q in ai_response.get("result", [])
-            if (
-                q.get("label") in missing
-                and q.get("question")
-                and q.get("type") in ["date", "yes-no", "open-ended"]
-            )
+        # Filter out any questions that don't correspond to a missing key.
+        all_questions = ai_response.get("result", [])
+        filtered_questions = [
+            q for q in all_questions if q.get("label") in missing_keys
         ]
-        return {"result": valid_questions}
+
+        return {"result": filtered_questions}
     except Exception as e:
-        raise HTTPException(500, f"Question generation failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error generating questions: {str(e)}"
+        )
 
 
 @router.post("/submit-question", tags=["ai"])
 async def submit_question(request: SubmitRequest):
     try:
-        if request.to_label not in [label.value for label in LabelType]:
-            raise HTTPException(400, "Invalid label type")
+        to_label = request.to_label
+        prediction_result = request.prediction_result
+        value = request.value
+        question = request.question
 
-        if not request.value.strip():
-            raise HTTPException(400, "Value cannot be empty")
+        # Validate the label using the LabelType enum.
+        if to_label not in {label.value for label in LabelType}:
+            raise HTTPException(
+                status_code=400, detail=f"Invalid prediction type: {to_label}"
+            )
 
-        updated_prediction = request.prediction_result.prediction.copy()
-        updated_prediction[request.to_label] = [
-            {"text": request.value, "from": "question", "question": request.question}
+        if value is None:
+            raise HTTPException(status_code=400, detail="Value cannot be None")
+
+        # Update the prediction for the given criterion.
+        prediction_result.prediction[to_label] = [
+            {
+                "text": value,
+                "from": "question",
+                "question": question,
+            }
         ]
 
         return {
-            "message": "Prediction updated",
-            "result": PredictionResult(
-                original_text=request.prediction_result.original_text,
-                prediction=updated_prediction,
-            ),
+            "message": "Successfully updated prediction",
+            "result": prediction_result,
         }
+
     except Exception as e:
-        raise HTTPException(500, f"Submission failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error updating prediction: {str(e)}"
+        )
 
 
 @router.post("/generate-goal", tags=["ai"])
 async def generate_goal(request: PredictionResult):
     try:
-        time_bound = request.prediction.get("time_bound")
-        if not time_bound:
-            raise HTTPException(400, "Missing time_bound for goal generation")
+        today = datetime.today().date().strftime("%Y-%m-%d")
+        start_date = today
+        due_date = request.prediction["time_bound"][0]["text"]
 
-        today = datetime.today().date()
-        try:
-            due_date = datetime.strptime(time_bound[0]["text"], "%Y-%m-%d").date()
-        except ValueError:
-            raise HTTPException(400, "Invalid date format, use YYYY-MM-DD")
+        goal_input = {
+            "original_text": request.original_text,
+            "prediction": request.prediction,
+            "start_date": start_date,
+            "due_date": due_date,
+        }
 
-        if due_date < today:
-            raise HTTPException(400, "Due date cannot be in the past")
+        prompt = f"""
+            Generate Task for SMART Goal
 
-        prompt = f"""Generate SMART goal tasks with these parameters:
-        Original Text: {request.original_text}
-        Start Date: {today.isoformat()}
-        Due Date: {due_date.isoformat()}
-        Predictions: {json.dumps(request.prediction, indent=2)}
-        
-        Include 7-14 tasks with proper scheduling between dates.
-        Validate all dates are within the specified range.
+            INPUT:
+            {json.dumps(goal_input, indent=2)}
+
+            TASK:
+            Generate a series of actionable tasks that will help achieve the SMART goal. Each task should:
+            1. Be specific and measurable.
+            2. Have a clear deadline or recurring schedule.
+            3. Contribute directly to achieving the main goal.
+            4. Be realistic and achievable.
+
+            OUTPUT FORMAT:
+            {{
+              "title": "Goal tilte from the original_text",
+              "type": "smart goal (fixed value)",
+              "start_date": "YYYY-MM-DD from start_date input",
+              "due_date": "YYYY-MM-DD from due_date input",
+              "tasks": [
+                {{
+                  "title": "Clear, action-oriented task title",
+                  "description": "Brief description of what needs to be done",
+                  "repeat_type": "date|daily|weekly|monthly",
+                  "week_interval": "[0, 1, 2, 3, 4, 5, 6]",
+                  "date_interval": ["YYYY-MM-DD", "YYYY-MM-DD"]
+                }}
+              ]
+            }}
+
+            RULES:
+            1. Task Creation:
+               - Create 7-14 distinct tasks that break down the goal.
+               - Each task must be actionable and measurable.
+               - Tasks should form a logical progression towards the goal.
+
+            2. Timing Rules:
+               - All task dates must be between {start_date} and {due_date}.
+               - Space tasks appropriately across the available time.
+               - For recurring tasks, set appropriate frequencies.
+
+            3. Repeat Types:
+               - "date": Task to be completed on specific days (insert into dates).
+               - "daily": Daily task with no specific days.
+               - "weekly": Select specific days of the week to repeat (insert weekday numbers into interval).
+               - "monthly": Set specific days of the month to repeat (insert into dates).
+
+            Example Input:
+            {{
+              "original_text": "I want to lose 10 pounds in 2 months",
+              "prediction": {{
+                "specific": ["lose"],
+                "measurable": ["10 pounds"],
+                "achievable": ["yes"],
+                "relevant": ["for better health"],
+                "time_bound": ["2 months"]
+              }},
+              "start_date": "2024-03-15",
+              "due_date": "2024-05-15"
+            }}
+
+            Example Output:
+            {{
+              "title": "Lose 10 pounds in 2 months",
+              "type": "smart goal",
+              "start_date": "2024-03-15",
+              "due_date": "2024-05-15",
+              "tasks": [
+                {{
+                  "title": "Track daily calorie intake",
+                  "description": "Log all meals and snacks in fitness app, staying under 2000 calories",
+                  "repeat_type": "daily",
+                  "week_interval": null,
+                  "date_interval": null
+                }},
+                {{
+                  "title": "30-minute cardio workout",
+                  "description": "Complete either jogging, cycling, or swimming",
+                  "repeat_type": "weekly",
+                  "week_interval": [0, 2, 4],
+                  "date_interval": null
+                }},
+                {{
+                  "title": "Monthly weight check and progress photo",
+                  "description": "Record weight and take progress photos for tracking",
+                  "repeat_type": "monthly",
+                  "week_interval": null,
+                  "date_interval": ["2024-04-15", "2024-05-15", "2024-06-15"]
+                }}
+              ]
+            }}
+
+            Note: Return only valid JSON without comments or explanations.
         """
 
         ai_response = call_anthropic_api(
             model=ANTHROPIC_MODEL,
-            system="You are a SMART goal task generator. Create actionable tasks with clear timelines.",
+            system="You are a SMART goal task generation assistant. Break down SMART goals into actionable tasks with clear timelines and measurable outcomes.",
             prompt=prompt,
         )
-
-        if not all(
-            key in ai_response for key in ["title", "tasks", "start_date", "due_date"]
-        ):
-            raise ValueError("Invalid goal structure from AI")
-
         return ai_response
+
     except Exception as e:
-        raise HTTPException(500, f"Goal generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating task: {str(e)}")
 
 
 @router.post("/create", tags=["goal"])
@@ -215,8 +374,14 @@ async def create_goal(req: T.GoalCreateRequest):
         async with pool.acquire() as conn:
             async with conn.transaction():
                 await goal_creation.Create(conn, req, req.user_id)
-                return {"status": "success", "message": "Goal created"}
+
+                return {
+                    "status": "success",
+                    "message": "Goal with tasks created successfully",
+                }
     except ValueError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(500, f"Database error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
