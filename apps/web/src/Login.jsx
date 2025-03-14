@@ -18,7 +18,7 @@ const Login = () => {
 
     if (username === adminCredentials.username && password === adminCredentials.password) {
       const userData = { username, role: "admin" };
-      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem("user", JSON.stringify(userData)); // เก็บข้อมูลผู้ใช้
       navigate("/admin"); // ไปที่หน้า Admin Dashboard
     } else {
       setError("❌ Invalid username or password!");

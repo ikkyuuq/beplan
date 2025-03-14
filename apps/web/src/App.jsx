@@ -4,14 +4,15 @@ import {
   Routes,
   Link,
   Outlet,
+  Navigate,
 } from "react-router-dom";
 import Home from "./Home";
 import AboutMe from "./AboutMe";
 import Donate from "./Donate";
 import FAQ from "./FAQ";
 import Login from "./Login";
-import "./Home.css";
 import AdminDashboard from "./AdminDashboard";
+import "./Home.css";
 
 const Layout = () => {
   return (
@@ -48,6 +49,18 @@ const Layout = () => {
   );
 };
 
+// สร้าง ProtectedRoute สำหรับตรวจสอบสิทธิ์
+const ProtectedRoute = ({ children }) => {
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  // หากผู้ใช้ไม่มีสิทธิ์เป็น Admin ให้ Redirect ไปหน้า Login
+  if (!user || user.role !== "admin") {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
+
 function App() {
   return (
     <Router>
@@ -59,7 +72,14 @@ function App() {
           <Route path="faq" element={<FAQ />} />
         </Route>
         <Route path="login" element={<Login />} />
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   );

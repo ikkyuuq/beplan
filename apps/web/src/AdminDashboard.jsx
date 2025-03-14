@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom"; // นำเข้า useNavigate
 import "./AdminDashboard.css";
 
 const AdminDashboard = () => {
@@ -52,6 +53,23 @@ const AdminDashboard = () => {
     const [selectedGoalId, setSelectedGoalId] = useState(null);
     const [selectedTaskId, setSelectedTaskId] = useState(null);
     const [creatingTemplate, setCreatingTemplate] = useState(false);
+
+    const navigate = useNavigate(); // เรียกใช้ useNavigate
+
+    useEffect(() => {
+        // ดึงข้อมูลผู้ใช้จาก localStorage
+        const user = JSON.parse(localStorage.getItem("user"));
+
+    if (!user || user.role !== "admin") {
+        navigate("/login", { replace: true }); // Redirect ไปหน้า Login และแทนที่ประวัติการนำทาง
+        }
+    }, [navigate]);
+    
+    const handleLogout = () => {
+        localStorage.removeItem("user"); // ลบข้อมูลผู้ใช้
+        navigate("/login"); // Redirect ไปหน้า Login
+    };
+
 
     useEffect(() => {
         const fetchTemplates = async () => {
@@ -364,10 +382,7 @@ const AdminDashboard = () => {
                 <div className="navbar-user">
                     <img src={userAccount.profilePic} alt="User" className="user-icon" />
                     <span className="user-name">{userAccount.name}</span>
-                    <button className="logout-btn" onClick={() => {
-                        localStorage.removeItem("user");
-                        window.location.href = "/login";
-                    }}>🚪 Logout</button>
+                    <button className="logout-btn" onClick={handleLogout}>🚪 Logout</button>
                 </div>
             </nav>
 
