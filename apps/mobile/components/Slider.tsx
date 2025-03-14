@@ -1,3 +1,4 @@
+import React from "react";
 import { View } from "react-native";
 import SliderCard from "./SliderCard";
 import Animated, {
@@ -11,10 +12,12 @@ type Template = {
   category: string;
   description?: string;
   image: string;
+  image_url?: string;
   owner: string;
   duration?: number;
   isFavorite: boolean;
   goals_id?: string[];
+  created_by?: any;
 };
 
 type SliderProps = {
@@ -56,8 +59,10 @@ export default function Slider({
             title={item.title}
             category={item.category}
             description={item.description}
-            image={item.image}
-            owner={item.owner}
+            image={item.image_url || item.image}
+            owner={typeof item.created_by === 'object' ? 
+                   (item.created_by.username || item.created_by.user_id) : 
+                   item.owner}
             duration={item.duration}
             isFavorite={item.isFavorite}
             goals_id={item.goals_id} 

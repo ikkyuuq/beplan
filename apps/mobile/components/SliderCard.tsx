@@ -17,9 +17,21 @@ import Animated, {
   withSpring,
   useSharedValue,
 } from "react-native-reanimated";
-import TemplateModal from "./TemplateModal";
 
 // ====================== Type Definitions ======================
+type Task = {
+  title: string;
+  description?: string;
+  repeat_type: string;
+  week_interval?: number[];
+};
+
+type Goal = {
+  id: string;
+  title: string;
+  tasks: Task[];
+};
+
 type SliderCardProps = {
   index: number;
   title: string;
@@ -171,13 +183,6 @@ export default function SliderCard({
   // ====================== Render UI ======================
   return (
     <Animated.View>
-      <TemplateModal
-        isVisible={displayPreviewModal}
-        onClose={() => setDisplayPreviewModal(false)}
-        onAddToList={() => setIsListed(!isListed)}
-        data={{ title, category, image, description, isListed, owner }}
-      />
-
       <Animated.View
         style={[
           animatedStyle,
