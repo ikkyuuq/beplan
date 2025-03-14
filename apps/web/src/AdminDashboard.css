@@ -61,8 +61,6 @@ body .admin-container  {
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  position: fixed;
-  right: 160px;
   font-size: 1rem;
   transition: background 0.3s ease;
 }
@@ -546,4 +544,11 @@ input[type="checkbox"], input[type="radio"] {
 .remove-task-btn:active {
   background-color: #990000; /* สีแดงเข้มขึ้นเมื่อกด */
   transform: scale(0.95); /* กดแล้วหดลง */
+}
+
+/* ในไฟล์ AdminDashboard.css */
+.template-img {
+  width: 100px; /* กำหนดความกว้าง */
+  height: auto; /* ให้ความสูงปรับตามอัตราส่วน */
+  border-radius: 8px; /* ทำให้รูปภาพมีมุมโค้ง */
 }

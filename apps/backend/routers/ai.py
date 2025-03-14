@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from utils import goal_creation
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-ANTHROPIC_MODEL = "claude-3-7-sonnet-20250219"
+ANTHROPIC_MODEL = "claude-3-5-sonnet-20241022"
 if not ANTHROPIC_API_KEY:
     raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
 client = Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -58,15 +58,27 @@ class SubmitRequest(BaseModel):
 
 def parse_ai_response(response) -> dict:
     try:
-        raw_content = (
-            response.content[0].text
-            if isinstance(response.content, list)
-            else str(response.content)
-        )
-        return json.loads(raw_content)
-    except json.JSONDecodeError as e:
+        # Handle both list and single content cases
+        if isinstance(response.content, list) and len(response.content) > 0:
+            raw_content = response.content[0].text
+        else:
+            raw_content = (
+                response.content[0].text
+                if hasattr(response, "content")
+                else str(response)
+            )
+
+        # Clean up the response if needed
+        if raw_content.startswith("```json"):
+            raw_content = raw_content[7:-3]  # Remove json code block markers
+        elif raw_content.startswith("```"):
+            raw_content = raw_content[3:-3]  # Remove generic code block markers
+
+        return json.loads(raw_content.strip())
+    except (json.JSONDecodeError, AttributeError) as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to parse AI response: {str(e)}"
+            status_code=500,
+            detail=f"Failed to parse AI response: {str(e)}. Raw content: {response.content[0].text}",
         )
 
 
@@ -122,7 +134,7 @@ async def validate_sentence(input_data: AIInput):
 @router.post("/generate-questions", tags=["ai"])
 async def generate_questions(request: PredictionResult):
     try:
-        # Check for any missing criteria.
+        # Define the SMART criteria to check
         criteria_to_check = [
             "specific",
             "measurable",
@@ -130,12 +142,15 @@ async def generate_questions(request: PredictionResult):
             "relevant",
             "time_bound",
         ]
-        has_empty_criteria = any(
-            not request.prediction.get(key) for key in criteria_to_check
-        )
 
-        if not has_empty_criteria:
-            return {"message": "No questions needed - all criteria are filled"}
+        # Identify missing criteria: empty list or missing key
+        missing_keys = [
+            key for key in criteria_to_check if not request.prediction.get(key)
+        ]
+
+        if not missing_keys:
+            # No criteria missing; no questions needed.
+            return {"result": []}
 
         prompt = f"""
             Generate Questions for Missing SMART Criteria
@@ -145,8 +160,8 @@ async def generate_questions(request: PredictionResult):
 
             TASK:
             1. Examine the prediction object's arrays.
-            2. For each empty array, generate an appropriate follow-up question:
-               - Questions should help complete missing SMART criteria.
+            2. For each empty array (for the criteria: {", ".join(missing_keys)}), generate an appropriate follow-up question:
+               - Questions should help complete the missing SMART criteria.
                - Questions must directly relate to the original_text.
                - Questions must be brief, precise, unambiguous, and impactful on the original_text.
 
@@ -173,34 +188,6 @@ async def generate_questions(request: PredictionResult):
             - Avoid generic questions - reference specific details from original_text.
             - Use "date" type only for time_bound questions.
 
-            Example Input:
-            {{
-              "original_text": "to prevent health issues I need to lose 10 pounds",
-              "prediction": {{
-                "specific": ["..."],
-                "measurable": ["..."],
-                "achievable": [],
-                "relevant": ["..."],
-                "time_bound": []
-              }}
-            }}
-
-            Example Output:
-            {{
-              "result": [
-                {{
-                  "label": "achievable",
-                  "question": "Is losing 10 pounds in one week a safe and realistic goal for you?",
-                  "type": "yes-no"
-                }},
-                {{
-                  "label": "time_bound",
-                  "question": "What is your exact target date for losing the 10 pounds?",
-                  "type": "date"
-                }}
-              ]
-            }}
-
             Note: Return only valid JSON without comments or explanations.
         """
 
@@ -209,8 +196,14 @@ async def generate_questions(request: PredictionResult):
             system="You are a SMART goal refinement assistant. Generate contextual questions to fill gaps in SMART criteria, ensuring each question includes a `type` (open-ended, yes-no, date).",
             prompt=prompt,
         )
-        return ai_response
 
+        # Filter out any questions that don't correspond to a missing key.
+        all_questions = ai_response.get("result", [])
+        filtered_questions = [
+            q for q in all_questions if q.get("label") in missing_keys
+        ]
+
+        return {"result": filtered_questions}
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error generating questions: {str(e)}"
