@@ -26,11 +26,11 @@ const AdminDashboard = () => {
     });
 
     const [editingTemplate, setEditingTemplate] = useState({
-        name: "",
+        title: "",
         description: "",
-        image: null,
+        image_url: null,
         category: "",
-        goals: [], // กำหนดค่าเริ่มต้นเป็น array ว่าง
+        goals: [],
     });
     const [newName, setNewName] = useState("");
     const [newDescription, setNewDescription] = useState("");
@@ -45,59 +45,47 @@ const AdminDashboard = () => {
         name: "Admin",
         profilePic: "https://cdn-icons-png.flaticon.com/512/847/847969.png",
     });
-    const [newTaskType, setNewTaskType] = useState(null);  // for Daily or Weekly
-    const [selectedDays, setSelectedDays] = useState([]);   // for weekly days selection
-
+    const [newTaskType, setNewTaskType] = useState(null);
+    const [selectedDays, setSelectedDays] = useState([]);
     const [goalEditingMode, setGoalEditingMode] = useState(false);
-    const [showDescription, setShowDescription] = useState(null); // สถานะใหม่สำหรับแสดงคำอธิบาย
-    const [selectedGoalId, setSelectedGoalId] = useState(null); // สถานะใหม่สำหรับเก็บ Goal ที่ถูกเลือก
-    const [selectedTaskId, setSelectedTaskId] = useState(null); // เพิ่ม state เพื่อเก็บ Task ที่ถูกเลือก
+    const [showDescription, setShowDescription] = useState(null);
+    const [selectedGoalId, setSelectedGoalId] = useState(null);
+    const [selectedTaskId, setSelectedTaskId] = useState(null);
     const [creatingTemplate, setCreatingTemplate] = useState(false);
 
     useEffect(() => {
         const fetchTemplates = async () => {
             try {
                 const response = await axios.get("http://localhost:8000/api/v1/template");
-                setTemplates(response.data);
                 console.log("✅ Templates fetched:", response.data);
+                setTemplates(response.data);
             } catch (error) {
                 console.error("Error fetching templates:", error);
             }
         };
 
-        fetchTemplates();  // โหลด template จาก backend
+        fetchTemplates();
     }, []);
 
     const handleCreateTemplates = async () => {
         try {
             const templateData = {
-                title: newName || "New Template", // ตั้งค่าเริ่มต้นหาก newName เป็นค่าว่าง
-                description: newDescription || "Edit this template.", // ตั้งค่าเริ่มต้นหาก newDescription เป็นค่าว่าง
-                image_url: newImage || "https://example.com/default-image.jpg", // ตั้งค่าเริ่มต้นหาก newImage เป็นค่าว่าง
+                title: newName || "New Template",
+                description: newDescription || "Edit this template.",
+                image_url: newImage || "https://example.com/default-image.jpg",
                 created_by: userAccount.name,
-                category: newCategory || "Workout Routine", // ตั้งค่าเริ่มต้นหาก newCategory เป็นค่าว่าง
+                category: newCategory || "Workout Routine",
                 goals: editingTemplate.goals.map(goal => ({
-                    title: goal.text || "New Goal", // ตั้งค่าเริ่มต้นหาก goal.text เป็นค่าว่าง
+                    title: goal.title || "New Goal",
                     type: "template",
-                    start_date: goal.start_date || new Date().toISOString().split('T')[0], // ตั้งค่าเริ่มต้นหากไม่มี start_date
-                    due_date: goal.due_date || new Date().toISOString().split('T')[0], // ตั้งค่าเริ่มต้นหากไม่มี due_date
+                    start_date: goal.start_date || new Date().toISOString().split('T')[0],
+                    due_date: goal.due_date || new Date().toISOString().split('T')[0],
                     tasks: goal.tasks.map(task => ({
-                        title: task.text || "New Task", // ตั้งค่าเริ่มต้นหาก task.text เป็นค่าว่าง
+                        title: task.title || "New Task",
                         description: task.description || "",
-                        repeat_type: task.type || "aily", // ตั้งค่าเริ่มต้นหาก task.type เป็นค่าว่าง
+                        type: task.type || "daily",
                         date_interval: [],
-                        week_interval: task.selectedDays ? task.selectedDays.map(day => {
-                            switch (day) {
-                                case "Sunday": return 0;
-                                case "Monday": return 1;
-                                case "Tuesday": return 2;
-                                case "Wednesday": return 3;
-                                case "Thursday": return 4;
-                                case "Friday": return 5;
-                                case "Saturday": return 6;
-                                default: return -1;
-                            }
-                        }) : []
+                        week_interval: task.week_interval || []
                     }))
                 }))
             };
@@ -114,31 +102,29 @@ const AdminDashboard = () => {
         }
     };
 
-
     const handleCreateTemplate = async () => {
         const newTemplate = {
-            name: "", // ตั้งชื่อเริ่มต้นเป็นค่าว่าง
+            title: "",
             description: "Edit this template.",
-            image: null,
+            image_url: null,
             category: "Workout Routine",
             goals: [],
         };
         setEditingTemplate(newTemplate);
         setCreatingTemplate(true);
-        setNewName(""); // ตั้งค่า newName เป็นค่าว่าง
-        setNewDescription("Edit this template."); // ตั้งค่า newDescription เป็นค่าเริ่มต้น
-        setNewImage(null); // ตั้งค่า newImage เป็นค่าเริ่มต้น
-        setNewCategory("Workout Routine"); // ตั้งค่า newCategory เป็นค่าเริ่มต้น
-
+        setNewName("");
+        setNewDescription("Edit this template.");
+        setNewImage(null);
+        setNewCategory("Workout Routine");
     };
 
     const handleEditTemplate = (template) => {
         setEditingTemplate(template);
-        setNewName(template.name);
+        setNewName(template.title);
         setNewDescription(template.description);
-        setNewImage(template.image);
+        setNewImage(template.image_url);
         setNewCategory(template.category);
-        setSelectedGoalId(null); // รีเซ็ต selectedGoalId เมื่อเริ่มแก้ไข Template ใหม่
+        setSelectedGoalId(null);
     };
 
     const handleImageUpload = (e) => {
@@ -150,11 +136,12 @@ const AdminDashboard = () => {
                 img.src = reader.result;
 
                 img.onload = () => {
-                    const MAX_WIDTH = 200; // ความกว้างสูงสุดที่ต้องการ
-                    const MAX_HEIGHT = 200; // ความสูงสูงสุดที่ต้องการ
+                    const MAX_WIDTH = 200; // ความกว้างสูงสุด
+                    const MAX_HEIGHT = 200; // ความสูงสูงสุด
                     let width = img.width;
                     let height = img.height;
 
+                    // ปรับขนาดรูปภาพให้พอดีกับขนาดสูงสุด
                     if (width > height) {
                         if (width > MAX_WIDTH) {
                             height *= MAX_WIDTH / width;
@@ -167,14 +154,16 @@ const AdminDashboard = () => {
                         }
                     }
 
+                    // สร้าง canvas เพื่อปรับขนาดรูปภาพ
                     const canvas = document.createElement("canvas");
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    const resizedImage = canvas.toDataURL("image/jpeg", 0.8);
-                    setNewImage(resizedImage);
+                    // แปลง canvas เป็นรูปภาพขนาดเล็ก
+                    const resizedImage = canvas.toDataURL("image/jpeg", 0.8); // คุณภาพ 80%
+                    setNewImage(resizedImage); // บันทึกรูปภาพขนาดเล็กลง state
                 };
             };
             reader.readAsDataURL(file);
@@ -192,9 +181,9 @@ const AdminDashboard = () => {
         if (creatingTemplate) {
             const newTemplate = {
                 ...editingTemplate,
-                name: newName,
+                title: newName,
                 description: newDescription,
-                image: newImage,
+                image_url: newImage,
                 category: newCategory,
             };
             templateToSave = {
@@ -204,29 +193,18 @@ const AdminDashboard = () => {
                 created_by: userAccount.name,
                 category: newCategory,
                 goals: editingTemplate.goals ? editingTemplate.goals.map(goal => ({
-                    title: goal.text,
+                    title: goal.title,
                     type: "template",
                     start_date: goal.start_date,
                     due_date: goal.due_date,
                     tasks: goal.tasks ? goal.tasks.map(task => ({
-                        title: task.text,
+                        title: task.title,
                         description: task.description || "",
                         type: task.type,
                         date_interval: [],
-                        week_interval: task.selectedDays ? task.selectedDays.map(day => {
-                            switch (day) {
-                                case "Sunday": return 0;
-                                case "Monday": return 1;
-                                case "Tuesday": return 2;
-                                case "Wednesday": return 3;
-                                case "Thursday": return 4;
-                                case "Friday": return 5;
-                                case "Saturday": return 6;
-                                default: return -1;
-                            }
-                        }) : []
-                    })) : [] // ตรวจสอบว่า goal.tasks ไม่เป็น undefined
-                })) : [] // ตรวจสอบว่า editingTemplate.goals ไม่เป็น undefined
+                        week_interval: task.week_interval || []
+                    })) : []
+                })) : []
             };
             setTemplates([...templates, newTemplate]);
             setCreatingTemplate(false);
@@ -240,36 +218,25 @@ const AdminDashboard = () => {
                 created_by: userAccount.name,
                 category: newCategory,
                 goals: editingTemplate.goals ? editingTemplate.goals.map(goal => ({
-                    title: goal.text,
+                    title: goal.title,
                     type: "template",
                     start_date: goal.start_date,
                     due_date: goal.due_date,
                     tasks: goal.tasks ? goal.tasks.map(task => ({
-                        title: task.text,
+                        title: task.title,
                         description: task.description || "",
                         type: task.type,
                         date_interval: [],
-                        week_interval: task.selectedDays ? task.selectedDays.map(day => {
-                            switch (day) {
-                                case "Sunday": return 0;
-                                case "Monday": return 1;
-                                case "Tuesday": return 2;
-                                case "Wednesday": return 3;
-                                case "Thursday": return 4;
-                                case "Friday": return 5;
-                                case "Saturday": return 6;
-                                default: return -1;
-                            }
-                        }) : []
-                    })) : [] // ตรวจสอบว่า goal.tasks ไม่เป็น undefined
-                })) : [] // ตรวจสอบว่า editingTemplate.goals ไม่เป็น undefined
+                        week_interval: task.week_interval || []
+                    })) : []
+                })) : []
             };
             setTemplates(templates.map((t) =>
                 t.id === editingTemplate.id ? {
                     ...editingTemplate,
-                    name: newName,
+                    title: newName,
                     description: newDescription,
-                    image: newImage,
+                    image_url: newImage,
                     category: newCategory,
                 } : t
             ));
@@ -282,11 +249,10 @@ const AdminDashboard = () => {
     const handleDeleteTemplate = async (id) => {
         try {
             await axios.delete(`http://localhost:8000/api/v1/template/delete?template_id=${id}`);
-            fetchTemplates();
+            setTemplates(templates.filter((template) => template.id !== id));
         } catch (error) {
             console.error("Error deleting template:", error);
         }
-        setTemplates(templates.filter((template) => template.id !== id));
     };
 
     const handleAddCategory = () => {
@@ -307,8 +273,8 @@ const AdminDashboard = () => {
                 ...editingTemplate,
                 goals: [...editingTemplate.goals, {
                     id: Date.now(),
-                    text: newGoal,
-                    tasks: [], // กำหนดค่าเริ่มต้นเป็น array ว่าง
+                    title: newGoal,
+                    tasks: [],
                     start_date: newGoalStartDate,
                     due_date: newGoalDueDate
                 }]
@@ -340,9 +306,9 @@ const AdminDashboard = () => {
                                 ...goal.tasks,
                                 {
                                     id: Date.now(),
-                                    text: newTask,
-                                    type: newTaskType, // Add the type of the task (Daily or Weekly)
-                                    selectedDays: newTaskType === "weekly" ? selectedDays : null, // Only set selectedDays if Weekly
+                                    title: newTask,
+                                    type: newTaskType,
+                                    week_interval: newTaskType === "weekly" ? selectedDays : [],
                                 }
                             ]
                         }
@@ -351,22 +317,29 @@ const AdminDashboard = () => {
             };
             setEditingTemplate(updatedTemplate);
             setNewTask("");
-            setNewTaskType(null); // Reset task type after adding
-            setSelectedDays([]);  // Reset selected days after adding
+            setNewTaskType(null);
+            setSelectedDays([]);
         }
     };
 
     const handleDaySelect = (day) => {
         setSelectedDays(prev => {
             if (prev.includes(day)) {
-                return prev.filter(d => d !== day); // Remove the day if already selected
+                return prev.filter(d => d !== day);
             }
-            return [...prev, day]; // Add the day if not already selected
+            return [...prev, day];
         });
     };
 
+    const formatDate = (dateString) => {
+        if (!dateString || isNaN(new Date(dateString))) {
+            return "No Date"; // หรือคืนค่าที่คุณต้องการ เช่น "N/A"
+        }
+        return new Date(dateString).toLocaleDateString(); // แปลงเป็นรูปแบบวันที่ที่อ่านง่าย
+    };
+
     const handleRemoveTask = (goalId, taskId) => {
-        if (selectedTaskId === taskId) { // ตรวจสอบว่า Task ที่จะลบคือ Task ที่ถูกเลือกอยู่หรือไม่
+        if (selectedTaskId === taskId) {
             const updatedTemplate = {
                 ...editingTemplate,
                 goals: editingTemplate.goals.map(goal =>
@@ -376,7 +349,7 @@ const AdminDashboard = () => {
                 )
             };
             setEditingTemplate(updatedTemplate);
-            setSelectedTaskId(null); // รีเซ็ต selectedTaskId หลังจากลบ Task
+            setSelectedTaskId(null);
         }
     };
 
@@ -386,7 +359,6 @@ const AdminDashboard = () => {
 
     return (
         <div className="admin-container">
-            {/* Navbar */}
             <nav className="admin-navbar">
                 <div className="navbar-title">Admin Dashboard</div>
                 <div className="navbar-user">
@@ -399,7 +371,6 @@ const AdminDashboard = () => {
                 </div>
             </nav>
 
-            {/* Main Content */}
             <div className="dashboard-content">
                 <header>
                     <h1>Admin Template</h1>
@@ -414,7 +385,7 @@ const AdminDashboard = () => {
                             <th>Image</th>
                             <th>Category</th>
                             <th>Goals</th>
-                            <th>Task</th> {/* เพิ่มคอลัมน์ Task */}
+                            <th>Task</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -424,8 +395,8 @@ const AdminDashboard = () => {
                                 <td>{index + 1}</td>
                                 <td>{template.title}</td>
                                 <td>
-                                    {template.image ? (
-                                        <img src={template.image} alt="Template" className="template-img" />
+                                    {template.image_url ? (
+                                        <img src={template.image_url} alt="Template" className="template-img" />
                                     ) : (
                                         "No Image"
                                     )}
@@ -435,9 +406,7 @@ const AdminDashboard = () => {
                                     <ul>
                                         {template.goals.map((goal) => (
                                             <li key={goal.id}>
-                                                <strong>{goal.text}</strong>
-                                                <p>Start Date: {goal.start_date}</p>
-                                                <p>Due Date: {goal.due_date}</p>
+                                                <strong>{goal.title}</strong>
                                             </li>
                                         ))}
                                     </ul>
@@ -449,9 +418,10 @@ const AdminDashboard = () => {
                                                 <ul>
                                                     {goal.tasks.map((task) => (
                                                         <li key={task.id}>
-                                                            <strong>Task: {task.text} {task.type === "weekly" && task.selectedDays && (
-                                                                <p>Selected Days: {task.selectedDays.join(", ")}</p>
-                                                            )}</strong>
+                                                            <strong>Task: {task.title}</strong>
+                                                            {task.type === "weekly" && task.week_interval && (
+                                                                <p>Selected Days: {task.week_interval.join(", ")}</p>
+                                                            )}
                                                         </li>
                                                     ))}
                                                 </ul>
@@ -523,7 +493,7 @@ const AdminDashboard = () => {
 
                             {goalEditingMode && (
                                 <div>
-                                    <h3>Editing Goals for Template: {editingTemplate.name}</h3>
+                                    <h3>Editing Goals for Template: {editingTemplate.title}</h3>
                                     <div>
                                         <input
                                             type="text"
@@ -554,7 +524,7 @@ const AdminDashboard = () => {
                                                 className={selectedGoalId === goal.id ? "goal-selected" : "goal-not-selected"}
                                                 onClick={() => setSelectedGoalId(goal.id)}
                                             >
-                                                <h3>Goal{index + 1}: {goal.text}</h3>
+                                                <h3>Goal{index + 1}: {goal.title}</h3>
                                                 {selectedGoalId === goal.id && (
                                                     <>
                                                         <button
@@ -573,10 +543,10 @@ const AdminDashboard = () => {
                                                                     onClick={() => setSelectedTaskId(task.id)}
                                                                 >
                                                                     <span>
-                                                                        {task.text}
-                                                                        {task.type === "weekly" && task.selectedDays && task.selectedDays.length > 0 && (
+                                                                        {task.title}
+                                                                        {task.type === "weekly" && task.week_interval && task.week_interval.length > 0 && (
                                                                             <span className="selected-days">
-                                                                                ({task.selectedDays.join(", ")})
+                                                                                ({task.week_interval.join(", ")})
                                                                             </span>
                                                                         )}
                                                                     </span>
