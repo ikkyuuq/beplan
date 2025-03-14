@@ -11,7 +11,7 @@ import Donate from "./Donate";
 import FAQ from "./FAQ";
 import Login from "./Login";
 import "./Home.css";
-import AdminDashboard from "./Admindashboard";
+import AdminDashboard from "./AdminDashboard";
 
 const Layout = () => {
   return (
