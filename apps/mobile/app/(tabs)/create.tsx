@@ -323,6 +323,11 @@ export default function CreateScreen() {
             placeholder="Describe your goal..."
             placeholderTextColor="#999"
           />
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => {}}
+            style={{ padding: 8 }}
+          />
         </Animated.View>
 
         {/* Custom Goal Button */}
@@ -499,22 +504,6 @@ export default function CreateScreen() {
                 <Text style={styles.optionDescription}>
                   Design a reusable template to share with the community
                 </Text>
-              </View>
-              <Feather name="chevron-right" size={22} color="#999" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              onPress={handleTestGoal}
-            >
-              <View style={[styles.optionIcon, { backgroundColor: "black" }]}>
-                <Ionicons name="happy-outline" size={22} color="#FFF" />
-              </View>
-              <View style={styles.optionContent}>
-                <Text style={styles.optionTitle}>
-                  Test Fucking Cutomize Goal
-                </Text>
-                <Text style={styles.optionDescription}>Kuy 8====D Kuy</Text>
               </View>
               <Feather name="chevron-right" size={22} color="#999" />
             </TouchableOpacity>
@@ -889,4 +878,3 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
-
