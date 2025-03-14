@@ -30,7 +30,7 @@ import Collapsable from "@/components/Collapsable";
 import Header from "@/components/Header";
 import { useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect } from "expo-router";
 import React from "react";
 
 type Task = {
@@ -65,7 +65,7 @@ export default function schedule() {
   const startDate = startOfWeek(subDays(today, 60), { weekStartsOn: 0 });
   const endDate = addDays(
     startOfWeek(addDays(today, 60), { weekStartsOn: 0 }),
-    6
+    6,
   );
 
   const dates = eachWeekOfInterval(
@@ -73,7 +73,7 @@ export default function schedule() {
       start: startDate,
       end: endDate,
     },
-    { weekStartsOn: 0 }
+    { weekStartsOn: 0 },
   ).reduce((acc: Date[][], curr) => {
     const allDays = eachDayOfInterval({
       start: curr,
@@ -95,7 +95,7 @@ export default function schedule() {
   const todayIndex = dayNames.findIndex((_, index) => index === today.getDay());
   const datePosX = useSharedValue((dimensions.width / 7) * todayIndex);
   const initialPage = dates.findIndex((week) =>
-    week.some((day) => isSameDay(day, today))
+    week.some((day) => isSameDay(day, today)),
   );
 
   useEffect(() => {
@@ -142,8 +142,8 @@ export default function schedule() {
       const resp = await fetch(
         `${baseUrl}/api/v1/goal?user_id=${userId}&today=${format(
           selectedDate,
-          "yyyy-MM-dd"
-        )}`
+          "yyyy-MM-dd",
+        )}`,
       );
       if (!resp.ok) throw new Error(`Error: ${resp.status}`);
       const data = await resp.json();
@@ -165,7 +165,7 @@ export default function schedule() {
   const handleCompleteAllTasks = async (
     index: number,
     userId: string,
-    taskIds: number[]
+    taskIds: number[],
   ) => {
     try {
       const baseUrl =
@@ -195,7 +195,7 @@ export default function schedule() {
   const handleFailAllTasks = async (
     index: number,
     userId: string,
-    taskIds: number[]
+    taskIds: number[],
   ) => {
     try {
       const baseUrl =
@@ -226,7 +226,7 @@ export default function schedule() {
     taskId: number,
     userId: string,
     taskIds: number[],
-    goalId: number
+    goalId: number,
   ) => {
     try {
       const baseUrl =
@@ -249,7 +249,7 @@ export default function schedule() {
         prev.map((goal) => ({
           ...goal,
           tasks: goal.tasks.filter((task) => task.id !== taskId),
-        }))
+        })),
       );
     } catch (error) {
       console.error("Failed to complete task:", error);
@@ -259,7 +259,7 @@ export default function schedule() {
   const handleFailTask = async (
     userId: string,
     taskId: number,
-    goalId: number
+    goalId: number,
   ) => {
     try {
       const baseUrl =
@@ -282,7 +282,7 @@ export default function schedule() {
         prev.map((goal) => ({
           ...goal,
           tasks: goal.tasks.filter((task) => task.id !== taskId),
-        }))
+        })),
       );
     } catch (error) {
       console.error("Failed to fail task:", error);
@@ -292,21 +292,21 @@ export default function schedule() {
   const handleReschedule = async (
     goalId: number,
     taskId: number,
-    date: string
+    date: string,
   ) => {
     try {
       const baseUrl =
         Platform.OS === "android"
           ? "http://10.0.2.2:8000"
           : "http://127.0.0.1:8000";
-      await fetch(`${baseUrl}/api/v1/task/reschedule`, {
-        method: "POST",
+      await fetch(`${baseUrl}/api/v1/reschedule/task`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          task_id: taskId,
-          assigned_goal_id: goalId,
+          assigned_task_id: taskId,
+          user_id: user?.id,
           new_date: date,
         }),
       });
@@ -317,8 +317,8 @@ export default function schedule() {
                 ...goal,
                 tasks: goal.tasks.filter((task) => task.id !== taskId),
               }
-            : goal
-        )
+            : goal,
+        ),
       );
       Alert.alert("Success", "Task has been rescheduled");
     } catch (error) {
@@ -349,7 +349,7 @@ export default function schedule() {
 
       console.log(
         "Customize Goal Response:",
-        JSON.stringify(goalData, null, 2)
+        JSON.stringify(goalData, null, 2),
       );
 
       setTimeout(() => {
@@ -404,7 +404,7 @@ export default function schedule() {
       if (user && user.id) {
         fetchGoals(selectedDate, user.id);
       }
-    }, [selectedDate, user])
+    }, [selectedDate, user]),
   );
 
   return (
@@ -496,8 +496,8 @@ export default function schedule() {
                             color: isSameDay(day, selectedDate)
                               ? "#fff"
                               : isSameDay(day, today)
-                              ? "#8B98D5"
-                              : "#B7B7B7",
+                                ? "#8B98D5"
+                                : "#B7B7B7",
                             fontWeight:
                               isSameDay(day, selectedDate) ||
                               isSameDay(day, today)
@@ -581,7 +581,7 @@ export default function schedule() {
                   handleCompleteAllTasks(
                     i,
                     user.id,
-                    goal.tasks.map((t) => t.id)
+                    goal.tasks.map((t) => t.id),
                   )
                 }
                 onFail={() =>
@@ -589,7 +589,7 @@ export default function schedule() {
                   handleFailAllTasks(
                     i,
                     user.id,
-                    goal.tasks.map((t) => t.id)
+                    goal.tasks.map((t) => t.id),
                   )
                 }
                 onCustomize={() => handleCustomizeGoal(goal)}
@@ -606,7 +606,7 @@ export default function schedule() {
                         text: "Delete",
                         onPress: () => handleDeleteGoal(goal.id),
                       },
-                    ]
+                    ],
                   );
                 }}
                 onCollapseFinish={() => {
@@ -640,3 +640,4 @@ export default function schedule() {
     </View>
   );
 }
+
