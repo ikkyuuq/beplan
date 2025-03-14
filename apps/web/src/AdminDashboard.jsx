@@ -451,7 +451,6 @@ const AdminDashboard = () => {
                         </div>
                     </div>
                 )}
-
                 {editingTemplate && (
                     <div className="modal">
                         <div className="modal-content">
