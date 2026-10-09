@@ -43,10 +43,10 @@ type Goal = {
 
 type CreateBy = {
   user_id: string;
-  username?: string;
-  occupation?: string;
-  image_url?: string;
-  about?: string;
+  username: string | null;
+  occupation: string | null;
+  image: string | null;
+  about: string | null;
 };
 
 type Template = {
@@ -147,6 +147,8 @@ export default function CreateScreen() {
     useState(false);
   const [isViewAllCommunityVisible, setIsViewAllCommunityVisible] =
     useState(false);
+  const [templateData, setTemplateData] = useState<Template[]>([]);
+  const [communityData, setCommunityData] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -194,12 +196,6 @@ export default function CreateScreen() {
     { id: "goal_014", title: "Complete First Marathon" },
     { id: "goal_015", title: "Develop Public Speaking Skills" },
   ];
-
-  // Template data
-  const [templateData, setTemplateData] = useState<Template[]>([]);
-
-  // Community data
-  const [communityData, setCommunityData] = useState<Template[]>([]);
 
   // ====================== Event Handlers ======================
   const handleTemplateSelect = (template: Template) => {
@@ -426,7 +422,7 @@ export default function CreateScreen() {
           data={
             selectedTemplate
               ? {
-                  id: selectedTemplate.id,
+                  id: selectedTemplate.id || 0,
                   isListed: selectedTemplate.isListed || false,
                   isFavorite: selectedTemplate.isFavorite || false,
                   title: selectedTemplate.title,
@@ -567,10 +563,14 @@ export default function CreateScreen() {
                     <TemplateCard
                       key={index}
                       template={{
+                        id: template.id || 0,
                         title: template.title,
                         category: template.category,
                         description: template.description || "",
                         image_url: template.image_url || "",
+                        created_by: template.created_by,
+                        type: template.type,
+                        status: template.status,
                         isFavorite: template.isFavorite || false,
                         goals: template.goals || [],
                         duration: template.duration || 0,
