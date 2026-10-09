@@ -1,9 +1,17 @@
+import asyncio
+import threading
 from unittest.mock import Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.routers.ai import PredictionResult, router
+from backend.routers.ai import (
+    AIInput,
+    PredictionResult,
+    generate_questions,
+    router,
+    validate_sentence,
+)
 
 client = TestClient(router)
 
@@ -90,6 +98,52 @@ def test_validate_sentence(mock_tagger):
             assert prediction.get(key) == G_PREDICTION_RESULT.prediction[key]
 
 
+def test_validate_runs_flair_in_threadpool(mock_tagger):
+    inference_threads = []
+
+    def fake_predict(sentence):
+        inference_threads.append(threading.get_ident())
+        sentence.get_spans = lambda key: []
+
+    mock_tagger.predict.side_effect = fake_predict
+
+    async def validate():
+        event_loop_thread = threading.get_ident()
+        await validate_sentence(AIInput(text=G_SENTENCE.text))
+        assert inference_threads[0] != event_loop_thread
+
+    asyncio.run(validate())
+
+
+def test_generate_questions_runs_anthropic_in_threadpool(monkeypatch):
+    request_threads = []
+
+    def fake_call_anthropic_api(**kwargs):
+        request_threads.append(threading.get_ident())
+        return {"result": []}
+
+    monkeypatch.setattr(
+        "backend.routers.ai.call_anthropic_api", fake_call_anthropic_api
+    )
+    request = PredictionResult(
+        original_text=G_SENTENCE.text,
+        prediction={
+            "specific": [],
+            "measurable": [],
+            "achievable": [],
+            "relevant": [],
+            "time_bound": [],
+        },
+    )
+
+    async def generate():
+        event_loop_thread = threading.get_ident()
+        await generate_questions(request)
+        assert request_threads[0] != event_loop_thread
+
+    asyncio.run(generate())
+
+
 @pytest.fixture
 def question_response(mock_tagger):
     resp = client.post(
@@ -145,6 +199,26 @@ def test_submit_question(question_response):
     assert resp.status_code == 200
     assert list(to_label)[0] in "achievable"
     assert resp.json()["message"] == "Successfully updated prediction"
+
+
+def test_submit_question_preserves_invalid_label_http_400():
+    resp = client.post(
+        "/submit-question",
+        json={
+            "prediction_result": {
+                "original_text": G_PREDICTION_RESULT.original_text,
+                "prediction": G_PREDICTION_RESULT.prediction,
+            },
+            "question": "Invalid label test",
+            "to_label": "not-a-smart-criterion",
+            "value": "answer",
+        },
+    )
+
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == (
+        "Invalid prediction type: not-a-smart-criterion"
+    )
 
 
 def test_generate_task(mock_tagger):

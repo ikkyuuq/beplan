@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { API_BASE_URL } from "@/constants/api";
 import CategoryPicker from "@/components/CategoryPicker";
 import CalendarPicker from "@/components/CalendarPicker";
 import { useUser } from "@clerk/clerk-expo";
@@ -112,13 +113,8 @@ export default function CreateTemplate() {
       setIsLoadingGoals(true);
 
       try {
-        const baseUrl =
-          Platform.OS === "android"
-            ? "http://10.0.2.2:8000"
-            : "http://127.0.0.1:8000";
-
         const response = await fetch(
-          `${baseUrl}/api/v1/template/available_goals?user_id=${userId}`,
+          `${API_BASE_URL}/api/v1/template/available_goals?user_id=${userId}`,
         );
 
         if (!response.ok) {
@@ -202,11 +198,6 @@ export default function CreateTemplate() {
         } as any);
 
         try {
-          const baseUrl =
-            Platform.OS === "android"
-              ? "http://10.0.2.2:8000"
-              : "http://127.0.0.1:8000";
-
           // Set a reasonable timeout
           const timeoutPromise = new Promise((_, reject) =>
             setTimeout(
@@ -216,7 +207,7 @@ export default function CreateTemplate() {
           );
 
           // Create the fetch promise
-          const fetchPromise = fetch(`${baseUrl}/api/v1/user/upload_image`, {
+          const fetchPromise = fetch(`${API_BASE_URL}/api/v1/user/upload_image`, {
             method: "POST",
             headers: {
               "Content-Type": "multipart/form-data",
@@ -410,11 +401,7 @@ export default function CreateTemplate() {
 
       console.log("📌 New Template:", JSON.stringify(newTemplate, null, 2));
 
-      const baseUrl =
-        Platform.OS === "android"
-          ? "http://10.0.2.2:8000"
-          : "http://127.0.0.1:8000";
-      const response = await fetch(`${baseUrl}/api/v1/template/create/user`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/template/create/user`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newTemplate),

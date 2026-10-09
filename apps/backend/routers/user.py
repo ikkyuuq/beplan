@@ -6,6 +6,7 @@ from database import get_db_pool
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 from s3 import s3
+from starlette.concurrency import run_in_threadpool
 
 router = APIRouter()
 
@@ -21,14 +22,15 @@ class User(BaseModel):
 @router.post("/upload_image")
 async def upload_image(file: UploadFile = File(...)):
     try:
-        file_content = await file.read()
-
-        s3.put_object(
-            Bucket=S3C.BUCKET_NAME,
-            Key=file.filename,
-            Body=file_content,
-            ContentType=file.content_type,
-            ACL="public-read",
+        await run_in_threadpool(
+            s3.upload_fileobj,
+            file.file,
+            S3C.BUCKET_NAME,
+            file.filename,
+            ExtraArgs={
+                "ContentType": file.content_type or "application/octet-stream",
+                "ACL": "public-read",
+            },
         )
 
         s3_url = (

@@ -13,6 +13,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { useUser } from "@clerk/clerk-expo";
+import { API_BASE_URL } from "@/constants/api";
 import Animated, {
   interpolateColor,
   runOnJS,
@@ -142,6 +143,7 @@ enum ProcessStep {
   GENERATING_GOAL = "generating_goal",
   CREATING_GOAL = "creating_goal",
   COMPLETED = "completed",
+  FAILED = "failed",
 }
 
 const AnimatedKey = ({
@@ -225,6 +227,7 @@ export default function AiProcess() {
     Record<string, boolean>
   >({});
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { user } = useUser();
 
   // Process step state
@@ -243,24 +246,35 @@ export default function AiProcess() {
 
   const [goal, setGoal] = useState<Goal | null>(null);
 
+  const markFailed = (action: string, error: unknown) => {
+    console.error(`${action} failed:`, error);
+    const message =
+      error instanceof Error ? error.message : "Please try again.";
+    setErrorMessage(`${action} failed. ${message}`);
+    setStep(ProcessStep.FAILED);
+  };
+
   // ---------------------------
   // Step 1: Validate the sentence
   // ---------------------------
-  const validateSentence = async (sentence: string) => {
+  const validateSentence = async (sentence: string): Promise<boolean> => {
     try {
       setLoading(true);
-      const response = await fetch("http://10.0.2.2:8000/api/v1/ai/validate", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/ai/validate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: sentence }),
       });
+      if (!response.ok) throw new Error(`Request failed (HTTP ${response.status})`);
       const data = await response.json();
       setPredictionRes({
         originalText: textToProcess,
         prediction: data.prediction,
       });
+      return true;
     } catch (error) {
-      console.error("Error:", error);
+      markFailed("Validation", error);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -284,8 +298,8 @@ export default function AiProcess() {
   // ---------------------------
   // Step 2: Generate questions for missing keys
   // ---------------------------
-  const fetchQuestionsForMissingKeys = async () => {
-    if (!predictionRes) return;
+  const fetchQuestionsForMissingKeys = async (): Promise<boolean> => {
+    if (!predictionRes) return false;
 
     try {
       setLoading(true);
@@ -300,7 +314,7 @@ export default function AiProcess() {
       );
 
       const response = await fetch(
-        "http://10.0.2.2:8000/api/v1/ai/generate-questions",
+        `${API_BASE_URL}/api/v1/ai/generate-questions`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -310,10 +324,13 @@ export default function AiProcess() {
           }),
         },
       );
+      if (!response.ok) throw new Error(`Request failed (HTTP ${response.status})`);
       const data = await response.json();
       setQuestions(data.result);
+      return true;
     } catch (error) {
-      console.error("Error:", error);
+      markFailed("Question generation", error);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -322,8 +339,11 @@ export default function AiProcess() {
   // ---------------------------
   // Submit a single question answer
   // ---------------------------
-  const handleSubmitQuestion = async (question: Question, answer: string) => {
-    if (!predictionRes) return;
+  const handleSubmitQuestion = async (
+    question: Question,
+    answer: string,
+  ): Promise<boolean> => {
+    if (!predictionRes) return false;
     try {
       setLoading(true);
       const formattedPrediction = Object.entries(
@@ -336,7 +356,7 @@ export default function AiProcess() {
         {} as Record<string, any[]>,
       );
       const response = await fetch(
-        "http://10.0.2.2:8000/api/v1/ai/submit-question",
+        `${API_BASE_URL}/api/v1/ai/submit-question`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -351,6 +371,7 @@ export default function AiProcess() {
           }),
         },
       );
+      if (!response.ok) throw new Error(`Request failed (HTTP ${response.status})`);
       const data = await response.json();
       const newFormattedPrediction = Object.entries(
         data.result.prediction,
@@ -365,8 +386,10 @@ export default function AiProcess() {
         originalText: textToProcess,
         prediction: newFormattedPrediction,
       });
+      return true;
     } catch (error) {
-      console.error("Error:", error);
+      markFailed("Answer submission", error);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -375,8 +398,8 @@ export default function AiProcess() {
   // ---------------------------
   // Generate a goal based on updated prediction
   // ---------------------------
-  const generateGoal = async () => {
-    if (!predictionRes) return;
+  const generateGoal = async (): Promise<boolean> => {
+    if (!predictionRes) return false;
 
     try {
       setLoading(true);
@@ -390,7 +413,7 @@ export default function AiProcess() {
         {} as Record<string, any[]>,
       );
       const response = await fetch(
-        "http://10.0.2.2:8000/api/v1/ai/generate-goal",
+        `${API_BASE_URL}/api/v1/ai/generate-goal`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -400,10 +423,13 @@ export default function AiProcess() {
           }),
         },
       );
+      if (!response.ok) throw new Error(`Request failed (HTTP ${response.status})`);
       const data = await response.json();
       setGoal(data);
+      return true;
     } catch (error) {
-      console.error("Error:", error);
+      markFailed("Goal generation", error);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -412,25 +438,29 @@ export default function AiProcess() {
   // ---------------------------
   // Create the goal in the backend
   // ---------------------------
-  const handleCreateGoal = async () => {
-    if (!goal || !user) return;
+  const handleCreateGoal = async (): Promise<boolean> => {
+    if (!goal || !user) {
+      markFailed("Goal creation", new Error("Goal or user is unavailable."));
+      return false;
+    }
     try {
       setLoading(true);
-      const response = await fetch("http://10.0.2.2:8000/api/v1/ai/create", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/ai/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, goal }),
       });
+      if (!response.ok) throw new Error(`Request failed (HTTP ${response.status})`);
       const data = await response.json();
-      if (response.ok) {
-        console.log("Goal created successfully");
-        router.push("/(tabs)/schedule");
-      }
+      console.log("Response:", data);
+      console.log("Goal created successfully");
+      router.push("/(tabs)/schedule");
+      return true;
     } catch (error) {
-      console.error("Error:", error);
+      markFailed("Goal creation", error);
+      return false;
     } finally {
       setLoading(false);
-      setStep(ProcessStep.COMPLETED);
     }
   };
 
@@ -459,9 +489,9 @@ export default function AiProcess() {
     if (animationCompleteCount === totalKeys && totalKeys > 0) {
       const missing = Object.values(predictionStatus).some((v) => v === false);
       if (missing) {
-        fetchQuestionsForMissingKeys().then(() =>
-          setStep(ProcessStep.ASKING_QUESTIONS),
-        );
+        fetchQuestionsForMissingKeys().then((succeeded) => {
+          if (succeeded) setStep(ProcessStep.ASKING_QUESTIONS);
+        });
       } else {
         setStep(ProcessStep.GENERATING_GOAL);
       }
@@ -480,13 +510,18 @@ export default function AiProcess() {
 
   useEffect(() => {
     if (step === ProcessStep.GENERATING_GOAL) {
-      generateGoal().then(() => setStep(ProcessStep.CREATING_GOAL));
+      generateGoal().then((succeeded) => {
+        if (succeeded) setStep(ProcessStep.CREATING_GOAL);
+      });
     }
   }, [step]);
 
   useEffect(() => {
     if (step === ProcessStep.CREATING_GOAL) {
-      handleCreateGoal();
+      // You can add an animation indicator here before creating the goal
+      handleCreateGoal().then((succeeded) => {
+        if (succeeded) setStep(ProcessStep.COMPLETED);
+      });
     }
   }, [step]);
 
@@ -513,7 +548,11 @@ export default function AiProcess() {
 
     if (answerToSubmit === null) return;
 
-    await handleSubmitQuestion(currentQuestion, answerToSubmit);
+    const succeeded = await handleSubmitQuestion(
+      currentQuestion,
+      answerToSubmit,
+    );
+    if (!succeeded) return;
     setCurrentAnswer("");
     setCurrentQuestionIndex((prev) => prev + 1);
   };
@@ -600,6 +639,20 @@ export default function AiProcess() {
         {step === ProcessStep.COMPLETED && (
           <View style={styles.centerContainer}>
             <Text style={styles.successText}>Your goal is ready!</Text>
+          </View>
+        )}
+        {step === ProcessStep.FAILED && (
+          <View style={{ alignItems: "center" }}>
+            <Text
+              accessibilityRole="alert"
+              style={{
+                color: "#f87171",
+                fontSize: 18,
+                textAlign: "center",
+              }}
+            >
+              {errorMessage || "The goal process failed. Please try again."}
+            </Text>
           </View>
         )}
       </View>

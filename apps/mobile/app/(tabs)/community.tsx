@@ -17,6 +17,7 @@ import TemplateCard from "@/components/TemplateCard";
 import TemplateModal from "@/components/TemplateModal";
 import Header from "@/components/Header";
 import { useUser } from "@clerk/clerk-expo";
+import { API_BASE_URL } from "@/constants/api";
 
 type Task = {
   title: string;
@@ -70,7 +71,7 @@ export default function Community() {
   const [refreshing, setRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
 
   // ====================== Category Configuration ======================
   const categories = [
@@ -88,27 +89,27 @@ export default function Community() {
   // ====================== Fetch Data from API ======================
   const fetchTemplates = useCallback(async () => {
     try {
-      if (!user || !user.id) {
+      if (!user?.id) {
         setError("User authentication required");
         setIsLoading(false);
         return;
       }
 
       setError(null);
-      const baseUrl =
-        Platform.OS === "android"
-          ? "http://10.0.2.2:8000"
-          : "http://127.0.0.1:8000";
       const response = await fetch(
-        `${baseUrl}/api/v1/template?user_id=${user.id}`
+        `${API_BASE_URL}/api/v1/template?user_id=${encodeURIComponent(user.id)}`,
       );
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
 
-      setTemplates(data);
+      setTemplates(
+        data.map((template: any) => ({
+          ...template,
+          isFavorite: template.is_favorite ?? template.isFavorite ?? false,
+        })),
+      );
     } catch (error) {
       console.error("Failed to fetch templates:", error);
       setError("Failed to fetch templates. Please try again.");
@@ -116,7 +117,7 @@ export default function Community() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
   const fetchAvailableGoals = useCallback(async () => {
     try {
@@ -126,12 +127,8 @@ export default function Community() {
         return;
       }
 
-      const baseUrl =
-        Platform.OS === "android"
-          ? "http://10.0.2.2:8000"
-          : "http://127.0.0.1:8000";
       const response = await fetch(
-        `${baseUrl}/api/v1/template/available_goals?user_id=${user.id}`
+        `${API_BASE_URL}/api/v1/template/available_goals?user_id=${encodeURIComponent(user.id)}`,
       );
 
       if (!response.ok) {
@@ -159,23 +156,7 @@ export default function Community() {
       console.error("Failed to fetch available goals:", error);
       setAvailableGoals({});
     }
-  }, [user]);
-
-  const fetchFavoriteStatus = async (templateId: number) => {
-    try {
-      const response = await fetch(
-        `http://10.0.2.2:8000/api/v1/template/favorite/1`
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      return data.isFavorite;
-    } catch (error) {
-      console.error("Failed to fetch favorite status:", error);
-      return false;
-    }
-  };
+  }, [user?.id]);
 
   // ====================== Pull-to-Refresh Handler ======================
   const onRefresh = useCallback(() => {
@@ -186,6 +167,7 @@ export default function Community() {
 
   // ====================== Initial Data Loading ======================
   useEffect(() => {
+    if (!isLoaded) return;
     setIsLoading(true);
 
     fetchTemplates().catch((error) => {
@@ -196,7 +178,7 @@ export default function Community() {
     fetchAvailableGoals().catch((error) => {
       console.error("Error in initial goals loading (non-critical):", error);
     });
-  }, [fetchTemplates, fetchAvailableGoals]);
+  }, [isLoaded, fetchTemplates, fetchAvailableGoals]);
 
   // ====================== Event Handlers ======================
   const handleTemplateSelect = (template: Template) => {
@@ -211,7 +193,7 @@ export default function Community() {
       }
 
       const response = await fetch(
-        `http://10.0.2.2:8000/api/v1/template/toggle_favorite/`,
+        `${API_BASE_URL}/api/v1/template/toggle_favorite/`,
         {
           method: "PUT",
           headers: {

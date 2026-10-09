@@ -14,6 +14,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
+import { Platform } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -30,7 +31,12 @@ import Animated, {
 // Preloads the browser for all platforms to reduce authentication load time
 export const useWarmUpBrowser = () => {
   useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
     void WebBrowser.warmUpAsync();
+
     return () => {
       void WebBrowser.coolDownAsync();
     };

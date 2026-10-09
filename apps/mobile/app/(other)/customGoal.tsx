@@ -12,6 +12,7 @@ import {
 import TaskModal from "@/components/TaskModal";
 import CalendarPicker from "@/components/CalendarPicker";
 import CustomGoalUI from "@/components/CustomGoalUI";
+import { API_BASE_URL } from "@/constants/api";
 
 type Task = {
   title: string;
@@ -310,12 +311,7 @@ export default function CustomGoal() {
         JSON.stringify(formattedGoalData, null, 2)
       );
 
-      const baseUrl =
-        Platform.OS === "android"
-          ? "http://10.0.2.2:8000"
-          : "http://127.0.0.1:8000";
-
-      const response = await fetch(`${baseUrl}/api/v1/goal/create`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/goal/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -410,12 +406,7 @@ export default function CustomGoal() {
         JSON.stringify(formattedParams, null, 2)
       );
 
-      const baseUrl =
-        Platform.OS === "android"
-          ? "http://10.0.2.2:8000"
-          : "http://127.0.0.1:8000";
-
-      const response = await fetch(`${baseUrl}/api/v1/goal/update`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/goal/update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

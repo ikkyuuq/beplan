@@ -26,6 +26,7 @@ import Modal from "react-native-modal";
 import { LinearGradient } from "expo-linear-gradient";
 import TemplateCard from "@/components/TemplateCard";
 import TemplateModal from "@/components/TemplateModal";
+import { API_BASE_URL } from "@/constants/api";
 
 type Task = {
   title: string;
@@ -154,7 +155,7 @@ export default function CreateScreen() {
     const fetchTemplates = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch("http://10.0.2.2:8000/api/v1/template/");
+        const response = await fetch(`${API_BASE_URL}/api/v1/template/`);
         if (!response.ok) {
           throw new Error("Network response was not ok");
         }

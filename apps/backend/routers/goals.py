@@ -364,67 +364,62 @@ async def get_goals_today(
 ):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
-        # Fetch assigned goals for the user and date range
-        assigned_goals = await conn.fetch(
+        rows = await conn.fetch(
             """
-            SELECT ag.*, g.title, g.type
+            SELECT
+                ag.id AS assigned_goal_id,
+                ag.status AS goal_status,
+                ag.start_date,
+                ag.due_date,
+                g.title AS goal_title,
+                g.type AS goal_type,
+                at.id AS assigned_task_id,
+                at.status AS task_status,
+                t.title AS task_title,
+                t.description AS task_description
             FROM public.assigned_goal ag
             JOIN public.goal g ON ag.goal_id = g.id
+            JOIN public.assigned_task at
+                ON at.assigned_goal_id = ag.id
+                AND at.status = 'pending'::status
+            JOIN public.assigned_task_interval ati
+                ON ati.assigned_task_id = at.id
+                AND ati.interval_date = $2
+            JOIN public.task t ON t.id = at.task_id
             WHERE ag.user_id = $1
             AND ag.status IN ('pending','success')
             AND ag.start_date <= $2
             AND ag.due_date >= $2
+            ORDER BY ag.id, at.id
             """,
             user_id,
             today,
         )
 
-        goals: List[FetchGoal] = []
-        for ag in assigned_goals:
-            tasks = await conn.fetch(
-                """
-                SELECT at.*, ati.*
-                FROM public.assigned_task at
-                JOIN public.assigned_task_interval ati ON at.id = ati.assigned_task_id
-                WHERE at.assigned_goal_id = $1 
-                AND at.status = 'pending'::status
-                AND ati.interval_date = $2
-                """,
-                ag["id"],
-                today,
+        goals_by_id = {}
+        for row in rows:
+            goal = goals_by_id.setdefault(
+                row["assigned_goal_id"],
+                {
+                    "id": row["assigned_goal_id"],
+                    "title": row["goal_title"],
+                    "type": row["goal_type"],
+                    "status": T.Status(row["goal_status"]),
+                    "start_date": row["start_date"],
+                    "due_date": row["due_date"],
+                    "tasks": [],
+                },
+            )
+            goal["tasks"].append(
+                FetchTask(
+                    id=row["assigned_task_id"],
+                    title=row["task_title"],
+                    description=row["task_description"],
+                    status=T.Status(row["task_status"]),
+                )
             )
 
-            # Fetch task details and append to the goal's tasks list
-            task_list: List[FetchTask] = []
-            for task in tasks:
-                task_detail = await conn.fetchrow(
-                    "SELECT title, description FROM public.task WHERE id = $1",
-                    task["task_id"],
-                )
-                task_list.append(
-                    FetchTask(
-                        id=task["id"],
-                        title=task_detail["title"],
-                        description=task_detail["description"],
-                        status=T.Status(task["status"]),
-                    )
-                )
-
-            # Append the goal to the list if it has tasks
-            if task_list:
-                goals.append(
-                    FetchGoal(
-                        id=ag["id"],
-                        title=ag["title"],
-                        type=ag["type"],
-                        status=T.Status(ag["status"]),
-                        start_date=ag["start_date"],
-                        due_date=ag["due_date"],
-                        tasks=task_list,
-                    )
-                )
-
-        return goals  # Return the list of goals (filtered to include only those with tasks)
+        return [FetchGoal(**goal) for goal in goals_by_id.values()]  # Return the list of goals (filtered to include only those with tasks)
 
 
 @router.put("/update_task_status")

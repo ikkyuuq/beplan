@@ -6,7 +6,6 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Platform,
 } from "react-native";
 import {
   addDays,
@@ -32,6 +31,7 @@ import { useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
 import React from "react";
+import { API_BASE_URL } from "@/constants/api";
 
 type Task = {
   id: number;
@@ -56,6 +56,7 @@ export default function Schedule() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<Goal[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const { user } = useUser();
   const router = useRouter();
@@ -131,36 +132,35 @@ export default function Schedule() {
     };
   });
 
-  const fetchGoals = async (selectedDate: Date, userId: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const baseUrl =
-        Platform.OS === "android"
-          ? "http://10.0.2.2:8000"
-          : "http://127.0.0.1:8000";
-      const resp = await fetch(
-        `${baseUrl}/api/v1/goal?user_id=${userId}&today=${format(
-          selectedDate,
-          "yyyy-MM-dd",
-        )}`,
-      );
-      if (!resp.ok) throw new Error(`Error: ${resp.status}`);
-      const data = await resp.json();
-      setData(data);
-    } catch (error) {
-      console.error("Failed to fetch goals:", error);
-      setError("Failed to load your goals. Please try again.");
-      setData([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchGoals = React.useCallback(
+    async (selectedDate: Date, userId: string, signal: AbortSignal) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const resp = await fetch(
+          `${API_BASE_URL}/api/v1/goal?user_id=${userId}&today=${format(
+            selectedDate,
+            "yyyy-MM-dd"
+          )}`,
+          { signal }
+        );
+        if (!resp.ok) throw new Error(`Error: ${resp.status}`);
+        const data = await resp.json();
+        if (signal.aborted) return;
+        setData(data);
+      } catch (error) {
+        if (signal.aborted) return;
+        console.error("Failed to fetch goals:", error);
+        setError("Failed to load your goals. Please try again.");
+        setData([]);
+      } finally {
+        if (!signal.aborted) setIsLoading(false);
+      }
+    },
+    []
+  );
 
-  useEffect(() => {
-    if (!user || !user.id) return;
-    fetchGoals(selectedDate, user.id);
-  }, [selectedDate, user]);
+  const userId = user?.id;
 
   const handleCompleteAllTasks = async (
     index: number,
@@ -168,11 +168,7 @@ export default function Schedule() {
     taskIds: number[],
   ) => {
     try {
-      const baseUrl =
-        Platform.OS === "android"
-          ? "http://10.0.2.2:8000"
-          : "http://127.0.0.1:8000";
-      await fetch(`${baseUrl}/api/v1/goal/update_task_status`, {
+      await fetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -198,11 +194,7 @@ export default function Schedule() {
     taskIds: number[],
   ) => {
     try {
-      const baseUrl =
-        Platform.OS === "android"
-          ? "http://10.0.2.2:8000"
-          : "http://127.0.0.1:8000";
-      await fetch(`${baseUrl}/api/v1/goal/update_task_status`, {
+      await fetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -229,11 +221,7 @@ export default function Schedule() {
     goalId: number,
   ) => {
     try {
-      const baseUrl =
-        Platform.OS === "android"
-          ? "http://10.0.2.2:8000"
-          : "http://127.0.0.1:8000";
-      await fetch(`${baseUrl}/api/v1/goal/update_task_status`, {
+      await fetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -262,11 +250,7 @@ export default function Schedule() {
     goalId: number,
   ) => {
     try {
-      const baseUrl =
-        Platform.OS === "android"
-          ? "http://10.0.2.2:8000"
-          : "http://127.0.0.1:8000";
-      await fetch(`${baseUrl}/api/v1/goal/update_task_status`, {
+      await fetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -295,11 +279,7 @@ export default function Schedule() {
     date: string,
   ) => {
     try {
-      const baseUrl =
-        Platform.OS === "android"
-          ? "http://10.0.2.2:8000"
-          : "http://127.0.0.1:8000";
-      await fetch(`${baseUrl}/api/v1/reschedule/task`, {
+      await fetch(`${API_BASE_URL}/api/v1/reschedule/task`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -329,12 +309,7 @@ export default function Schedule() {
   const handleCustomizeGoal = async (goal: Goal) => {
     setIsLoading(true);
     try {
-      const baseUrl =
-        Platform.OS === "android"
-          ? "http://10.0.2.2:8000"
-          : "http://127.0.0.1:8000";
-
-      const resp = await fetch(`${baseUrl}/api/v1/goal/${goal.id}`, {
+      const resp = await fetch(`${API_BASE_URL}/api/v1/goal/${goal.id}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -401,10 +376,11 @@ export default function Schedule() {
 
   useFocusEffect(
     React.useCallback(() => {
-      if (user && user.id) {
-        fetchGoals(selectedDate, user.id);
-      }
-    }, [selectedDate, user]),
+      if (!userId) return;
+      const controller = new AbortController();
+      void fetchGoals(selectedDate, userId, controller.signal);
+      return () => controller.abort();
+    }, [fetchGoals, selectedDate, userId, refreshKey])
   );
 
   return (
@@ -553,7 +529,7 @@ export default function Schedule() {
                   padding: 10,
                   borderRadius: 5,
                 }}
-                onPress={() => user && fetchGoals(selectedDate, user.id)}
+                onPress={() => setRefreshKey((key) => key + 1)}
               >
                 <Text style={{ color: "white" }}>Try Again</Text>
               </Pressable>
@@ -640,4 +616,3 @@ export default function Schedule() {
     </View>
   );
 }
-

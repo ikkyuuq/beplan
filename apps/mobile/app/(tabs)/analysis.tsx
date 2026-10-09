@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
-  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
@@ -21,6 +20,7 @@ import Animated, {
 import { LineChart, PieChart } from "react-native-chart-kit";
 import { useUser } from "@clerk/clerk-expo";
 import Header from "@/components/Header";
+import { API_BASE_URL } from "@/constants/api";
 
 // ====================== Type Definitions ======================
 type AnalyticsData = {
@@ -90,13 +90,8 @@ export default function Analysis() {
       setIsLoading(true);
       setError(null);
 
-      const baseUrl =
-        Platform.OS === "android"
-          ? "http://10.0.2.2:8000"
-          : "http://127.0.0.1:8000";
-
       const response = await fetch(
-        `${baseUrl}/api/v1/analysis/?user_id=${user.id}`
+        `${API_BASE_URL}/api/v1/analysis/?user_id=${user.id}`
       );
 
       if (!response.ok) {

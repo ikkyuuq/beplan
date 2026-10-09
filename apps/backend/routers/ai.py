@@ -12,6 +12,7 @@ from flair.data import Sentence
 from flair.models import SequenceTagger
 from huggingface_hub import hf_hub_download
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 from utils import goal_creation
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
@@ -100,7 +101,7 @@ def normalize_label(label: str) -> str:
 async def validate_sentence(input_data: AIInput):
     try:
         sentence = Sentence(input_data.text)
-        tagger.predict(sentence)
+        await run_in_threadpool(tagger.predict, sentence)
 
         # Prepare empty lists for each SMART criterion.
         smart_criteria = {
@@ -125,10 +126,8 @@ async def validate_sentence(input_data: AIInput):
         }
         return prediction_result
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error during prediction: {str(e)}"
-        )
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error during prediction")
 
 
 @router.post("/generate-questions", tags=["ai"])
@@ -191,7 +190,8 @@ async def generate_questions(request: PredictionResult):
             Note: Return only valid JSON without comments or explanations.
         """
 
-        ai_response = call_anthropic_api(
+        ai_response = await run_in_threadpool(
+            call_anthropic_api,
             model=ANTHROPIC_MODEL,
             system="You are a SMART goal refinement assistant. Generate contextual questions to fill gaps in SMART criteria, ensuring each question includes a `type` (open-ended, yes-no, date).",
             prompt=prompt,
@@ -204,10 +204,8 @@ async def generate_questions(request: PredictionResult):
         ]
 
         return {"result": filtered_questions}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error generating questions: {str(e)}"
-        )
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error generating questions")
 
 
 @router.post("/submit-question", tags=["ai"])
@@ -241,10 +239,10 @@ async def submit_question(request: SubmitRequest):
             "result": prediction_result,
         }
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error updating prediction: {str(e)}"
-        )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error updating prediction")
 
 
 @router.post("/generate-goal", tags=["ai"])
@@ -356,15 +354,16 @@ async def generate_goal(request: PredictionResult):
             Note: Return only valid JSON without comments or explanations.
         """
 
-        ai_response = call_anthropic_api(
+        ai_response = await run_in_threadpool(
+            call_anthropic_api,
             model=ANTHROPIC_MODEL,
             system="You are a SMART goal task generation assistant. Break down SMART goals into actionable tasks with clear timelines and measurable outcomes.",
             prompt=prompt,
         )
         return ai_response
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating task: {str(e)}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error generating task")
 
 
 @router.post("/create", tags=["goal"])

@@ -11,6 +11,7 @@ from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 from s3 import s3
+from starlette.concurrency import run_in_threadpool
 from utils import date_calculation
 
 import uuid
@@ -226,24 +227,22 @@ async def fetch_template(
             )
             tasks_dict = {row["id"]: row for row in tasks_data}
 
-            templates_resp = []
-            for tmpl in templates:
-                is_favorite = False
-                fav_tmpl_rec = await conn.fetchrow(
+            favorite_template_ids = set()
+            if user_id:
+                favorites = await conn.fetch(
                     """
-                    SELECT * FROM public.favorite_template
-                    WHERE user_id = $1
-                    AND template_id = $2
+                    SELECT template_id FROM public.favorite_template
+                    WHERE user_id = $1 AND template_id = ANY($2)
                     """,
                     user_id,
-                    tmpl["id"],
+                    template_ids,
                 )
-                if fav_tmpl_rec:
-                    is_favorite = True
-                else:
-                    is_favorite = False
+                favorite_template_ids = {
+                    row["template_id"] for row in favorites
+                }
 
-                
+            templates_resp = []
+            for tmpl in templates:
                 user_info = users_dict.get(tmpl["created_by"], {})
                 created_by = CreateBy(
                     user_id=user_info.get("id", "BePlan"),
@@ -292,7 +291,7 @@ async def fetch_template(
                             else TemplateStatus.UNUSED
                         ),
                         duration=duration,
-                        is_favorite=is_favorite,
+                        is_favorite=tmpl["id"] in favorite_template_ids,
                     )
                 )
 
@@ -338,14 +337,15 @@ async def fetch_goal_for_create_template(user_id: str):
 @router.post("/upload_image")
 async def upload_image(file: UploadFile = File(...)):
     try:
-        file_content = await file.read()
-
-        s3.put_object(
-            Bucket=S3C.BUCKET_NAME,
-            Key=file.filename,
-            Body=file_content,
-            ContentType=file.content_type,
-            ACL="public-read",
+        await run_in_threadpool(
+            s3.upload_fileobj,
+            file.file,
+            S3C.BUCKET_NAME,
+            file.filename,
+            ExtraArgs={
+                "ContentType": file.content_type or "application/octet-stream",
+                "ACL": "public-read",
+            },
         )
 
         s3_url = (

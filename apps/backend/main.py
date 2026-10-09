@@ -30,6 +30,11 @@ def read_root():
     return {"message": "Hello from Backend"}
 
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+
 @app.put("/update")
 def delete_root():
     return {"message": "this is update methods"}

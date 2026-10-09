@@ -10,7 +10,6 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  Platform,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -26,6 +25,7 @@ import Animated, {
 } from "react-native-reanimated";
 import OccupationSelector from "@/components/OccupationSelector";
 import * as ImagePicker from "expo-image-picker";
+import { API_BASE_URL } from "@/constants/api";
 
 // ====================== Main Component ======================
 export default function UserSettings() {
@@ -161,11 +161,6 @@ export default function UserSettings() {
         try {
           const userId = user.id;
           if (userId) {
-            const baseUrl =
-              Platform.OS === "android"
-                ? "http://10.0.2.2:8000"
-                : "http://127.0.0.1:8000";
-
             const userData = {
               imageUrl: user?.imageUrl || "",
               user_id: userId,
@@ -176,7 +171,7 @@ export default function UserSettings() {
 
             console.log("Initializing user with data:", userData);
 
-            let response = await fetch(`${baseUrl}/api/v1/user/initialize`, {
+            let response = await fetch(`${API_BASE_URL}/api/v1/user/initialize`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -196,7 +191,7 @@ export default function UserSettings() {
                 responseText.includes("duplicate key value")
               ) {
                 console.log("Duplicate user detected, updating instead...");
-                response = await fetch(`${baseUrl}/api/v1/user/update`, {
+                response = await fetch(`${API_BASE_URL}/api/v1/user/update`, {
                   method: "PUT",
                   headers: {
                     "Content-Type": "application/json",
@@ -358,7 +353,7 @@ export default function UserSettings() {
             } as any);
 
             const uploadResp = await fetch(
-              "http://10.0.2.2:8000/api/v1/user/upload_image",
+              `${API_BASE_URL}/api/v1/user/upload_image`,
               {
                 method: "POST",
                 body: formData,
@@ -373,7 +368,7 @@ export default function UserSettings() {
             const data = await uploadResp.json();
 
             const updateUserResp = await fetch(
-              "http://10.0.2.2:8000/api/v1/user/update",
+              `${API_BASE_URL}/api/v1/user/update`,
               {
                 method: "PUT",
                 headers: {
