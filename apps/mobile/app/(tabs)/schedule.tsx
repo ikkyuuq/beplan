@@ -17,7 +17,7 @@ import {
   isSameDay,
   startOfWeek,
 } from "date-fns";
-import PagerView from "react-native-pager-view";
+import PagerView from "@/components/PagerViewWrapper";
 import { useEffect, useState } from "react";
 import Animated, {
   interpolate,
@@ -49,7 +49,7 @@ type Goal = {
   due_date: string;
   tasks: Task[];
 };
-export default function schedule() {
+export default function Schedule() {
   const [currentMonth, setCurrentMonth] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [latestIndex, setLatestIndex] = useState(0);
@@ -464,7 +464,7 @@ export default function schedule() {
           <PagerView
             style={{ height: 80 }}
             initialPage={initialPage}
-            onPageSelected={(e) => {
+            onPageSelected={(e: any) => {
               const weekIndex = e.nativeEvent.position;
               const visibleWeek = dates[weekIndex];
               setCurrentMonth(format(visibleWeek[0], "MMMM"));

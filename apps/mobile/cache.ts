@@ -1,6 +1,11 @@
 import * as SecureStore from 'expo-secure-store'
 import { Platform } from 'react-native'
-import { TokenCache } from '@clerk/clerk-expo/dist/cache'
+
+export interface TokenCache {
+  getToken: (key: string) => Promise<string | null | undefined>;
+  saveToken: (key: string, token: string) => Promise<void>;
+  clearToken?: (key: string) => void;
+}
 
 const createTokenCache = (): TokenCache => {
   return {

@@ -230,8 +230,14 @@ export default function AiProcess() {
   // Process step state
   const [step, setStep] = useState<ProcessStep>(ProcessStep.VALIDATING);
 
-  // Question states
-  const [questions, setQuestions] = useState<Question[]>([]);
+  // States for the question step
+  type Question = {
+    question: string;
+    type: "yes-no" | "open-ended" | "date";
+    label: string; // prediction criterion to update
+  };
+  type Questions = Question[];
+  const [questions, setQuestions] = useState<Questions>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [currentAnswer, setCurrentAnswer] = useState("");
 
@@ -279,9 +285,10 @@ export default function AiProcess() {
   // Step 2: Generate questions for missing keys
   // ---------------------------
   const fetchQuestionsForMissingKeys = async () => {
+    if (!predictionRes) return;
+
     try {
       setLoading(true);
-      if (!predictionRes) return;
       const formattedPrediction = Object.entries(
         predictionRes.prediction,
       ).reduce(
@@ -369,10 +376,12 @@ export default function AiProcess() {
   // Generate a goal based on updated prediction
   // ---------------------------
   const generateGoal = async () => {
+    if (!predictionRes) return;
+
     try {
       setLoading(true);
       const formattedPrediction = Object.entries(
-        predictionRes?.prediction || {},
+        predictionRes.prediction,
       ).reduce(
         (acc, [key, value]) => {
           acc[key] = Array.isArray(value) ? value : [value];

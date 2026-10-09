@@ -94,6 +94,8 @@ export default function VerificationScreen({
   }));
 
   const router = useRouter();
+  const AnimatedText = Animated.Text as any;
+  const AnimatedView = Animated.View as any;
 
   return (
     <View style={styles.container}>
@@ -103,21 +105,21 @@ export default function VerificationScreen({
       </TouchableOpacity>
 
       {/* Title & Description */}
-      <Animated.Text style={[styles.title, titleAnimatedStyle]}>
+      <AnimatedText style={[styles.title, titleAnimatedStyle]}>
         {title}
-      </Animated.Text>
-      <Animated.Text style={[styles.description, descriptionAnimatedStyle]}>
+      </AnimatedText>
+      <AnimatedText style={[styles.description, descriptionAnimatedStyle]}>
         {description}
-      </Animated.Text>
+      </AnimatedText>
 
       {/* Email Display */}
-      <Animated.View style={styles.emailContainer}>
+      <AnimatedView style={styles.emailContainer}>
         <Text style={styles.emailLabel}>Verification code sent to:</Text>
         <Text style={styles.emailValue}>{emailAddress}</Text>
-      </Animated.View>
+      </AnimatedView>
 
       {/* Input Field */}
-      <Animated.View style={[{ width: "100%" }, formAnimatedStyle]}>
+      <AnimatedView style={[{ width: "100%" }, formAnimatedStyle]}>
         <InputField
           placeholder="Enter verification code"
           value={code}
@@ -132,7 +134,7 @@ export default function VerificationScreen({
         {errorMessage && (
           <Animated.Text style={styles.errorText}>{errorMessage}</Animated.Text>
         )}
-      </Animated.View>
+      </AnimatedView>
 
       {/* Verify Button */}
       <Animated.View style={[{ width: "100%" }, buttonAnimatedStyle]}>

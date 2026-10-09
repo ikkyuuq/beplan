@@ -47,9 +47,9 @@ export default function Collapsable({
     bottomLeft: { x: 0, y: 0 },
     topLeft: { x: 0, y: 0 },
   });
-  const anchorRef = useRef<Animated.View>(null);
+  const anchorRef = useRef<any>(null);
   const containerWidth = useRef(0);
-  const collapseContentRef = useRef<Animated.View>(null);
+  const collapseContentRef = useRef<any>(null);
 
   const containerHeight = useSharedValue(INITIAL_CONTAINER_HEIGHT);
   const collapseMarginBottom = useSharedValue(10);
@@ -68,7 +68,7 @@ export default function Collapsable({
   const updateMenuPosition = useCallback(() => {
     return new Promise<void>((resolve) => {
       if (anchorRef.current) {
-        anchorRef.current.measure((x, y, width, height, pageX, pageY) => {
+        anchorRef.current.measure((x: any, y: any, width: any, height: any, pageX: any, pageY: any) => {
           setAnchorPosition({
             bottomLeft: { x: pageX, y: pageY + height },
             topLeft: { x: pageX, y: pageY },
@@ -117,7 +117,7 @@ export default function Collapsable({
 
   useEffect(() => {
     if (collapsed) {
-      collapseContentRef.current?.measure((_x, _y, _width, height) => {
+      collapseContentRef.current?.measure((_x: any, _y: any, _width: any, height: any) => {
         innerCollapseHeight.value = withTiming(height, { duration: 200 });
       });
     } else {

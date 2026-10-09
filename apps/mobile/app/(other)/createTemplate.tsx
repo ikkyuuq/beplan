@@ -32,7 +32,7 @@ type Goal = {
 };
 
 // ====================== Main Component ======================
-export default function createTemplate() {
+export default function CreateTemplate() {
   // ====================== State Management ======================
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");

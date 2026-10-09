@@ -31,14 +31,17 @@ type Goal = {
   tasks: Task[];
 };
 
+type CreateBy = string;
+
 type Template = {
+  isListed: boolean;
   id: number;
   title: string;
   category: string;
   description: string;
   image_url: string;
   created_by: {
-    user_id: string;
+    user_id: CreateBy;
     username: string | null;
     image: string | null;
     occupation: string | null;
@@ -49,7 +52,6 @@ type Template = {
   status: string;
   duration: number;
   isFavorite: boolean;
-  isListed?: boolean;
 };
 
 // ====================== Main Component ======================

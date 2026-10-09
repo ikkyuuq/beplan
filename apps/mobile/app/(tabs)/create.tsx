@@ -35,6 +35,7 @@ type Task = {
 };
 
 type Goal = {
+  id: string;
   title: string;
   tasks: Task[];
 };
@@ -53,12 +54,13 @@ type Template = {
   category: string;
   description: string;
   image_url: string;
-  created_by: string;
+  created_by: CreateBy;
   type: string;
   goals: Goal[];
   status: string;
   duration: number;
   isFavorite: boolean;
+  isListed: boolean;
 };
 
 // ====================== Main Component ======================
@@ -144,7 +146,7 @@ export default function CreateScreen() {
     useState(false);
   const [isViewAllCommunityVisible, setIsViewAllCommunityVisible] =
     useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -157,10 +159,10 @@ export default function CreateScreen() {
           throw new Error("Network response was not ok");
         }
         const data = await response.json();
-        setTemplateData(data);
+        setTemplateData(data as Template[]);
         setCommunityData(
           // TODO : แก้ให้ sort จาก favorite มากไปน้อย
-          data.filter((template: any) => template.type === "community"),
+          (data as Template[]).filter((template) => template.type === "community"),
         );
       } catch (error) {
         console.error("Error fetching templates:", error);
@@ -199,7 +201,7 @@ export default function CreateScreen() {
   const [communityData, setCommunityData] = useState<Template[]>([]);
 
   // ====================== Event Handlers ======================
-  const handleTemplateSelect = (template: any) => {
+  const handleTemplateSelect = (template: Template) => {
     setSelectedTemplate(template);
     setIsModalVisible(true);
   };
@@ -375,8 +377,10 @@ export default function CreateScreen() {
             </TouchableOpacity>
           </View>
           <Slider
-            data={templateData}
-            onCardPress={(template) => handleTemplateSelect(template)}
+            data={templateData as any}
+            onCardPress={(template) =>
+              handleTemplateSelect(template as unknown as Template)
+            }
           />
         </Animated.View>
 
@@ -397,8 +401,10 @@ export default function CreateScreen() {
             </TouchableOpacity>
           </View>
           <Slider
-            data={communityData}
-            onCardPress={(template) => handleTemplateSelect(template)}
+            data={communityData as any}
+            onCardPress={(template) =>
+              handleTemplateSelect(template as unknown as Template)
+            }
           />
         </Animated.View>
       </ScrollView>
@@ -419,6 +425,7 @@ export default function CreateScreen() {
           data={
             selectedTemplate
               ? {
+                  id: selectedTemplate.id,
                   isListed: selectedTemplate.isListed || false,
                   isFavorite: selectedTemplate.isFavorite || false,
                   title: selectedTemplate.title,
@@ -436,6 +443,7 @@ export default function CreateScreen() {
                     ) || [], // แสดง goals ทั้งหมด
                 }
               : {
+                  id: 0,
                   isListed: false,
                   isFavorite: false,
                   title: "",
@@ -561,31 +569,13 @@ export default function CreateScreen() {
                         title: template.title,
                         category: template.category,
                         description: template.description || "",
-                        image: template.image || "",
-                        owner: template.owner || "BePlan",
+                        image_url: template.image_url || "",
                         isFavorite: template.isFavorite || false,
-                        goals_id: template.goals_id || [],
+                        goals: template.goals || [],
                         duration: template.duration || 0,
                       }}
                       onSelect={() => {
-                        const selectedTemplate = {
-                          title: template.title,
-                          description: template.description,
-                          category: template.category,
-                          image: template.image || "",
-                          isListed: template.isFavorite || false,
-                          owner: template.owner || "BePlan",
-                          duration: template.duration || null,
-                          goals:
-                            template.goals_id?.map(
-                              (id: string) =>
-                                mockGoals.find((goal) => goal.id === id) || {
-                                  id,
-                                  title: `Goal ${id}`,
-                                },
-                            ) || [],
-                        };
-                        setSelectedTemplate(selectedTemplate);
+                        setSelectedTemplate(template);
                         setIsModalVisible(true);
                       }}
                       onToggleFavorite={() => {

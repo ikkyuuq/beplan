@@ -1,9 +1,6 @@
-import { useLinkBuilder } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { Pressable, StyleSheet } from "react-native";
 import Animated, {
-  interpolateColor,
-  useAnimatedProps,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
@@ -26,9 +23,7 @@ export default function TabBarButton({
   onPress,
   onLongPress,
 }: TabBarButtonProps) {
-  const buildHref = useLinkBuilder;
-
-  const icon = {
+  const icons = {
     schedule: (props: any) => <AnimatedFeather name="calendar" {...props} />,
     analysis: (props: any) => <AnimatedFeather name="bar-chart-2" {...props} />,
     create: (props: any) => <AnimatedFeather name="plus-circle" {...props} />,
@@ -41,15 +36,10 @@ export default function TabBarButton({
     scale.value = withSpring(isFocused ? 1 : 0);
   }, [scale, isFocused]);
 
-  const animatedProps = useAnimatedProps(() => {
-    return {
-      color: interpolateColor(scale.value, [0, 1], ["#222", "#fff"]),
-    };
-  });
+  const Icon = icons[route.name as keyof typeof icons] ?? icons.schedule;
 
   return (
     <Pressable
-      href={buildHref(route.name, route.params)}
       accessibilityState={isFocused ? { selected: true } : {}}
       accessibilityLabel={options.tabBarAccessibilityLabel}
       testID={options.tabBarButtonTestID}
@@ -57,10 +47,10 @@ export default function TabBarButton({
       onLongPress={onLongPress}
       style={styles.tabBarButton}
     >
-      {icon[route.name]({
-        size: 24,
-        color: isFocused ? "#fff" : "#222",
-      })}
+      <Icon
+        size={24}
+        color={isFocused ? "#fff" : "#222"}
+      />
     </Pressable>
   );
 }

@@ -19,12 +19,6 @@ export default function RootLayout() {
   // ====================== Environment Setup ======================
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
-  // ====================== Environment Key Check ======================
-  if (!publishableKey) {
-    console.error("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env");
-    return null;
-  }
-
   // ====================== Font Loading Effect ======================
   useEffect(() => {
     async function loadFonts() {
@@ -49,6 +43,16 @@ export default function RootLayout() {
 
     loadFonts();
   }, []);
+
+  // ====================== Environment Key Check ======================
+  if (!publishableKey) {
+    console.error("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env");
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: "red" }}>Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env</Text>
+      </View>
+    );
+  }
 
   // ====================== Loading State Handling ======================
   if (!fontsLoaded && !fontError) {

@@ -32,8 +32,11 @@ export default function Header({ children, containerStyle }: HeaderProps) {
   };
 
   // ====================== User Profile Image ======================
+  const metadataProfileImage = user?.unsafeMetadata?.profileImageUrl;
   const profileImageUrl =
-    user?.unsafeMetadata.profileImageUrl || user?.imageUrl || "";
+    typeof metadataProfileImage === "string"
+      ? metadataProfileImage
+      : user?.imageUrl || "";
 
   // ====================== Render UI ======================
   return (

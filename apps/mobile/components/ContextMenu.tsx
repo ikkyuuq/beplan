@@ -100,7 +100,7 @@ export default function ContextMenu({
         {preview}
 
         <Animated.View
-          ref={contextMenuRef}
+          ref={contextMenuRef as any}
           onLayout={(event) => {
             setMenuHeight(event.nativeEvent.layout.height);
           }}
