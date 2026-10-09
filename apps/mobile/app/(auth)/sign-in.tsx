@@ -28,10 +28,10 @@ import Animated, {
 } from "react-native-reanimated";
 
 // ====================== Browser Warm-Up Utility ======================
-// Preloads the browser for all platforms to reduce authentication load time
+// Browser warm-up is only available on native platforms.
 export const useWarmUpBrowser = () => {
   useEffect(() => {
-    if (Platform.OS !== 'web') {
+    if (Platform.OS !== "ios" && Platform.OS !== "android") {
       return;
     }
 

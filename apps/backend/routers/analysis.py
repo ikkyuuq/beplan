@@ -161,7 +161,7 @@ def compute_weekly_progress(
     weekday_names = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
     for (date_key, _), statuses in tasks_by_date_and_goal.items():
         if all(s == Status.SUCCESS for s in statuses):
-            weekday = weekday_names[date_key.weekday() + 1 % 7]
+            weekday = weekday_names[(date_key.weekday() + 1) % 7]
             weekly_progress[weekday] += 1
     return weekly_progress
 

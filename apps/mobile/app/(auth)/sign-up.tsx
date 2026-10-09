@@ -350,7 +350,7 @@ export default function SignUpScreen() {
           secureTextEntry
         />
         {/* Error Message */}
-        {errorMessage && (
+        {Boolean(errorMessage) && (
           <Animated.Text
             entering={FadeInDown.duration(300)}
             style={styles.errorText}

@@ -1,19 +1,70 @@
 import asyncio
+import os
+import sys
 import threading
+import types
 from unittest.mock import Mock, patch
 
 import pytest
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
+
+# Keep these unit tests isolated from external APIs, model downloads, and heavyweight ML packages.
+os.environ.setdefault("ANTHROPIC_API_KEY", "unit-test-key")
+
+
+class _Sentence:
+    def __init__(self, text):
+        self.text = text
+
+    def get_spans(self, _layer):
+        return []
+
+
+class _SequenceTagger:
+    @staticmethod
+    def load(_model_path):
+        return Mock()
+
+
+class _Anthropic:
+    def __init__(self, api_key):
+        self.api_key = api_key
+
+
+_stubs = {
+    "anthropic": types.ModuleType("anthropic"),
+    "flair": types.ModuleType("flair"),
+    "flair.data": types.ModuleType("flair.data"),
+    "flair.models": types.ModuleType("flair.models"),
+    "huggingface_hub": types.ModuleType("huggingface_hub"),
+}
+_stubs["anthropic"].Anthropic = _Anthropic
+_stubs["flair.data"].Sentence = _Sentence
+_stubs["flair.models"].SequenceTagger = _SequenceTagger
+_stubs["huggingface_hub"].hf_hub_download = lambda **_kwargs: "unit-test-model"
+_original_modules = {name: sys.modules.get(name) for name in _stubs}
+sys.modules.update(_stubs)
 
 from backend.routers.ai import (
     AIInput,
     PredictionResult,
+    generate_goal,
     generate_questions,
     router,
     validate_sentence,
 )
+from backend.routers import ai as ai_module
 
-client = TestClient(router)
+for _module_name, _original_module in _original_modules.items():
+    if _original_module is None:
+        sys.modules.pop(_module_name, None)
+    else:
+        sys.modules[_module_name] = _original_module
+
+app = FastAPI()
+app.include_router(router)
+client = TestClient(app)
 
 
 class Sentence:
@@ -145,7 +196,25 @@ def test_generate_questions_runs_anthropic_in_threadpool(monkeypatch):
 
 
 @pytest.fixture
-def question_response(mock_tagger):
+def question_response(mock_tagger, monkeypatch):
+    monkeypatch.setattr(
+        ai_module,
+        "call_anthropic_api",
+        lambda **_kwargs: {
+            "result": [
+                {
+                    "label": "achievable",
+                    "question": "Is this achievable?",
+                    "type": "yes-no",
+                },
+                {
+                    "label": "already-filled",
+                    "question": "Ignore this?",
+                    "type": "open-ended",
+                },
+            ]
+        },
+    )
     resp = client.post(
         "/generate-questions",
         json={
@@ -159,11 +228,15 @@ def question_response(mock_tagger):
 
 
 def test_question_generate(question_response):
-    res = question_response
+    questions = question_response["result"]
 
-    assert len(res) == 1
-    assert res.keys() == {"achievable"}
-    assert res["achievable"]["type"] in ["open-ended", "yes-no"]
+    assert questions == [
+        {
+            "label": "achievable",
+            "question": "Is this achievable?",
+            "type": "yes-no",
+        }
+    ]
 
 
 def test_question_generate_empty_criteria(mock_tagger):
@@ -175,15 +248,15 @@ def test_question_generate_empty_criteria(mock_tagger):
         },
     )
 
+    assert resp.status_code == 200
     res = resp.json()
 
-    assert len(res) == 1
-    assert res == {"message": "No questions needed - all criteria are filled"}
+    assert res == {"result": []}
 
 
 def test_submit_question(question_response):
-    question = question_response["achievable"]["question"]
-    to_label = question_response.keys()
+    question = question_response["result"][0]["question"]
+    to_label = question_response["result"][0]["label"]
     prediction_data = {
         "original_text": G_PREDICTION_RESULT.original_text,
         "prediction": G_PREDICTION_RESULT.prediction,
@@ -191,13 +264,13 @@ def test_submit_question(question_response):
     request = {
         "prediction_result": prediction_data,
         "question": question,
-        "to_label": list(to_label)[0],  # Convert set to list {key} -> [key]
+        "to_label": to_label,
         "value": "yes",
     }
 
     resp = client.post("/submit-question", json=request)
     assert resp.status_code == 200
-    assert list(to_label)[0] in "achievable"
+    assert to_label == "achievable"
     assert resp.json()["message"] == "Successfully updated prediction"
 
 
@@ -221,24 +294,33 @@ def test_submit_question_preserves_invalid_label_http_400():
     )
 
 
-def test_generate_task(mock_tagger):
-    resp = client.post(
-        "/generate-task",
-        json={
-            "original_text": G_PERFECT_PREDICTION_RESULT.original_text,
-            "prediction": G_PERFECT_PREDICTION_RESULT.prediction,
-        },
+def test_generate_goal_uses_prediction_deadline(monkeypatch):
+    generated_goal = {
+        "title": "Lose 10 pounds",
+        "type": "smart goal",
+        "tasks": [{"title": "Walk", "repeat_type": "daily"}],
+    }
+    call = Mock(return_value=generated_goal)
+    monkeypatch.setattr(ai_module, "call_anthropic_api", call)
+    request = G_PERFECT_PREDICTION_RESULT
+
+    result = asyncio.run(generate_goal(request))
+
+    assert result == generated_goal
+    prompt = call.call_args.kwargs["prompt"]
+    assert "due_date" in prompt
+    assert "2 months" in prompt
+    assert "I want to lose 10 pounds in 2 months" in prompt
+
+
+def test_generate_goal_returns_http_500_when_provider_fails(monkeypatch):
+    monkeypatch.setattr(
+        ai_module,
+        "call_anthropic_api",
+        Mock(side_effect=RuntimeError("provider unavailable")),
     )
-    assert resp.status_code == 200
 
-    res = resp.json()
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(generate_goal(G_PERFECT_PREDICTION_RESULT))
 
-    assert "tasks" in res
-    assert isinstance(res["tasks"], list)
-    assert len(res["tasks"]) > 0
-
-    for task in res["tasks"]:
-        assert "title" in task
-        assert "description" in task
-        assert "task_date" in task
-        assert "repeat_type" in task
+    assert error.value.status_code == 500
