@@ -17,10 +17,10 @@ from utils import goal_creation
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 ANTHROPIC_MODEL = "claude-3-5-sonnet-20241022"
-if not ANTHROPIC_API_KEY:
-    raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
-client = Anthropic(api_key=ANTHROPIC_API_KEY)
+client = Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
 
+
+tagger = None
 try:
     model_path = hf_hub_download(
         repo_id="ikkyuu/smart-ner",
@@ -28,7 +28,8 @@ try:
     )
     tagger = SequenceTagger.load(model_path)
 except Exception as e:
-    raise ValueError(f"Failed to load Flair NER model: {str(e)}")
+    print(f"Warning: Failed to load Flair NER model: {str(e)}. AI features will be disabled.")
+
 
 router = APIRouter()
 
@@ -84,6 +85,8 @@ def parse_ai_response(response) -> dict:
 
 
 def call_anthropic_api(model: str, system: str, prompt: str) -> dict:
+    if not client:
+        raise HTTPException(status_code=503, detail="AI features are disabled due to missing ANTHROPIC_API_KEY")
     response = client.messages.create(
         model=model,
         max_tokens=1000,
@@ -99,6 +102,8 @@ def normalize_label(label: str) -> str:
 
 @router.post("/validate", tags=["ai"])
 async def validate_sentence(input_data: AIInput):
+    if not tagger:
+        raise HTTPException(status_code=503, detail="AI models not loaded")
     try:
         sentence = Sentence(input_data.text)
         await run_in_threadpool(tagger.predict, sentence)
