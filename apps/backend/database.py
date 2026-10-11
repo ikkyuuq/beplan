@@ -9,8 +9,9 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Connection pool variable
-db_pool: asyncpg.Pool
+# Connection pool variable.  Keeping an explicit empty state makes the
+# shutdown and dependency helpers safe before application startup.
+db_pool: asyncpg.Pool | None = None
 
 
 async def init_db():

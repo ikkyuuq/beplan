@@ -2,6 +2,7 @@ import { View, StyleSheet, LayoutChangeEvent } from "react-native";
 import TabBarButton from "./TabBarButton";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useEffect, useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -10,6 +11,8 @@ import Animated, {
 
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 8);
   const buttonWidth = dimensions.width / state.routes.length;
   const tabPosX = useSharedValue(0);
 
@@ -26,17 +29,32 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     };
   });
 
+  useEffect(() => {
+    if (buttonWidth > 0) {
+      tabPosX.value = withSpring(buttonWidth * state.index, {
+        mass: 0.8,
+        damping: 18,
+        stiffness: 180,
+      });
+    }
+  }, [buttonWidth, state.index, tabPosX]);
+
   return (
-    <View onLayout={onTabBarLayout} style={styles.tabbar}>
+    <View
+      onLayout={onTabBarLayout}
+      style={[styles.tabbar, { paddingBottom: bottomPadding }]}
+    >
       <Animated.View
         style={[
           animateTabBar,
           {
-            borderRadius: 20,
+            borderRadius: 18,
             position: "absolute",
-            backgroundColor: "#000",
-            width: buttonWidth,
-            height: dimensions.height,
+            top: 8,
+            left: 8,
+            backgroundColor: "#4E5A94",
+            width: Math.max(buttonWidth - 16, 0),
+            height: Math.max(dimensions.height - bottomPadding - 16, 0),
           },
         ]}
       />
@@ -47,12 +65,9 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
         const onPress = () => {
           tabPosX.value = withSpring(buttonWidth * index, {
-            mass: 1,
-            damping: 20,
-            stiffness: 200,
-            overshootClamping: false,
-            restDisplacementThreshold: 0.01,
-            restSpeedThreshold: 2,
+            mass: 0.8,
+            damping: 18,
+            stiffness: 180,
           });
           const event = navigation.emit({
             type: "tabPress",
@@ -90,20 +105,21 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 const styles = StyleSheet.create({
   tabbar: {
     position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 0,
+    minHeight: 72,
     flexDirection: "row",
     backgroundColor: "#fff",
-    marginHorizontal: 90,
-    justifyContent: "space-between",
     alignItems: "center",
-    bottom: 50,
-    borderRadius: 20,
+    borderRadius: 24,
+    paddingHorizontal: 8,
+    paddingTop: 8,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowRadius: 10,
-    elevation: 45,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
   },
 });
 

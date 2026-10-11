@@ -12,7 +12,6 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
   Keyboard,
-  Platform,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -23,6 +22,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import Modal from "react-native-modal";
+import { API_BASE_URL } from "@/constants/api";
 
 // ====================== Type Definitions ======================
 type Creator = {
@@ -158,12 +158,6 @@ export default function TemplateModal({
               // Get today's date in YYYY-MM-DD format
               const today = new Date().toISOString().split("T")[0];
 
-              // Get base URL based on platform
-              const baseUrl =
-                Platform.OS === "android"
-                  ? "http://10.0.2.2:8000"
-                  : "http://127.0.0.1:8000";
-
               // Prepare request body
               const requestBody = {
                 template_id: data.id,
@@ -173,7 +167,7 @@ export default function TemplateModal({
 
               // Make API call
               const response = await fetch(
-                `${baseUrl}/api/v1/template/assign`,
+                `${API_BASE_URL}/api/v1/template/assign`,
                 {
                   method: "POST",
                   headers: {

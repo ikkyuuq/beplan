@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Platform, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
 import { useUser } from "@clerk/clerk-expo";
 import { useFocusEffect, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons"; // สำหรับไอคอนปุ่มย้อนกลับ
+import { API_BASE_URL } from "@/constants/api";
 
 type Task = {
   id: number;
@@ -24,16 +25,13 @@ type Goal = {
 };
 
 // ====================== Service สำหรับดึงข้อมูล ======================
-const baseUrl =
-  Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://127.0.0.1:8000";
-
 const fetchAllGoalsAndTasks = async (userId: string): Promise<Goal[]> => {
   try {
     if (!userId) throw new Error("User ID is required");
 
     // เรียกใช้ endpoint ที่มีอยู่
     const response = await fetch(
-      `${baseUrl}/api/v1/goal/?user_id=${userId}`
+      `${API_BASE_URL}/api/v1/goal/?user_id=${encodeURIComponent(userId)}`
     );
 
     if (!response.ok) {

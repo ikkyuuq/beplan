@@ -29,3 +29,18 @@ def test_weekly_range_uses_sunday_zero_and_includes_boundaries():
         date(2026, 10, 7),
         date(2026, 10, 10),
     ]
+
+
+def test_ranges_are_empty_when_start_is_after_due():
+    start = date(2026, 10, 7)
+    due = date(2026, 10, 5)
+
+    assert get_daily_range(start, due) == []
+    assert get_weekly_range(start, due, [0, 1, 2, 3, 4, 5, 6]) == []
+
+
+def test_weekly_range_ignores_days_not_selected():
+    start = date(2026, 10, 4)
+    due = date(2026, 10, 10)
+
+    assert get_weekly_range(start, due, []) == []

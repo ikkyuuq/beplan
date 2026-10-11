@@ -138,20 +138,35 @@ export default function Schedule() {
       setError(null);
       try {
         const resp = await fetch(
-          `${API_BASE_URL}/api/v1/goal?user_id=${userId}&today=${format(
+          `${API_BASE_URL}/api/v1/goal/?user_id=${encodeURIComponent(
+            userId
+          )}&today=${format(
             selectedDate,
             "yyyy-MM-dd"
           )}`,
           { signal }
         );
-        if (!resp.ok) throw new Error(`Error: ${resp.status}`);
+        if (!resp.ok) {
+          const responseBody = await resp.text();
+          throw new Error(
+            `Goal request failed (${resp.status})${
+              responseBody ? `: ${responseBody}` : ""
+            }`
+          );
+        }
         const data = await resp.json();
         if (signal.aborted) return;
         setData(data);
       } catch (error) {
         if (signal.aborted) return;
         console.error("Failed to fetch goals:", error);
-        setError("Failed to load your goals. Please try again.");
+        setError(
+          error instanceof TypeError
+            ? `Cannot reach the backend at ${API_BASE_URL}. Check that the API is running and that this device can access the configured address.`
+            : error instanceof Error
+              ? error.message
+              : "Failed to load your goals. Please try again."
+        );
         setData([]);
       } finally {
         if (!signal.aborted) setIsLoading(false);
@@ -346,12 +361,7 @@ export default function Schedule() {
 
   const handleDeleteGoal = async (goalId: number) => {
     try {
-      const baseUrl =
-        Platform.OS === "android"
-          ? "http://10.0.2.2:8000"
-          : "http://127.0.0.1:8000";
-
-      const response = await fetch(`${baseUrl}/api/v1/goal/delete/${goalId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/goal/delete/${goalId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

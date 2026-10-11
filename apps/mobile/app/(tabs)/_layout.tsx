@@ -16,7 +16,7 @@ export default function TabsLayout() {
 
   // ====================== Tab Navigation ======================
   return (
-    <GestureHandlerRootView>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <Tabs tabBar={(props) => <CustomTabBar {...props} />}>
         <Tabs.Screen name="schedule" options={{ headerShown: false }} />
         <Tabs.Screen name="create" options={{ headerShown: false }} />

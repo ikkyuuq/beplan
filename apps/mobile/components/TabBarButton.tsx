@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { Pressable, StyleSheet } from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
 import Animated, {
   useSharedValue,
   withSpring,
@@ -29,6 +29,12 @@ export default function TabBarButton({
     create: (props: any) => <AnimatedFeather name="plus-circle" {...props} />,
     community: (props: any) => <AnimatedFeather name="users" {...props} />,
   };
+  const labels = {
+    schedule: "Home",
+    analysis: "Analysis",
+    create: "Create",
+    community: "Community",
+  };
 
   const scale = useSharedValue(0);
 
@@ -47,10 +53,10 @@ export default function TabBarButton({
       onLongPress={onLongPress}
       style={styles.tabBarButton}
     >
-      <Icon
-        size={24}
-        color={isFocused ? "#fff" : "#222"}
-      />
+      <Icon size={22} color={isFocused ? "#fff" : "#5D6275"} />
+      <Text style={[styles.label, { color: isFocused ? "#fff" : "#5D6275" }]}>
+        {labels[route.name as keyof typeof labels] ?? route.name}
+      </Text>
     </Pressable>
   );
 }
@@ -60,6 +66,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    aspectRatio: 1,
+    minHeight: 56,
+    gap: 3,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: "600",
   },
 });
