@@ -4,6 +4,8 @@ services:
       context: ../apps/backend
       dockerfile: Dockerfile
     container_name: beplan_server_container
+    environment:
+      BACKEND_PORT: ${BACKEND_PORT:-8000}
     develop:
       watch:
         - action: sync
@@ -14,11 +16,11 @@ services:
         - action: rebuild
           path: ../apps/backend/requirements.txt
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
     env_file: .env
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD-SHELL", "python -c \"import os, urllib.request; urllib.request.urlopen('http://localhost:' + os.environ['BACKEND_PORT'] + '/health')\""]
       interval: 30s
       timeout: 10s
       retries: 3

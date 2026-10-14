@@ -59,6 +59,11 @@ source venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
+For a physical device, bind the backend to the network and keep the API port at
+`8000`:
+```sh
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
 #### Development
 - Make API changes in `main.py` or create custom services for each route.
 - Test endpoints using Postman or a browser.
@@ -74,6 +79,11 @@ docker-compose up --build --watch
 ```
 This will:
 - Start **server** on port `8000`
+- Expo/Metro may use ports `8081`, `8082`, or `8083`; those serve the
+  JavaScript bundle and are not backend API ports.
+- Set `apps/mobile/.env` to
+  `EXPO_PUBLIC_API_URL=http://<computer-LAN-IP>:8000`, then restart Expo with
+  `npx expo start --clear` after changing it.
 
 ---
 

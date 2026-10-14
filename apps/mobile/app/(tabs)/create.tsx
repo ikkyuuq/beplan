@@ -9,7 +9,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Alert,
 } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -227,6 +226,13 @@ export default function CreateScreen() {
     }, 400);
   };
 
+  const handleCreateWithAssistant = () => {
+    setIsOptionModalVisible(false);
+    setTimeout(() => {
+      router.push("/(other)/aiProcess");
+    }, 250);
+  };
+
   const handleTestGoal = () => {
     setIsOptionModalVisible(false);
 
@@ -329,7 +335,7 @@ export default function CreateScreen() {
           />
         </Animated.View>
 
-        {/* Custom Goal Button */}
+        {/* Create Goal Button */}
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.customGoalButton}
@@ -342,12 +348,12 @@ export default function CreateScreen() {
             style={styles.buttonGradient}
           >
             <Ionicons
-              name="add-circle"
+              name="sparkles"
               size={20}
               color="#FFF"
               style={styles.buttonIcon}
             />
-            <Text style={styles.customGoalButtonText}>Create Your Own</Text>
+            <Text style={styles.customGoalButtonText}>Start a new goal</Text>
           </LinearGradient>
         </TouchableOpacity>
       </Header>
@@ -472,7 +478,10 @@ export default function CreateScreen() {
         >
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create New</Text>
+              <View>
+                <Text style={styles.modalEyebrow}>NEW GOAL</Text>
+                <Text style={styles.modalTitle}>How would you like to start?</Text>
+              </View>
               <TouchableOpacity
                 style={styles.closeModalButton}
                 onPress={() => setIsOptionModalVisible(false)}
@@ -482,35 +491,69 @@ export default function CreateScreen() {
             </View>
 
             <TouchableOpacity
-              style={styles.modalOption}
+              style={[styles.modalOption, styles.manualOption]}
               onPress={handleCreateCustomGoal}
             >
-              <View style={[styles.optionIcon, { backgroundColor: "#4CAF50" }]}>
-                <Ionicons name="flag" size={22} color="#FFF" />
+              <View style={[styles.optionIcon, { backgroundColor: "#E9F8F0" }]}>
+                <Ionicons name="create-outline" size={23} color="#168A4A" />
               </View>
               <View style={styles.optionContent}>
-                <Text style={styles.optionTitle}>Custom Goal</Text>
+                <View style={styles.optionTitleRow}>
+                  <Text style={styles.optionTitle}>Create it yourself</Text>
+                  <View style={styles.optionBadge}>
+                    <Text style={styles.optionBadgeText}>FULL CONTROL</Text>
+                  </View>
+                </View>
                 <Text style={styles.optionDescription}>
-                  Create your own goal with custom tasks and timeline
+                  Set the goal, tasks, dates, and routine exactly the way you want.
                 </Text>
               </View>
-              <Feather name="chevron-right" size={22} color="#999" />
+              <Feather name="arrow-up-right" size={20} color="#168A4A" />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.modalOption}
-              onPress={handleCreateTemplate}
+              style={[styles.modalOption, styles.aiOption]}
+              onPress={handleCreateWithAssistant}
             >
-              <View style={[styles.optionIcon, { backgroundColor: "#4F46E5" }]}>
-                <Ionicons name="document-text" size={22} color="#FFF" />
+              <View style={[styles.optionIcon, { backgroundColor: "#EEEAFE" }]}>
+                <Ionicons name="sparkles" size={23} color="#5B43D6" />
               </View>
               <View style={styles.optionContent}>
-                <Text style={styles.optionTitle}>Template</Text>
+                <View style={styles.optionTitleRow}>
+                  <Text style={styles.optionTitle}>Ask the AI assistant</Text>
+                  <View style={[styles.optionBadge, styles.aiBadge]}>
+                    <Text style={[styles.optionBadgeText, styles.aiBadgeText]}>
+                      GUIDED
+                    </Text>
+                  </View>
+                </View>
                 <Text style={styles.optionDescription}>
-                  Design a reusable template to share with the community
+                  Tell us what you want to achieve and get a practical plan in minutes.
                 </Text>
               </View>
-              <Feather name="chevron-right" size={22} color="#999" />
+              <Feather name="arrow-up-right" size={20} color="#5B43D6" />
+            </TouchableOpacity>
+
+            <View style={styles.modalDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.modalOption, styles.templateOption]}
+              onPress={handleCreateTemplate}
+            >
+              <View style={[styles.optionIcon, { backgroundColor: "#F2F4F7" }]}>
+                <Ionicons name="copy-outline" size={21} color="#667085" />
+              </View>
+              <View style={styles.optionContent}>
+                <Text style={styles.optionTitle}>Create a reusable template</Text>
+                <Text style={styles.optionDescription}>
+                  Build a plan you can reuse or share with the community.
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={21} color="#98A2B3" />
             </TouchableOpacity>
           </View>
         </Modal>
@@ -772,10 +815,16 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F0F0F0",
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     color: "#333",
-    textAlign: "center",
+    marginTop: 3,
+  },
+  modalEyebrow: {
+    color: "#7C3AED",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
   },
   closeModalButton: {
     padding: 5,
@@ -783,15 +832,27 @@ const styles = StyleSheet.create({
   modalOption: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FAFAFA",
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: 16,
+    padding: 15,
     marginBottom: 12,
+    borderWidth: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  manualOption: {
+    backgroundColor: "#F7FCF9",
+    borderColor: "#D8F0E1",
+  },
+  aiOption: {
+    backgroundColor: "#FAF9FF",
+    borderColor: "#E3DDFB",
+  },
+  templateOption: {
+    backgroundColor: "#FAFAFA",
+    borderColor: "#EAECF0",
   },
   optionIcon: {
     width: 40,
@@ -809,11 +870,54 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#333",
-    marginBottom: 4,
+    flexShrink: 1,
+  },
+  optionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginBottom: 5,
+    flexWrap: "wrap",
+  },
+  optionBadge: {
+    backgroundColor: "#DDF4E6",
+    borderRadius: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  optionBadgeText: {
+    color: "#168A4A",
+    fontSize: 8,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  aiBadge: {
+    backgroundColor: "#EAE4FF",
+  },
+  aiBadgeText: {
+    color: "#5B43D6",
   },
   optionDescription: {
-    fontSize: 13,
-    color: "#666",
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#667085",
+  },
+  modalDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 2,
+    marginBottom: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#EAECF0",
+  },
+  dividerText: {
+    color: "#98A2B3",
+    fontSize: 10,
+    fontWeight: "700",
   },
 
   // Template Grid Styles

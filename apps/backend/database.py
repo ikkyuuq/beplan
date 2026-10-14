@@ -1,11 +1,17 @@
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import asyncpg
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
 load_dotenv()
+project_root = Path(__file__).resolve().parents[2] if len(Path(__file__).resolve().parents) > 2 else None
+if project_root:
+    docker_env = project_root / "docker" / ".env"
+    if docker_env.exists():
+        load_dotenv(docker_env)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 

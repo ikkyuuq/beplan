@@ -1,6 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { routes } from "@/routesConfig";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   View,
@@ -220,7 +219,12 @@ interface Goal {
 
 export default function AiProcess() {
   const params = useLocalSearchParams();
-  const textToProcess = params.textToProcess.toString().replaceAll('"', "");
+  const initialText =
+    typeof params.textToProcess === "string"
+      ? params.textToProcess.replaceAll('"', "").trim()
+      : "";
+  const [textInput, setTextInput] = useState(initialText);
+  const [textToProcess, setTextToProcess] = useState(initialText);
 
   const [predictionRes, setPredictionRes] = useState<PredictionResult>();
   const [predictionStatus, setPredictionStatus] = useState<
@@ -468,6 +472,7 @@ export default function AiProcess() {
   // useEffects to manage the flow
   // ---------------------------
   useEffect(() => {
+    if (!textToProcess) return;
     validateSentence(textToProcess);
   }, [textToProcess]);
 
@@ -589,9 +594,35 @@ export default function AiProcess() {
       </View>
       <View style={styles.centerContainer}>
         {loading && <ActivityIndicator size="large" color="#fff" />}
-        {step === ProcessStep.VALIDATING && (
-          <Text style={styles.titleText}>Analyzing your input...</Text>
-        )}
+        {step === ProcessStep.VALIDATING &&
+          (textToProcess ? (
+            <Text style={styles.titleText}>Analyzing your input...</Text>
+          ) : (
+            <View style={styles.inputCard}>
+              <Text style={styles.titleText}>What would you like to achieve?</Text>
+              <Text style={styles.inputHint}>
+                Describe your goal and the assistant will turn it into a practical plan.
+              </Text>
+              <TextInput
+                value={textInput}
+                onChangeText={setTextInput}
+                placeholder="e.g. Run my first 5K"
+                placeholderTextColor="#98A2B3"
+                style={styles.goalInput}
+                multiline
+                maxLength={240}
+              />
+              <Button
+                title="Build my plan"
+                onPress={() => {
+                  const trimmedText = textInput.trim();
+                  if (trimmedText) setTextToProcess(trimmedText);
+                }}
+                disabled={!textInput.trim()}
+                color="#5B43D6"
+              />
+            </View>
+          ))}
         {step === ProcessStep.ANIMATING && (
           <View style={styles.centerContainer}>
             <View style={styles.keyRow}>
@@ -742,6 +773,36 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 5,
+  },
+  inputCard: {
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 22,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  inputHint: {
+    color: "#667085",
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+    marginTop: 10,
+    marginBottom: 18,
+  },
+  goalInput: {
+    minHeight: 90,
+    borderWidth: 1,
+    borderColor: "#D0D5DD",
+    borderRadius: 12,
+    padding: 14,
+    color: "#101828",
+    fontSize: 16,
+    textAlignVertical: "top",
+    marginBottom: 16,
   },
   titleText: {
     color: "#2C3E50",

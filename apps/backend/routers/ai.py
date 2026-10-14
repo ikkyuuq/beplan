@@ -102,9 +102,19 @@ def normalize_label(label: str) -> str:
 
 @router.post("/validate", tags=["ai"])
 async def validate_sentence(input_data: AIInput):
-    if not tagger:
-        raise HTTPException(status_code=503, detail="AI models not loaded")
     try:
+        if not tagger:
+            return {
+                "original_text": input_data.text,
+                "prediction": {
+                    "specific": [],
+                    "measurable": [],
+                    "achievable": [],
+                    "relevant": [],
+                    "time_bound": [],
+                },
+            }
+
         sentence = Sentence(input_data.text)
         await run_in_threadpool(tagger.predict, sentence)
 
@@ -131,7 +141,8 @@ async def validate_sentence(input_data: AIInput):
         }
         return prediction_result
 
-    except Exception:
+    except Exception as error:
+        print(f"AI validation failed: {error}")
         raise HTTPException(status_code=500, detail="Error during prediction")
 
 
@@ -209,7 +220,10 @@ async def generate_questions(request: PredictionResult):
         ]
 
         return {"result": filtered_questions}
-    except Exception:
+    except HTTPException:
+        raise
+    except Exception as error:
+        print(f"AI question generation failed: {error}")
         raise HTTPException(status_code=500, detail="Error generating questions")
 
 
@@ -367,7 +381,10 @@ async def generate_goal(request: PredictionResult):
         )
         return ai_response
 
-    except Exception:
+    except HTTPException:
+        raise
+    except Exception as error:
+        print(f"AI goal generation failed: {error}")
         raise HTTPException(status_code=500, detail="Error generating task")
 
 
