@@ -6,7 +6,12 @@ import pytest
 from fastapi import HTTPException
 
 from backend.const.types import Goal, GoalCreateRequest, RepeatType, Task
-from backend.utils.goal_creation import Create, get_interval_dates
+from backend.utils.goal_creation import (
+    Create,
+    get_interval_dates,
+    insert_assigned_task_dates,
+    insert_tmpl_task_dates,
+)
 from backend.routers.goals import check_goal_status
 
 
@@ -37,12 +42,14 @@ def test_get_interval_dates_returns_explicit_dates_for_date_repeat():
 
 def test_create_persists_daily_task_for_each_day_inclusive():
     conn = AsyncMock()
-    ids = iter([10, 20, 30, 40, 41, 42])
+    ids = iter([10, 20, 30])  # goal, task, assigned_goal
 
     async def fetchrow(*_args):
         return {"id": next(ids)}
 
     conn.fetchrow.side_effect = fetchrow
+    # One batched INSERT ... RETURNING for the task's assigned_task rows.
+    conn.fetch.return_value = [{"id": 40}, {"id": 41}, {"id": 42}]
     req = GoalCreateRequest(
         user_id="user-1",
         goal=Goal(
@@ -55,15 +62,15 @@ def test_create_persists_daily_task_for_each_day_inclusive():
 
     asyncio.run(Create(conn, req, req.user_id))
 
-    inserted_intervals = [
-        call.args for call in conn.execute.await_args_list
-    ]
-    assert [args[-1] for args in inserted_intervals] == [
-        date(2026, 10, 5),
-        date(2026, 10, 6),
-        date(2026, 10, 7),
-    ]
-    assert [args[-2] for args in inserted_intervals] == [40, 41, 42]
+    # assigned_task rows: one batched insert sized to the 3 days (inclusive).
+    assert conn.fetch.await_count == 1
+    assert conn.fetch.await_args.args[1:] == (30, 20, 3)
+    # assigned_task_interval rows: one batched insert pairing ids with dates.
+    conn.execute.assert_awaited_once()
+    assert conn.execute.await_args.args[1:] == (
+        [40, 41, 42],
+        [date(2026, 10, 5), date(2026, 10, 6), date(2026, 10, 7)],
+    )
 
 
 def run_goal_status(total, completed, pending):
@@ -108,4 +115,40 @@ def test_goal_status_does_not_touch_remaining_tasks():
 def test_goal_status_ignores_goal_without_tasks():
     conn = run_goal_status(total=0, completed=None, pending=None)
 
+    conn.execute.assert_not_awaited()
+
+
+def test_insert_assigned_task_dates_batches_all_dates_in_two_queries():
+    conn = AsyncMock()
+    conn.fetch.return_value = [{"id": 7}, {"id": 8}]
+    dates = [date(2026, 10, 5), date(2026, 10, 6)]
+
+    asyncio.run(insert_assigned_task_dates(conn, 30, 20, dates))
+
+    assert conn.fetch.await_count == 1
+    assert "generate_series(1, $3)" in conn.fetch.await_args.args[0]
+    assert conn.fetch.await_args.args[1:] == (30, 20, 2)
+    conn.execute.assert_awaited_once()
+    assert "unnest($1::int[], $2::date[])" in conn.execute.await_args.args[0]
+    assert conn.execute.await_args.args[1:] == ([7, 8], dates)
+
+
+def test_insert_tmpl_task_dates_inserts_all_dates_in_one_query():
+    conn = AsyncMock()
+    dates = [date(2026, 10, 5), date(2026, 10, 9)]
+
+    asyncio.run(insert_tmpl_task_dates(conn, 55, dates))
+
+    conn.execute.assert_awaited_once()
+    assert "unnest($2::date[])" in conn.execute.await_args.args[0]
+    assert conn.execute.await_args.args[1:] == (55, dates)
+
+
+def test_batch_helpers_skip_tasks_without_dates():
+    conn = AsyncMock()
+
+    asyncio.run(insert_assigned_task_dates(conn, 30, 20, []))
+    asyncio.run(insert_tmpl_task_dates(conn, 55, []))
+
+    conn.fetch.assert_not_awaited()
     conn.execute.assert_not_awaited()
