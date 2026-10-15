@@ -66,47 +66,46 @@ def test_create_persists_daily_task_for_each_day_inclusive():
     assert [args[-2] for args in inserted_intervals] == [40, 41, 42]
 
 
-def test_goal_status_marks_success_when_at_least_half_tasks_succeed():
+def run_goal_status(total, completed, pending):
     conn = AsyncMock()
     conn.fetchrow.return_value = {
-        "total_tasks": 4,
-        "completed_tasks": 2,
-        "failed_tasks": 1,
+        "total_tasks": total,
+        "completed_tasks": completed,
+        "pending_tasks": pending,
     }
-
     asyncio.run(check_goal_status(conn, assigned_goal_id=30))
+    return conn
+
+
+def test_goal_status_stays_pending_while_any_task_is_pending():
+    # Even a guaranteed majority does not settle the goal early.
+    conn = run_goal_status(total=4, completed=3, pending=1)
+
+    conn.execute.assert_not_awaited()
+
+
+def test_goal_status_marks_success_when_settled_with_at_least_half_succeeded():
+    conn = run_goal_status(total=4, completed=2, pending=0)
 
     conn.execute.assert_awaited_once()
-    assert conn.execute.await_args.args[-1] == 30
-    assert "SET status = 'success'" in conn.execute.await_args.args[0]
+    assert conn.execute.await_args.args[-2:] == (30, "success")
 
 
-def test_goal_status_marks_failed_and_fails_pending_tasks_when_failures_reach_half():
-    conn = AsyncMock()
-    conn.fetchrow.return_value = {
-        "total_tasks": 4,
-        "completed_tasks": 1,
-        "failed_tasks": 2,
-    }
+def test_goal_status_marks_failed_when_settled_with_less_than_half_succeeded():
+    conn = run_goal_status(total=5, completed=2, pending=0)
 
-    asyncio.run(check_goal_status(conn, assigned_goal_id=30))
-
-    assert conn.execute.await_count == 2
-    assert "SET status = 'failed'" in conn.execute.await_args_list[0].args[0]
-    assert (
-        "SET status = 'failed'" in conn.execute.await_args_list[1].args[0]
-        and "status = 'pending'" in conn.execute.await_args_list[1].args[0]
-    )
+    conn.execute.assert_awaited_once()
+    assert conn.execute.await_args.args[-2:] == (30, "failed")
 
 
-def test_goal_status_stays_unchanged_without_a_majority():
-    conn = AsyncMock()
-    conn.fetchrow.return_value = {
-        "total_tasks": 5,
-        "completed_tasks": 2,
-        "failed_tasks": 2,
-    }
+def test_goal_status_does_not_touch_remaining_tasks():
+    conn = run_goal_status(total=4, completed=0, pending=0)
 
-    asyncio.run(check_goal_status(conn, assigned_goal_id=30))
+    sql = conn.execute.await_args.args[0]
+    assert "assigned_goal" in sql and "assigned_task" not in sql
+
+
+def test_goal_status_ignores_goal_without_tasks():
+    conn = run_goal_status(total=0, completed=None, pending=None)
 
     conn.execute.assert_not_awaited()

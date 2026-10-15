@@ -42,8 +42,8 @@ const Donate = () => {
       <footer className="donate-footer">
         <p>Thank you for your support! 💙</p>
       </footer>
-      <footer class="footer">
-        <div class="footer-container">
+      <footer className="footer">
+        <div className="footer-container">
           <p>© 2025 Planner. All Rights Reserved.</p>
           <p>Designed & Developed by <strong>BE PLANNER</strong></p>
         </div>

@@ -476,54 +476,36 @@ async def delete_goal(
 
 async def check_goal_status(conn, assigned_goal_id: int):
     """
-    Check if the goal should be marked as 'success' or 'failed'
-    based on the progress of its tasks.
+    Settle the goal once none of its tasks are pending: 'success' if at least
+    half of its tasks succeeded, otherwise 'failed'. While any task is still
+    pending the goal is left unchanged.
     """
-    # Fetch total tasks and completed tasks under the goal
     task_stats = await conn.fetchrow(
         """
-        SELECT 
+        SELECT
             COUNT(*) AS total_tasks,
             SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS completed_tasks,
-            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_tasks
+            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_tasks
         FROM public.assigned_task
         WHERE assigned_goal_id = $1
         """,
         assigned_goal_id,
     )
 
-    total_tasks = task_stats["total_tasks"]
+    total_tasks = task_stats["total_tasks"] or 0
     completed_tasks = task_stats["completed_tasks"] or 0
-    failed_tasks = task_stats["failed_tasks"] or 0
+    pending_tasks = task_stats["pending_tasks"] or 0
 
-    # Check if more than half the tasks are completed
-    if completed_tasks >= total_tasks / 2:
-        # Mark the goal as success
-        await conn.execute(
-            """
-            UPDATE public.assigned_goal
-            SET status = 'success'
-            WHERE id = $1
-            """,
-            assigned_goal_id,
-        )
-    elif failed_tasks >= total_tasks / 2:
-        # Mark the goal as failed and update only remaining pending tasks
-        await conn.execute(
-            """
-            UPDATE public.assigned_goal
-            SET status = 'failed'
-            WHERE id = $1
-            """,
-            assigned_goal_id,
-        )
+    if total_tasks == 0 or pending_tasks > 0:
+        return
 
-        await conn.execute(
-            """
-            UPDATE public.assigned_task
-            SET status = 'failed'
-            WHERE assigned_goal_id = $1
-            AND status = 'pending'
-            """,
-            assigned_goal_id,
-        )
+    status = "success" if completed_tasks * 2 >= total_tasks else "failed"
+    await conn.execute(
+        """
+        UPDATE public.assigned_goal
+        SET status = $2::status
+        WHERE id = $1
+        """,
+        assigned_goal_id,
+        status,
+    )

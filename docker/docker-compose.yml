@@ -4,6 +4,8 @@ services:
       context: ../apps/backend
       dockerfile: Dockerfile
     container_name: beplan_server_container
+    # Development: auto-reload on files synced by `docker compose watch`.
+    command: ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $${BACKEND_PORT} --reload"]
     environment:
       BACKEND_PORT: ${BACKEND_PORT:-8000}
     develop:
