@@ -31,10 +31,11 @@ services:
       resources:
         limits:
           cpus: '1'
-          memory: 1G
+          # One worker with the NER model loaded idles at ~950 MiB; 1G left no headroom.
+          memory: 2G
         reservations:
           cpus: '0.5'
-          memory: 512M
+          memory: 1G
     volumes:
       - backend_data:/app/data
     networks:
