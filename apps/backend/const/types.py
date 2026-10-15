@@ -43,5 +43,6 @@ class Goal(BaseModel):
 
 
 class GoalCreateRequest(BaseModel):
-    user_id: str
+    # Ignored: the server uses the authenticated user's id.
+    user_id: Optional[str] = None
     goal: Goal

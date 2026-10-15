@@ -6,6 +6,7 @@ import {
   Outlet,
   Navigate,
 } from "react-router-dom";
+import { useClerk, useUser } from "@clerk/clerk-react";
 import Home from "./Home";
 import AboutMe from "./AboutMe";
 import Donate from "./Donate";
@@ -50,12 +51,32 @@ const Layout = () => {
 };
 
 // สร้าง ProtectedRoute สำหรับตรวจสอบสิทธิ์
+// The backend enforces the admin role on every admin API call; this guard only
+// keeps non-admins from seeing the dashboard UI.
+// eslint-disable-next-line react/prop-types
 const ProtectedRoute = ({ children }) => {
-  const user = JSON.parse(localStorage.getItem("user"));
+  const { isLoaded, isSignedIn, user } = useUser();
+  const { signOut } = useClerk();
 
-  // หากผู้ใช้ไม่มีสิทธิ์เป็น Admin ให้ Redirect ไปหน้า Login
-  if (!user || user.role !== "admin") {
+  if (!isLoaded) {
+    return null;
+  }
+
+  // หากยังไม่ได้เข้าสู่ระบบ ให้ Redirect ไปหน้า Login
+  if (!isSignedIn) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (user.publicMetadata?.role !== "admin") {
+    return (
+      <div className="login-container">
+        <div className="login-box">
+          <h2>Not authorized</h2>
+          <p>This account does not have admin access.</p>
+          <button className="back-btn" onClick={() => signOut()}>Sign out</button>
+        </div>
+      </div>
+    );
   }
 
   return children;

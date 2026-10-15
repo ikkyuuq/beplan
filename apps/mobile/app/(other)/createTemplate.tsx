@@ -17,6 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { API_BASE_URL } from "@/constants/api";
+import { useApiFetch } from "@/hooks/useApiFetch";
 import CategoryPicker from "@/components/CategoryPicker";
 import CalendarPicker from "@/components/CalendarPicker";
 import { useUser } from "@clerk/clerk-expo";
@@ -45,6 +46,7 @@ export default function CreateTemplate() {
   const [isLoadingGoals, setIsLoadingGoals] = useState(false);
   const router = useRouter();
   const { user, isLoaded, isSignedIn } = useUser();
+  const apiFetch = useApiFetch();
   const [isLoading, setIsLoading] = useState(false);
   const [goalDates, setGoalDates] = useState<
     Map<
@@ -113,7 +115,7 @@ export default function CreateTemplate() {
       setIsLoadingGoals(true);
 
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           `${API_BASE_URL}/api/v1/template/available_goals?user_id=${userId}`,
         );
 
@@ -207,7 +209,7 @@ export default function CreateTemplate() {
           );
 
           // Create the fetch promise
-          const fetchPromise = fetch(`${API_BASE_URL}/api/v1/user/upload_image`, {
+          const fetchPromise = apiFetch(`${API_BASE_URL}/api/v1/user/upload_image`, {
             method: "POST",
             headers: {
               "Content-Type": "multipart/form-data",
@@ -401,7 +403,7 @@ export default function CreateTemplate() {
 
       console.log("📌 New Template:", JSON.stringify(newTemplate, null, 2));
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/template/create/user`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/v1/template/create/user`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newTemplate),

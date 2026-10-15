@@ -62,7 +62,7 @@ def test_update_task_status_updates_all_tasks_and_checks_each_goal(monkeypatch):
         to=Status.SUCCESS, user_id="user-1", assigned_task_id=[1, 2]
     )
 
-    result = asyncio.run(goals.update_task_status(request))
+    result = asyncio.run(goals.update_task_status(request, user_id="user-1"))
 
     assert result["assigned_task_id"] == [1, 2]
     assert sorted(call.args[1] for call in check.await_args_list) == [7, 8]
@@ -78,7 +78,7 @@ def test_update_task_status_rejects_task_owned_by_another_user(monkeypatch):
     )
 
     with pytest.raises(HTTPException) as error:
-        asyncio.run(goals.update_task_status(request))
+        asyncio.run(goals.update_task_status(request, user_id="user-1"))
 
     assert error.value.status_code == 404
     connection.execute.assert_not_awaited()
@@ -89,7 +89,7 @@ def test_get_goals_today_defaults_to_current_date(monkeypatch):
     connection.fetch.return_value = []
     patch_pool(monkeypatch, connection)
 
-    result = asyncio.run(goals.get_goals_today("user-1", None))
+    result = asyncio.run(goals.get_goals_today(today=None, user_id="user-1"))
 
     assert result == []
     assert connection.fetch.await_args.args[-2:] == ("user-1", date.today())
@@ -118,7 +118,7 @@ def test_update_goal_deletes_intervals_before_assigned_tasks(monkeypatch):
     connection.fetchrow.return_value = {"id": 5}
     patch_pool(monkeypatch, connection)
 
-    response = asyncio.run(goals.update_goal(make_update_request()))
+    response = asyncio.run(goals.update_goal(make_update_request(), user_id="user-1"))
 
     assert response.status_code == 200
     sql = executed_sql(connection)
@@ -140,7 +140,7 @@ def test_update_goal_rejects_goal_not_owned_by_user(monkeypatch):
     patch_pool(monkeypatch, connection)
 
     with pytest.raises(HTTPException) as error:
-        asyncio.run(goals.update_goal(make_update_request()))
+        asyncio.run(goals.update_goal(make_update_request(), user_id="user-1"))
 
     assert error.value.status_code == 404
     assert connection.execute.await_count == 1

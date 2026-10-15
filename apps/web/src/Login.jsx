@@ -1,52 +1,17 @@
-import { useState } from "react";
+import { SignIn } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
 
-const adminCredentials = {
-  username: "admin",
-  password: "admin123",
-};
-
+// Admin sign-in goes through Clerk. Access to /admin additionally requires the
+// Clerk user's publicMetadata.role to be "admin" (enforced by the backend).
 const Login = () => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const navigate = useNavigate();
-
-  const handleLogin = (e) => {
-    e.preventDefault();
-
-    if (username === adminCredentials.username && password === adminCredentials.password) {
-      const userData = { username, role: "admin" };
-      localStorage.setItem("user", JSON.stringify(userData)); // เก็บข้อมูลผู้ใช้
-      navigate("/admin"); // ไปที่หน้า Admin Dashboard
-    } else {
-      setError("❌ Invalid username or password!");
-    }
-  };
 
   return (
     <div className="login-container">
       <div className="login-box">
         <h2>Admin Login</h2>
-        {error && <p className="error-message">{error}</p>}
-        <form onSubmit={handleLogin}>
-          <input 
-            type="text" 
-            placeholder="Username" 
-            value={username} 
-            onChange={(e) => setUsername(e.target.value)} 
-            required 
-          />
-          <input 
-            type="password" 
-            placeholder="Password" 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-            required 
-          />
-          <button type="submit" className="login-btn">Login</button>
-        </form>
+        <SignIn routing="hash" forceRedirectUrl="/admin" />
         <button className="back-btn" onClick={() => navigate("/")}>⬅ Back to Home</button>
       </div>
     </div>

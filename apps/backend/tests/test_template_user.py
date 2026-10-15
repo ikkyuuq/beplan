@@ -43,7 +43,7 @@ def test_template_favorite_toggle_inserts_when_not_already_favorited(monkeypatch
 
     result = asyncio.run(
         template.favorite_template(
-            FavoriteTemplateRequest(user_id="user-1", template_id=7)
+            FavoriteTemplateRequest(template_id=7), user_id="user-1"
         )
     )
 
@@ -59,7 +59,7 @@ def test_template_favorite_toggle_deletes_existing_favorite(monkeypatch):
 
     result = asyncio.run(
         template.favorite_template(
-            FavoriteTemplateRequest(user_id="user-1", template_id=7)
+            FavoriteTemplateRequest(template_id=7), user_id="user-1"
         )
     )
 
@@ -129,11 +129,11 @@ def test_user_initialize_persists_profile_fields(monkeypatch):
     result = asyncio.run(
         user.initialize(
             User(
-                user_id="user-1",
                 username="Ada",
                 occupation="Engineer",
                 about="Profile",
-            )
+            ),
+            user_id="user-1",
         )
     )
 
@@ -154,12 +154,13 @@ def test_user_update_persists_image_and_profile_fields(monkeypatch):
     result = asyncio.run(
         user.update(
             User(
-                user_id="user-1",
+                user_id="spoofed-user",
                 imageUrl="https://example.test/avatar.png",
                 username="Ada",
                 occupation="Engineer",
                 about="Profile",
-            )
+            ),
+            user_id="user-1",
         )
     )
 

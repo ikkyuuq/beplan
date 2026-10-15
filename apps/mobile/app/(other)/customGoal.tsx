@@ -13,6 +13,7 @@ import TaskModal from "@/components/TaskModal";
 import CalendarPicker from "@/components/CalendarPicker";
 import CustomGoalUI from "@/components/CustomGoalUI";
 import { API_BASE_URL } from "@/constants/api";
+import { useApiFetch } from "@/hooks/useApiFetch";
 
 type Task = {
   title: string;
@@ -174,6 +175,7 @@ export default function CustomGoal() {
 
   const router = useRouter();
   const { user, isLoaded, isSignedIn } = useUser();
+  const apiFetch = useApiFetch();
 
   // ====================== Validation Effect ======================
   useEffect(() => {
@@ -311,7 +313,7 @@ export default function CustomGoal() {
         JSON.stringify(formattedGoalData, null, 2)
       );
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/goal/create`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/v1/goal/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -406,7 +408,7 @@ export default function CustomGoal() {
         JSON.stringify(formattedParams, null, 2)
       );
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/goal/update`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/v1/goal/update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

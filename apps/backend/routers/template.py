@@ -3,15 +3,13 @@ from enum import Enum
 from typing import List, Optional
 
 from asyncpg import UniqueViolationError
-from boto3.session import NoCredentialsError
-from const import s3 as S3C
+from auth import get_current_user_id, is_admin, require_admin
 from const import types as T
 from database import get_db_pool
 from dateutil.relativedelta import relativedelta
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
-from s3 import s3
-from starlette.concurrency import run_in_threadpool
+from s3 import make_object_key, upload_public_file
 from utils import date_calculation
 
 import uuid
@@ -65,7 +63,7 @@ class CreateBy(BaseModel):
 
 
 class CreateTemplateFromUserRequest(BaseModel):
-    user_id: str
+    user_id: Optional[str] = None  # ignored; taken from the auth token
     title: str
     description: Optional[str] = None
     image_url: str
@@ -136,7 +134,7 @@ class TemplateResponse(BaseModel):
 
 class ShareTemplateRequest(BaseModel):
     template_id: int
-    user_id: str
+    user_id: Optional[str] = None  # ignored; taken from the auth token
 
 class SharedTemplateResponse(BaseModel):
     id: str
@@ -151,7 +149,8 @@ class SharedTemplateURLResponse(BaseModel):
 
 @router.get("/")
 async def fetch_template(
-    user_id: Optional[str] = None, template_id: Optional[int] = None
+    template_id: Optional[int] = None,
+    user_id: str = Depends(get_current_user_id),
 ):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -302,7 +301,9 @@ async def fetch_template(
 
 
 @router.get("/available_goals")
-async def fetch_goal_for_create_template(user_id: str):
+async def fetch_goal_for_create_template(
+    user_id: str = Depends(get_current_user_id),
+):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
@@ -335,30 +336,19 @@ async def fetch_goal_for_create_template(user_id: str):
 
 
 @router.post("/upload_image")
-async def upload_image(file: UploadFile = File(...)):
-    try:
-        await run_in_threadpool(
-            s3.upload_fileobj,
-            file.file,
-            S3C.BUCKET_NAME,
-            file.filename,
-            ExtraArgs={
-                "ContentType": file.content_type or "application/octet-stream",
-                "ACL": "public-read",
-            },
-        )
-
-        s3_url = (
-            f"https://{S3C.BUCKET_NAME}.s3.{S3C.REGION}.amazonaws.com/{file.filename}"
-        )
-
-        return {"filename": file.filename, "url": s3_url, "status": "uploaded"}
-    except NoCredentialsError:
-        raise HTTPException(status_code=500, detail="AWS credentials not found")
+async def upload_image(
+    file: UploadFile = File(...), user_id: str = Depends(get_current_user_id)
+):
+    key = make_object_key("templates", user_id, file.filename)
+    return await upload_public_file(file, key)
 
 
 @router.post("/create")
-async def create_template(req: CreateTemplateRequest):
+async def create_template(
+    req: CreateTemplateRequest, _admin_id: str = Depends(require_admin)
+):
+    # Templates created here are official BePlan templates.
+    req.created_by = "BePlan"
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
@@ -475,7 +465,11 @@ async def create_template(req: CreateTemplateRequest):
 
 
 @router.post("/create/user")
-async def create_template_from_user_goals(req: CreateTemplateFromUserRequest):
+async def create_template_from_user_goals(
+    req: CreateTemplateFromUserRequest, user_id: str = Depends(get_current_user_id)
+):
+    req.user_id = user_id
+    req.created_by = user_id
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
@@ -809,12 +803,15 @@ async def create_template_from_user_goals(req: CreateTemplateFromUserRequest):
 
 class AssignTemplateRequest(BaseModel):
     template_id: int
-    user_id: str
+    user_id: Optional[str] = None  # ignored; taken from the auth token
     start_date: date
 
 
 @router.post("/assign")
-async def assign_template(req: AssignTemplateRequest):
+async def assign_template(
+    req: AssignTemplateRequest, user_id: str = Depends(get_current_user_id)
+):
+    req.user_id = user_id
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
@@ -913,11 +910,23 @@ async def assign_template(req: AssignTemplateRequest):
 
 
 @router.delete("/delete")
-async def delete_template(template_id: int):
+async def delete_template(
+    template_id: int, user_id: str = Depends(get_current_user_id)
+):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
             async with conn.transaction():
+                created_by = await conn.fetchval(
+                    "SELECT created_by FROM public.template WHERE id = $1", template_id
+                )
+                if created_by is None:
+                    raise HTTPException(status_code=404, detail="Template not found")
+                # Creators may delete their own templates; admins may delete any.
+                if created_by != user_id and not await is_admin(user_id):
+                    raise HTTPException(
+                        status_code=403, detail="Not allowed to delete this template"
+                    )
                 await conn.execute(
                     "DELETE FROM public.template WHERE id = $1", template_id
                 )
@@ -931,12 +940,15 @@ async def delete_template(template_id: int):
 
 
 class FavoriteTemplateRequest(BaseModel):
-    user_id: str
+    user_id: Optional[str] = None  # ignored; taken from the auth token
     template_id: int
 
 
 @router.put("/toggle_favorite")
-async def favorite_template(req: FavoriteTemplateRequest):
+async def favorite_template(
+    req: FavoriteTemplateRequest, user_id: str = Depends(get_current_user_id)
+):
+    req.user_id = user_id
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
@@ -983,7 +995,11 @@ async def favorite_template(req: FavoriteTemplateRequest):
 
 
 @router.get("/favorite/{user_id}")
-async def get_favorite_templates(user_id: str):
+async def get_favorite_templates(
+    user_id: str, current_user_id: str = Depends(get_current_user_id)
+):
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="Not allowed to view these favorites")
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
@@ -1010,7 +1026,9 @@ async def get_favorite_templates(user_id: str):
 
 
 @router.put("/update")
-async def update_template(req: UpdateTemplateRequest):
+async def update_template(
+    req: UpdateTemplateRequest, _admin_id: str = Depends(require_admin)
+):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
@@ -1024,8 +1042,11 @@ async def update_template(req: UpdateTemplateRequest):
 
 # Make template shareable by generate URL
 @router.post("/shared_template",response_model = SharedTemplateResponse)
-async def shared_template(req: ShareTemplateRequest):
+async def shared_template(
+    req: ShareTemplateRequest, user_id: str = Depends(get_current_user_id)
+):
     "Generate template unique shareabel URL"
+    req.user_id = user_id
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         unique_id = str(uuid.uuid4())

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { useAuth, useClerk, useUser } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom"; // นำเข้า useNavigate
 import "./AdminDashboard.css";
 
@@ -7,6 +8,9 @@ const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 const AdminDashboard = () => {
+    const { getToken } = useAuth();
+    const { signOut } = useClerk();
+    const { user } = useUser();
     const [templates, setTemplates] = useState([]);
     const [editingTemplate, setEditingTemplate] = useState({
         title: "",
@@ -25,8 +29,8 @@ const AdminDashboard = () => {
     const [newGoalDueDate, setNewGoalDueDate] = useState("");
     const categories = ["Workout Routine", "Personal Budgeting", "Healthy Eating"];
     const userAccount = {
-        name: "Admin",
-        profilePic: "https://cdn-icons-png.flaticon.com/512/847/847969.png",
+        name: user?.fullName || user?.primaryEmailAddress?.emailAddress || "Admin",
+        profilePic: user?.imageUrl || "https://cdn-icons-png.flaticon.com/512/847/847969.png",
     };
     const [newTaskType, setNewTaskType] = useState(null);
     const [selectedDays, setSelectedDays] = useState([]);
@@ -40,24 +44,21 @@ const AdminDashboard = () => {
 
     const navigate = useNavigate(); // เรียกใช้ useNavigate
 
-    useEffect(() => {
-        // ดึงข้อมูลผู้ใช้จาก localStorage
-        const user = JSON.parse(localStorage.getItem("user"));
-
-    if (!user || user.role !== "admin") {
-        navigate("/login", { replace: true }); // Redirect ไปหน้า Login และแทนที่ประวัติการนำทาง
-        }
-    }, [navigate]);
-    
-    const handleLogout = () => {
-        localStorage.removeItem("user"); // ลบข้อมูลผู้ใช้
+    const handleLogout = async () => {
+        await signOut();
         navigate("/login"); // Redirect ไปหน้า Login
     };
+
+    // Every admin API call carries the Clerk session token; the backend checks the admin role.
+    const authConfig = useCallback(async (headers = {}) => {
+        const token = await getToken();
+        return { headers: { ...headers, Authorization: `Bearer ${token}` } };
+    }, [getToken]);
 
 
     const fetchTemplates = useCallback(async () => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/api/v1/template`);
+            const response = await axios.get(`${API_BASE_URL}/api/v1/template`, await authConfig());
             setTemplates(response.data);
             return true;
         } catch (error) {
@@ -66,7 +67,7 @@ const AdminDashboard = () => {
             console.error("Error fetching templates:", message);
             return false;
         }
-    }, []);
+    }, [authConfig]);
 
     useEffect(() => {
         fetchTemplates();
@@ -203,16 +204,16 @@ const AdminDashboard = () => {
         setErrorMessage("");
         try {
             if (creatingTemplate) {
-                await axios.post(`${API_BASE_URL}/api/v1/template/create`, templateData, {
-                    headers: { "Content-Type": "application/json" },
-                });
+                await axios.post(
+                    `${API_BASE_URL}/api/v1/template/create`,
+                    templateData,
+                    await authConfig({ "Content-Type": "application/json" }),
+                );
             } else {
                 const response = await axios.put(`${API_BASE_URL}/api/v1/template/update`, {
                     template_id: editingTemplate.id,
                     ...templateData,
-                }, {
-                    headers: { "Content-Type": "application/json" },
-                });
+                }, await authConfig({ "Content-Type": "application/json" }));
                 if (!response.data) {
                     throw new Error("The server did not confirm the template update.");
                 }
@@ -234,7 +235,10 @@ const AdminDashboard = () => {
     const handleDeleteTemplate = async (id) => {
         setErrorMessage("");
         try {
-            await axios.delete(`${API_BASE_URL}/api/v1/template/delete?template_id=${id}`);
+            await axios.delete(
+                `${API_BASE_URL}/api/v1/template/delete?template_id=${id}`,
+                await authConfig(),
+            );
             await fetchTemplates();
         } catch (error) {
             const message = error.response?.data?.detail || error.message || "Unable to delete template.";

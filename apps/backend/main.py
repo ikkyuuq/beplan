@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from auth import get_current_user_id
 from database import lifespan
 from routers import ai, analysis, goals, reschedule, template, user
 
@@ -17,12 +18,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(ai.router, prefix="/api/v1/ai")
-app.include_router(goals.router, prefix="/api/v1/goal")
-app.include_router(reschedule.router, prefix="/api/v1/reschedule")
+# Every route in these routers requires a valid Clerk session token.
+authenticated = [Depends(get_current_user_id)]
+
+app.include_router(ai.router, prefix="/api/v1/ai", dependencies=authenticated)
+app.include_router(goals.router, prefix="/api/v1/goal", dependencies=authenticated)
+app.include_router(
+    reschedule.router, prefix="/api/v1/reschedule", dependencies=authenticated
+)
+# Template auth is per-route: shared links stay public, BePlan templates need admin.
 app.include_router(template.router, prefix="/api/v1/template")
-app.include_router(analysis.router, prefix="/api/v1/analysis")
-app.include_router(user.router, prefix="/api/v1/user")
+app.include_router(
+    analysis.router, prefix="/api/v1/analysis", dependencies=authenticated
+)
+app.include_router(user.router, prefix="/api/v1/user", dependencies=authenticated)
 
 
 @app.get("/get")
