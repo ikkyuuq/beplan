@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Tuple
 from auth import get_current_user_id
 from database import get_db_pool
 from fastapi import APIRouter, Depends, HTTPException
+from routers.goals import fail_overdue_tasks
+from utils.client_date import get_client_today
 
 router = APIRouter()
 
@@ -267,10 +269,14 @@ async def compute_template_analysis(templates: List[Dict]) -> Dict:
 
 
 @router.get("/")
-async def read_analysis(user_id: str = Depends(get_current_user_id)):
+async def read_analysis(
+    user_id: str = Depends(get_current_user_id),
+    client_today: date = Depends(get_client_today),
+):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
+            await fail_overdue_tasks(conn, user_id, client_today)
             today = datetime.now()
             week_ago = today - timedelta(days=6)
             two_week_ago = today - timedelta(days=13)
