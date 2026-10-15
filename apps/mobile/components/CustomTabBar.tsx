@@ -1,6 +1,6 @@
 import { View, StyleSheet, LayoutChangeEvent } from "react-native";
 import TabBarButton from "./TabBarButton";
-import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import type { BottomTabBarProps } from "expo-router/tabs";
 import { useEffect, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
