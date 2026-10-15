@@ -2,9 +2,10 @@ import logging
 from datetime import date
 from typing import List, Optional
 
+from auth import get_current_user_id
 from const import types as T
 from database import get_db_pool
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from utils import goal_creation
@@ -50,14 +51,14 @@ class FetchGoal(BaseModel):
 
 
 class GoalUpdateRequest(BaseModel):
-    user_id: str
+    user_id: Optional[str] = None  # ignored; taken from the auth token
     assigned_goal_id: int
     goal: GoalUpdate
 
 
 class TaskUpdateRequest(BaseModel):
     to: T.Status
-    user_id: str
+    user_id: Optional[str] = None  # ignored; taken from the auth token
     assigned_task_id: List[int]
 
 
@@ -65,12 +66,14 @@ router = APIRouter()
 
 
 @router.post("/create")
-async def create_goal(req: T.GoalCreateRequest):
+async def create_goal(
+    req: T.GoalCreateRequest, user_id: str = Depends(get_current_user_id)
+):
     pool = await get_db_pool()
     try:
         async with pool.acquire() as conn:
             async with conn.transaction():
-                await goal_creation.Create(conn, req, req.user_id)
+                await goal_creation.Create(conn, req, user_id)
         return JSONResponse(
             content={
                 "status": "success",
@@ -88,7 +91,9 @@ async def create_goal(req: T.GoalCreateRequest):
 
 
 @router.put("/update")
-async def update_goal(req: GoalUpdateRequest):
+async def update_goal(
+    req: GoalUpdateRequest, user_id: str = Depends(get_current_user_id)
+):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
@@ -105,7 +110,7 @@ async def update_goal(req: GoalUpdateRequest):
                     req.goal.start_date,
                     req.goal.due_date,
                     req.goal.id,
-                    req.user_id,
+                    user_id,
                     req.assigned_goal_id,
                 )
                 if res != "UPDATE 1":
@@ -245,7 +250,7 @@ async def update_goal(req: GoalUpdateRequest):
 
 
 @router.get("/{assigned_goal_id}")
-async def get_goal(assigned_goal_id: int):
+async def get_goal(assigned_goal_id: int, user_id: str = Depends(get_current_user_id)):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
@@ -255,9 +260,10 @@ async def get_goal(assigned_goal_id: int):
                 SELECT g.id, g.title, g.type, ag.start_date, ag.due_date
                 FROM goal g
                 JOIN assigned_goal ag ON g.id = ag.goal_id
-                WHERE ag.id = $1
+                WHERE ag.id = $1 AND ag.user_id = $2
                 """,
                 assigned_goal_id,
+                user_id,
             )
 
             if not goal_data:
@@ -329,8 +335,8 @@ async def get_goal(assigned_goal_id: int):
 
 @router.get("/")
 async def get_goals_today(
-    user_id: str,
     today: Optional[date] = Query(default=None, description="Current date (YYYY-MM-DD)"),
+    user_id: str = Depends(get_current_user_id),
 ):
     # Resolve per request; a default evaluated at import goes stale after midnight.
     today = today or date.today()
@@ -395,7 +401,9 @@ async def get_goals_today(
 
 
 @router.put("/update_task_status")
-async def update_task_status(request: TaskUpdateRequest):
+async def update_task_status(
+    request: TaskUpdateRequest, user_id: str = Depends(get_current_user_id)
+):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         task_ids = list(set(request.assigned_task_id))
@@ -411,7 +419,7 @@ async def update_task_status(request: TaskUpdateRequest):
             AND at.status = 'pending'
             """,
             task_ids,
-            request.user_id,
+            user_id,
         )
         if not task_ids or len(assigned_tasks) != len(task_ids):
             raise HTTPException(status_code=404, detail="Task not found for this user")
@@ -443,16 +451,21 @@ async def update_task_status(request: TaskUpdateRequest):
 
 
 @router.delete("/delete/{assigned_goal_id}")
-async def delete_goal(assigned_goal_id: int):
+async def delete_goal(
+    assigned_goal_id: int, user_id: str = Depends(get_current_user_id)
+):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
-        await conn.execute(
+        res = await conn.execute(
             """
             DELETE FROM public.assigned_goal
-            WHERE id = $1
+            WHERE id = $1 AND user_id = $2
             """,
             assigned_goal_id,
+            user_id,
         )
+        if res != "DELETE 1":
+            raise HTTPException(status_code=404, detail="Goal not found for this user")
         return JSONResponse(
             content={
                 "status": "success",

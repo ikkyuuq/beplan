@@ -44,7 +44,7 @@ def test_reschedule_updates_task_interval_for_owner(monkeypatch):
         new_date=date(2026, 10, 15),
     )
 
-    result = asyncio.run(reschedule.reschedule_task(request))
+    result = asyncio.run(reschedule.reschedule_task(request, user_id=request.user_id))
 
     assert result == {
         "message": "Task rescheduled to 2026-10-15",
@@ -72,7 +72,7 @@ def test_reschedule_rejects_task_not_owned_by_user(monkeypatch):
     )
 
     with pytest.raises(HTTPException) as error:
-        asyncio.run(reschedule.reschedule_task(request))
+        asyncio.run(reschedule.reschedule_task(request, user_id=request.user_id))
 
     assert error.value.status_code == 404
     connection.execute.assert_not_awaited()
@@ -94,6 +94,6 @@ def test_reschedule_reports_when_no_interval_was_updated(monkeypatch):
     )
 
     with pytest.raises(HTTPException) as error:
-        asyncio.run(reschedule.reschedule_task(request))
+        asyncio.run(reschedule.reschedule_task(request, user_id=request.user_id))
 
     assert error.value.status_code == 500

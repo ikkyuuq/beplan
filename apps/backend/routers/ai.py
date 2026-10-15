@@ -5,9 +5,10 @@ from enum import Enum
 from typing import Dict, List
 
 from anthropic import Anthropic
+from auth import get_current_user_id
 from const import types as T
 from database import get_db_pool
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from flair.data import Sentence
 from flair.models import SequenceTagger
 from huggingface_hub import hf_hub_download
@@ -392,12 +393,14 @@ async def generate_goal(request: PredictionResult):
 
 
 @router.post("/create", tags=["goal"])
-async def create_goal(req: T.GoalCreateRequest):
+async def create_goal(
+    req: T.GoalCreateRequest, user_id: str = Depends(get_current_user_id)
+):
     pool = await get_db_pool()
     try:
         async with pool.acquire() as conn:
             async with conn.transaction():
-                await goal_creation.Create(conn, req, req.user_id)
+                await goal_creation.Create(conn, req, user_id)
 
                 return {
                     "status": "success",

@@ -4,6 +4,7 @@ import { useUser } from "@clerk/clerk-expo";
 import { useFocusEffect, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons"; // สำหรับไอคอนปุ่มย้อนกลับ
 import { API_BASE_URL } from "@/constants/api";
+import { type ApiFetch, useApiFetch } from "@/hooks/useApiFetch";
 
 type Task = {
   id: number;
@@ -25,12 +26,15 @@ type Goal = {
 };
 
 // ====================== Service สำหรับดึงข้อมูล ======================
-const fetchAllGoalsAndTasks = async (userId: string): Promise<Goal[]> => {
+const fetchAllGoalsAndTasks = async (
+  apiFetch: ApiFetch,
+  userId: string
+): Promise<Goal[]> => {
   try {
     if (!userId) throw new Error("User ID is required");
 
     // เรียกใช้ endpoint ที่มีอยู่
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/v1/goal/?user_id=${encodeURIComponent(userId)}`
     );
 
@@ -51,6 +55,7 @@ const fetchAllGoalsAndTasks = async (userId: string): Promise<Goal[]> => {
 // ====================== หน้า AllGoalAllTask ======================
 export default function AllGoalAllTask() {
   const { user } = useUser();
+  const apiFetch = useApiFetch();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +71,7 @@ export default function AllGoalAllTask() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await fetchAllGoalsAndTasks(user.id);
+      const data = await fetchAllGoalsAndTasks(apiFetch, user.id);
       console.log("Fetched Data:", data); // Log ข้อมูลที่ได้
       setGoals(data);
     } catch (error) {

@@ -27,6 +27,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import TemplateCard from "@/components/TemplateCard";
 import TemplateModal from "@/components/TemplateModal";
 import { API_BASE_URL } from "@/constants/api";
+import { useApiFetch } from "@/hooks/useApiFetch";
 
 type Task = {
   title: string;
@@ -66,6 +67,7 @@ type Template = {
 
 // ====================== Main Component ======================
 export default function CreateScreen() {
+  const apiFetch = useApiFetch();
   // ====================== Animation Values ======================
   const headerOpacity = useSharedValue(0);
   const searchInputOpacity = useSharedValue(0);
@@ -157,7 +159,7 @@ export default function CreateScreen() {
     const fetchTemplates = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/template/`);
+        const response = await apiFetch(`${API_BASE_URL}/api/v1/template/`);
         if (!response.ok) {
           throw new Error("Network response was not ok");
         }

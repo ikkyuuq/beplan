@@ -26,6 +26,7 @@ import Animated, {
 import OccupationSelector from "@/components/OccupationSelector";
 import * as ImagePicker from "expo-image-picker";
 import { API_BASE_URL } from "@/constants/api";
+import { useApiFetch } from "@/hooks/useApiFetch";
 
 // ====================== Main Component ======================
 export default function UserSettings() {
@@ -33,6 +34,7 @@ export default function UserSettings() {
   const router = useRouter();
   const { signOut } = useClerk();
   const { user, isLoaded } = useUser();
+  const apiFetch = useApiFetch();
 
   // ====================== State Management ======================
   const [isChangingUsername, setIsChangingUsername] = useState(false);
@@ -171,7 +173,7 @@ export default function UserSettings() {
 
             console.log("Initializing user with data:", userData);
 
-            let response = await fetch(`${API_BASE_URL}/api/v1/user/initialize`, {
+            let response = await apiFetch(`${API_BASE_URL}/api/v1/user/initialize`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -191,7 +193,7 @@ export default function UserSettings() {
                 responseText.includes("duplicate key value")
               ) {
                 console.log("Duplicate user detected, updating instead...");
-                response = await fetch(`${API_BASE_URL}/api/v1/user/update`, {
+                response = await apiFetch(`${API_BASE_URL}/api/v1/user/update`, {
                   method: "PUT",
                   headers: {
                     "Content-Type": "application/json",
@@ -352,7 +354,7 @@ export default function UserSettings() {
               type: uploadedImage.mimeType,
             } as any);
 
-            const uploadResp = await fetch(
+            const uploadResp = await apiFetch(
               `${API_BASE_URL}/api/v1/user/upload_image`,
               {
                 method: "POST",
@@ -367,7 +369,7 @@ export default function UserSettings() {
             }
             const data = await uploadResp.json();
 
-            const updateUserResp = await fetch(
+            const updateUserResp = await apiFetch(
               `${API_BASE_URL}/api/v1/user/update`,
               {
                 method: "PUT",

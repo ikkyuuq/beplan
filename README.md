@@ -69,6 +69,18 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - Test endpoints using Postman or a browser.
 - The backend connects to **Neon PostgreSQL**.
 
+#### Authentication
+All `/api/v1/*` routes (except public shared-template links) require a Clerk
+session token: `Authorization: Bearer <token>`. The backend takes the user id
+from the token, so any `user_id` a client sends is ignored. Set these in
+`docker/.env` (see `docker/.env.example`):
+- `CLERK_ISSUER`: the Clerk Frontend API URL, e.g. `https://<name>.clerk.accounts.dev`
+- `CLERK_SECRET_KEY`: needed for admin-only endpoints (creating, updating and
+  deleting BePlan templates)
+
+To make someone an admin of the web dashboard, open their user in the Clerk Dashboard
+and set **Public metadata** to `{ "role": "admin" }`.
+
 ---
 
 ## Running with Docker

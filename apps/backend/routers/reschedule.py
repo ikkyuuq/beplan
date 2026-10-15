@@ -1,8 +1,10 @@
 from datetime import date
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from auth import get_current_user_id
 from database import get_db_pool
 
 router = APIRouter()
@@ -10,12 +12,14 @@ router = APIRouter()
 
 class RescheduleTaskRequest(BaseModel):
     assigned_task_id: int
-    user_id: str
+    user_id: Optional[str] = None  # ignored; taken from the auth token
     new_date: date
 
 
 @router.put("/task")
-async def reschedule_task(request: RescheduleTaskRequest):
+async def reschedule_task(
+    request: RescheduleTaskRequest, user_id: str = Depends(get_current_user_id)
+):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         # Check if the task exists and belongs to the user
@@ -28,7 +32,7 @@ async def reschedule_task(request: RescheduleTaskRequest):
             AND ag.user_id = $2
             """,
             request.assigned_task_id,
-            request.user_id,
+            user_id,
         )
 
         if not assigned_task:

@@ -32,6 +32,7 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
 import React from "react";
 import { API_BASE_URL } from "@/constants/api";
+import { useApiFetch } from "@/hooks/useApiFetch";
 
 type Task = {
   id: number;
@@ -59,6 +60,7 @@ export default function Schedule() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const { user } = useUser();
+  const apiFetch = useApiFetch();
   const router = useRouter();
 
   const dayNames = ["S", "M", "T", "W", "T", "F", "S"];
@@ -137,7 +139,7 @@ export default function Schedule() {
       setIsLoading(true);
       setError(null);
       try {
-        const resp = await fetch(
+        const resp = await apiFetch(
           `${API_BASE_URL}/api/v1/goal/?user_id=${encodeURIComponent(
             userId
           )}&today=${format(
@@ -183,7 +185,7 @@ export default function Schedule() {
     taskIds: number[],
   ) => {
     try {
-      await fetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
+      await apiFetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -209,7 +211,7 @@ export default function Schedule() {
     taskIds: number[],
   ) => {
     try {
-      await fetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
+      await apiFetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -236,7 +238,7 @@ export default function Schedule() {
     goalId: number,
   ) => {
     try {
-      await fetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
+      await apiFetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -265,7 +267,7 @@ export default function Schedule() {
     goalId: number,
   ) => {
     try {
-      await fetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
+      await apiFetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -294,7 +296,7 @@ export default function Schedule() {
     date: string,
   ) => {
     try {
-      await fetch(`${API_BASE_URL}/api/v1/reschedule/task`, {
+      await apiFetch(`${API_BASE_URL}/api/v1/reschedule/task`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -324,7 +326,7 @@ export default function Schedule() {
   const handleCustomizeGoal = async (goal: Goal) => {
     setIsLoading(true);
     try {
-      const resp = await fetch(`${API_BASE_URL}/api/v1/goal/${goal.id}`, {
+      const resp = await apiFetch(`${API_BASE_URL}/api/v1/goal/${goal.id}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -361,7 +363,7 @@ export default function Schedule() {
 
   const handleDeleteGoal = async (goalId: number) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/goal/delete/${goalId}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/v1/goal/delete/${goalId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

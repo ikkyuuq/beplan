@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useUser } from "@clerk/clerk-expo";
 import { API_BASE_URL } from "@/constants/api";
+import { useApiFetch } from "@/hooks/useApiFetch";
 import Animated, {
   interpolateColor,
   runOnJS,
@@ -233,6 +234,7 @@ export default function AiProcess() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { user } = useUser();
+  const apiFetch = useApiFetch();
 
   // Process step state
   const [step, setStep] = useState<ProcessStep>(ProcessStep.VALIDATING);
@@ -264,7 +266,7 @@ export default function AiProcess() {
   const validateSentence = async (sentence: string): Promise<boolean> => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/api/v1/ai/validate`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/v1/ai/validate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: sentence }),
@@ -317,7 +319,7 @@ export default function AiProcess() {
         {} as Record<string, any[]>,
       );
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/api/v1/ai/generate-questions`,
         {
           method: "POST",
@@ -359,7 +361,7 @@ export default function AiProcess() {
         },
         {} as Record<string, any[]>,
       );
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/api/v1/ai/submit-question`,
         {
           method: "POST",
@@ -416,7 +418,7 @@ export default function AiProcess() {
         },
         {} as Record<string, any[]>,
       );
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/api/v1/ai/generate-goal`,
         {
           method: "POST",
@@ -449,7 +451,7 @@ export default function AiProcess() {
     }
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/api/v1/ai/create`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/v1/ai/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, goal }),

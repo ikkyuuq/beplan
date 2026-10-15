@@ -17,6 +17,7 @@ import TemplateModal from "@/components/TemplateModal";
 import Header from "@/components/Header";
 import { useUser } from "@clerk/clerk-expo";
 import { API_BASE_URL } from "@/constants/api";
+import { useApiFetch } from "@/hooks/useApiFetch";
 
 type Task = {
   title: string;
@@ -71,6 +72,7 @@ export default function Community() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user, isLoaded } = useUser();
+  const apiFetch = useApiFetch();
 
   // ====================== Category Configuration ======================
   const categories = [
@@ -95,7 +97,7 @@ export default function Community() {
       }
 
       setError(null);
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/api/v1/template?user_id=${encodeURIComponent(user.id)}`,
       );
       if (!response.ok) {
@@ -126,7 +128,7 @@ export default function Community() {
         return;
       }
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/api/v1/template/available_goals?user_id=${encodeURIComponent(user.id)}`,
       );
 
@@ -191,7 +193,7 @@ export default function Community() {
         throw new Error("User ID is missing. Please log in.");
       }
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/api/v1/template/toggle_favorite/`,
         {
           method: "PUT",

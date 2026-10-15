@@ -23,6 +23,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { API_BASE_URL } from "@/constants/api";
+import { useApiFetch } from "@/hooks/useApiFetch";
 
 // ====================== Type Definitions ======================
 type Creator = {
@@ -100,6 +101,7 @@ export default function TemplateModal({
   onToggleFavorite,
   data,
 }: TemplateModalProps) {
+  const apiFetch = useApiFetch();
   // ====================== State Management ======================
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [activeTab, setActiveTab] = useState<
@@ -166,7 +168,7 @@ export default function TemplateModal({
               };
 
               // Make API call
-              const response = await fetch(
+              const response = await apiFetch(
                 `${API_BASE_URL}/api/v1/template/assign`,
                 {
                   method: "POST",

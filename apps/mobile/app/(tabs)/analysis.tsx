@@ -21,6 +21,7 @@ import { LineChart, PieChart } from "react-native-chart-kit";
 import { useUser } from "@clerk/clerk-expo";
 import Header from "@/components/Header";
 import { API_BASE_URL } from "@/constants/api";
+import { useApiFetch } from "@/hooks/useApiFetch";
 
 // ====================== Type Definitions ======================
 type AnalyticsData = {
@@ -75,6 +76,7 @@ export default function Analysis() {
 
   // ====================== Hooks & State ======================
   const { user, isLoaded } = useUser();
+  const apiFetch = useApiFetch();
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(
     null
   );
@@ -90,7 +92,7 @@ export default function Analysis() {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/api/v1/analysis/?user_id=${user.id}`
       );
 

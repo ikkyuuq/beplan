@@ -3,8 +3,9 @@ from datetime import date, datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Tuple
 
+from auth import get_current_user_id
 from database import get_db_pool
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 router = APIRouter()
 
@@ -266,7 +267,7 @@ async def compute_template_analysis(templates: List[Dict]) -> Dict:
 
 
 @router.get("/")
-async def read_analysis(user_id: str):
+async def read_analysis(user_id: str = Depends(get_current_user_id)):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
