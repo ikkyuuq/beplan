@@ -324,3 +324,18 @@ def test_generate_goal_returns_http_500_when_provider_fails(monkeypatch):
         asyncio.run(generate_goal(G_PERFECT_PREDICTION_RESULT))
 
     assert error.value.status_code == 500
+
+
+def test_generate_goal_requires_time_bound(monkeypatch):
+    call = Mock()
+    monkeypatch.setattr(ai_module, "call_anthropic_api", call)
+    request = PredictionResult(
+        original_text="I want to lose 10 pounds",
+        prediction={"specific": [{"text": "lose"}], "time_bound": []},
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(generate_goal(request))
+
+    assert error.value.status_code == 400
+    call.assert_not_called()
