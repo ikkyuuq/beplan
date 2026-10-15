@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Calendar } from "react-native-calendars";
+import { format } from "date-fns";
 import Modal from "react-native-modal";
 import Animated, {
   useSharedValue,
@@ -44,9 +45,9 @@ export default function CalendarPicker({
   dueDate,
 }: CalendarPickerProps) {
   // ====================== Constants ======================
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayString = today.toISOString().split("T")[0];
+  // Local calendar date. (toISOString() would convert to UTC and give
+  // yesterday's date in timezones ahead of UTC, e.g. Thailand.)
+  const todayString = format(new Date(), "yyyy-MM-dd");
 
   // ====================== State Management ======================
   const [selectedDates, setSelectedDates] = useState<string[]>(initialDates);
@@ -108,42 +109,10 @@ export default function CalendarPicker({
     });
   };
 
-  // ====================== Disabled Dates Generation ======================
-  const createDisabledDates = () => {
-    const disabledDates: Record<string, any> = {};
-    const currentDate = new Date(finalMinDate || todayString);
-    const endDate = new Date(finalMaxDate || "2099-12-31");
-
-    if (finalMinDate) {
-      const tempDate = new Date(currentDate);
-      while (tempDate >= new Date(todayString)) {
-        const dateString = tempDate.toISOString().split("T")[0];
-        if (tempDate < today) {
-          disabledDates[dateString] = {
-            disabled: true,
-            disableTouchEvent: true,
-          };
-        }
-        tempDate.setDate(tempDate.getDate() - 1);
-      }
-    }
-
-    if (finalMaxDate) {
-      const tempDate = new Date(endDate);
-      tempDate.setDate(tempDate.getDate() + 1);
-      while (tempDate <= new Date("2099-12-31")) {
-        const dateString = tempDate.toISOString().split("T")[0];
-        disabledDates[dateString] = { disabled: true, disableTouchEvent: true };
-        tempDate.setDate(tempDate.getDate() + 1);
-      }
-    }
-
-    return disabledDates;
-  };
-
   // ====================== Calendar Markings ======================
+  // Only selected dates are marked; minDate/maxDate already grey out and
+  // block everything outside the allowed range.
   const markedDates = {
-    ...createDisabledDates(),
     ...selectedDates.reduce(
       (acc, date) => ({
         ...acc,
@@ -162,7 +131,9 @@ export default function CalendarPicker({
   // ====================== Render UI ======================
   return (
     <View>
-      <Modal isVisible={visible}>
+      {/* A custom backdrop keeps react-native-modal from wrapping it in
+          TouchableWithoutFeedback, which logs a React 19 element.ref error on web. */}
+      <Modal isVisible={visible} customBackdrop={<View style={styles.backdrop} />}>
         <Animated.View style={[styles.modalContent, modalAnimatedStyle]}>
           {/* Calendar Section */}
           <View style={styles.calendarContainer}>
@@ -174,8 +145,16 @@ export default function CalendarPicker({
                 toggleDateSelection(day.dateString)
               }
               markedDates={markedDates}
-              disableAllTouchEventsForDisabledDays={false}
+              disableAllTouchEventsForDisabledDays={true}
               enableSwipeMonths={true}
+              theme={calendarTheme}
+              renderHeader={(month: Date) => (
+                // The library's default title calls month.toString("MMMM yyyy"),
+                // which a plain Date ignores, printing "Fri Oct 16 2026 01:44:39 GMT+0700".
+                <Text style={styles.calendarHeader}>
+                  {format(new Date(+month), "EEE MMM d")}
+                </Text>
+              )}
             />
           </View>
 
@@ -207,8 +186,29 @@ export default function CalendarPicker({
   );
 }
 
+// ====================== Calendar Theme ======================
+// High-contrast days: available dates dark and slightly bold, unavailable
+// dates a readable grey (the library default #d9e1e8 is nearly invisible).
+const calendarTheme = {
+  dayTextColor: "#1f2933",
+  textDisabledColor: "#9aa5b1",
+  todayTextColor: "#2563eb",
+  monthTextColor: "#1f2933",
+  arrowColor: "#1f2933",
+  textSectionTitleColor: "#52606d",
+  textDayFontWeight: "500" as const,
+  textMonthFontWeight: "bold" as const,
+  textDayFontSize: 16,
+};
+
 // ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Modal backdrop (react-native-modal fades it to backdropOpacity)
+  backdrop: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+
   // Modal Container
   modalContent: {
     width: "90%",
@@ -225,6 +225,11 @@ const styles = StyleSheet.create({
   },
 
   // Typography
+  calendarHeader: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1f2933",
+  },
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",

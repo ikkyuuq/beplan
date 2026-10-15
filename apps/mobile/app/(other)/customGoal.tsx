@@ -12,6 +12,7 @@ import {
 import TaskModal from "@/components/TaskModal";
 import CalendarPicker from "@/components/CalendarPicker";
 import CustomGoalUI from "@/components/CustomGoalUI";
+import { format } from "date-fns";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
 
@@ -474,7 +475,7 @@ export default function CustomGoal() {
   // ====================== Check if Goal Has Started ======================
   useEffect(() => {
     if (startDate) {
-      const today = new Date().toISOString().split("T")[0];
+      const today = format(new Date(), "yyyy-MM-dd");
       const hasStarted = today >= startDate;
       setGoalStarted(hasStarted);
     }
@@ -582,7 +583,7 @@ export default function CustomGoal() {
         initialDates={startDate ? [startDate] : []}
         highlightColor="#4F46E5"
         singleSelect
-        minDate={new Date().toISOString().split("T")[0]}
+        minDate={format(new Date(), "yyyy-MM-dd")}
         maxDate={dueDate}
         otherSelectedDate={dueDate}
         otherHighlightColor="#FF5733"
@@ -599,7 +600,7 @@ export default function CustomGoal() {
         initialDates={dueDate ? [dueDate] : []}
         highlightColor="#FF5733"
         singleSelect
-        minDate={startDate || new Date().toISOString().split("T")[0]}
+        minDate={startDate || format(new Date(), "yyyy-MM-dd")}
         otherSelectedDate={startDate}
         otherHighlightColor="#4F46E5"
       />
