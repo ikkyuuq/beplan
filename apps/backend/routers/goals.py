@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from utils import goal_creation
+from utils.client_date import get_client_today
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -337,11 +338,15 @@ async def get_goal(assigned_goal_id: int, user_id: str = Depends(get_current_use
 async def get_goals_today(
     today: Optional[date] = Query(default=None, description="Current date (YYYY-MM-DD)"),
     user_id: str = Depends(get_current_user_id),
+    client_today: date = Depends(get_client_today),
 ):
+    # `today` is the date being viewed (it can be any day the user browses to);
+    # `client_today` is the device's real date and decides what is overdue.
     # Resolve per request; a default evaluated at import goes stale after midnight.
     today = today or date.today()
     pool = await get_db_pool()
     async with pool.acquire() as conn:
+        await fail_overdue_tasks(conn, user_id, client_today)
         rows = await conn.fetch(
             """
             SELECT
@@ -472,6 +477,32 @@ async def delete_goal(
                 "message": "Goal deleted successfully",
             }
         )
+
+
+async def fail_overdue_tasks(conn, user_id: str, client_today: date):
+    """
+    Mark the user's pending tasks scheduled before their local today as
+    'failed', then settle the affected goals. Runs whenever the user's goals
+    or analysis load, so statuses are current without a background job.
+    """
+    async with conn.transaction():
+        rows = await conn.fetch(
+            """
+            UPDATE public.assigned_task at
+            SET status = 'failed'
+            FROM public.assigned_goal ag, public.assigned_task_interval ati
+            WHERE at.assigned_goal_id = ag.id
+            AND ati.assigned_task_id = at.id
+            AND ag.user_id = $1
+            AND at.status = 'pending'
+            AND ati.interval_date < $2
+            RETURNING at.assigned_goal_id
+            """,
+            user_id,
+            client_today,
+        )
+        for assigned_goal_id in {row["assigned_goal_id"] for row in rows}:
+            await check_goal_status(conn, assigned_goal_id)
 
 
 async def check_goal_status(conn, assigned_goal_id: int):
