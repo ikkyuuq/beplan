@@ -10,7 +10,6 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
-  Platform,
 } from "react-native";
 import { useState, useEffect, useCallback } from "react";
 import TemplateCard from "@/components/TemplateCard";

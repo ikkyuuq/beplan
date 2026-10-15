@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import CalendarPicker from "./CalendarPicker";
-import { SharedValue } from "react-native-reanimated";
 
 type ContextItemProps = {
   title: string;

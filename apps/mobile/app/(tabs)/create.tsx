@@ -9,6 +9,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
+  Pressable,
 } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -21,7 +23,6 @@ import Animated, {
 } from "react-native-reanimated";
 import Header from "@/components/Header";
 import Slider from "@/components/Slider";
-import Modal from "react-native-modal";
 import { LinearGradient } from "expo-linear-gradient";
 import TemplateCard from "@/components/TemplateCard";
 import TemplateModal from "@/components/TemplateModal";
@@ -464,120 +465,126 @@ export default function CreateScreen() {
       {/* Options Modal */}
       <View>
         <Modal
-          isVisible={isOptionModalVisible}
-          onBackdropPress={() => setIsOptionModalVisible(false)}
-          onBackButtonPress={() => setIsOptionModalVisible(false)}
-          backdropTransitionOutTiming={0}
-          animationIn="zoomIn"
-          animationOut="zoomOut"
-          animationInTiming={300}
-          animationOutTiming={300}
-          useNativeDriver={true}
+          visible={isOptionModalVisible}
+          onRequestClose={() => setIsOptionModalVisible(false)}
+          transparent
+          animationType="fade"
           statusBarTranslucent
-          style={styles.centeredModalWrapper}
         >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalEyebrow}>NEW GOAL</Text>
-                <Text style={styles.modalTitle}>How would you like to start?</Text>
+          <Pressable
+            style={styles.centeredModalBackdrop}
+            onPress={() => setIsOptionModalVisible(false)}
+          >
+            <View
+              style={styles.modalContainer}
+              onStartShouldSetResponder={() => true}
+            >
+              <View style={styles.modalHeader}>
+                <View>
+                  <Text style={styles.modalEyebrow}>NEW GOAL</Text>
+                  <Text style={styles.modalTitle}>How would you like to start?</Text>
+                  </View>
+                <TouchableOpacity
+                  style={styles.closeModalButton}
+                  onPress={() => setIsOptionModalVisible(false)}
+                >
+                  <Ionicons name="close" size={22} color="#666" />
+                </TouchableOpacity>
               </View>
+
               <TouchableOpacity
-                style={styles.closeModalButton}
-                onPress={() => setIsOptionModalVisible(false)}
+                style={[styles.modalOption, styles.manualOption]}
+                onPress={handleCreateCustomGoal}
               >
-                <Ionicons name="close" size={22} color="#666" />
+                <View style={[styles.optionIcon, { backgroundColor: "#E9F8F0" }]}>
+                  <Ionicons name="create-outline" size={23} color="#168A4A" />
+                </View>
+                <View style={styles.optionContent}>
+                  <View style={styles.optionTitleRow}>
+                    <Text style={styles.optionTitle}>Create it yourself</Text>
+                    <View style={styles.optionBadge}>
+                      <Text style={styles.optionBadgeText}>FULL CONTROL</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.optionDescription}>
+                    Set the goal, tasks, dates, and routine exactly the way you want.
+                  </Text>
+                </View>
+                <Feather name="arrow-up-right" size={20} color="#168A4A" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalOption, styles.aiOption]}
+                onPress={handleCreateWithAssistant}
+              >
+                <View style={[styles.optionIcon, { backgroundColor: "#EEEAFE" }]}>
+                  <Ionicons name="sparkles" size={23} color="#5B43D6" />
+                </View>
+                <View style={styles.optionContent}>
+                  <View style={styles.optionTitleRow}>
+                    <Text style={styles.optionTitle}>Ask the AI assistant</Text>
+                    <View style={[styles.optionBadge, styles.aiBadge]}>
+                      <Text style={[styles.optionBadgeText, styles.aiBadgeText]}>
+                        GUIDED
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.optionDescription}>
+                    Tell us what you want to achieve and get a practical plan in minutes.
+                  </Text>
+                </View>
+                <Feather name="arrow-up-right" size={20} color="#5B43D6" />
+              </TouchableOpacity>
+
+              <View style={styles.modalDivider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>OR</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.modalOption, styles.templateOption]}
+                onPress={handleCreateTemplate}
+              >
+                <View style={[styles.optionIcon, { backgroundColor: "#F2F4F7" }]}>
+                  <Ionicons name="copy-outline" size={21} color="#667085" />
+                </View>
+                <View style={styles.optionContent}>
+                  <Text style={styles.optionTitle}>Create a reusable template</Text>
+                  <Text style={styles.optionDescription}>
+                    Build a plan you can reuse or share with the community.
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={21} color="#98A2B3" />
               </TouchableOpacity>
             </View>
-
-            <TouchableOpacity
-              style={[styles.modalOption, styles.manualOption]}
-              onPress={handleCreateCustomGoal}
-            >
-              <View style={[styles.optionIcon, { backgroundColor: "#E9F8F0" }]}>
-                <Ionicons name="create-outline" size={23} color="#168A4A" />
-              </View>
-              <View style={styles.optionContent}>
-                <View style={styles.optionTitleRow}>
-                  <Text style={styles.optionTitle}>Create it yourself</Text>
-                  <View style={styles.optionBadge}>
-                    <Text style={styles.optionBadgeText}>FULL CONTROL</Text>
-                  </View>
-                </View>
-                <Text style={styles.optionDescription}>
-                  Set the goal, tasks, dates, and routine exactly the way you want.
-                </Text>
-              </View>
-              <Feather name="arrow-up-right" size={20} color="#168A4A" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.modalOption, styles.aiOption]}
-              onPress={handleCreateWithAssistant}
-            >
-              <View style={[styles.optionIcon, { backgroundColor: "#EEEAFE" }]}>
-                <Ionicons name="sparkles" size={23} color="#5B43D6" />
-              </View>
-              <View style={styles.optionContent}>
-                <View style={styles.optionTitleRow}>
-                  <Text style={styles.optionTitle}>Ask the AI assistant</Text>
-                  <View style={[styles.optionBadge, styles.aiBadge]}>
-                    <Text style={[styles.optionBadgeText, styles.aiBadgeText]}>
-                      GUIDED
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.optionDescription}>
-                  Tell us what you want to achieve and get a practical plan in minutes.
-                </Text>
-              </View>
-              <Feather name="arrow-up-right" size={20} color="#5B43D6" />
-            </TouchableOpacity>
-
-            <View style={styles.modalDivider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.modalOption, styles.templateOption]}
-              onPress={handleCreateTemplate}
-            >
-              <View style={[styles.optionIcon, { backgroundColor: "#F2F4F7" }]}>
-                <Ionicons name="copy-outline" size={21} color="#667085" />
-              </View>
-              <View style={styles.optionContent}>
-                <Text style={styles.optionTitle}>Create a reusable template</Text>
-                <Text style={styles.optionDescription}>
-                  Build a plan you can reuse or share with the community.
-                </Text>
-              </View>
-              <Feather name="chevron-right" size={21} color="#98A2B3" />
-            </TouchableOpacity>
-          </View>
+          </Pressable>
         </Modal>
       </View>
 
       {/* View All Templates Modal */}
       <View>
         <Modal
-          isVisible={isViewAllTemplatesVisible || isViewAllCommunityVisible}
-          onBackdropPress={() => {
+          visible={isViewAllTemplatesVisible || isViewAllCommunityVisible}
+          onRequestClose={() => {
             setIsViewAllTemplatesVisible(false);
             setIsViewAllCommunityVisible(false);
           }}
-          onBackButtonPress={() => {
-            setIsViewAllTemplatesVisible(false);
-            setIsViewAllCommunityVisible(false);
-          }}
-          backdropTransitionOutTiming={0}
-          animationIn="slideInUp"
-          animationOut="slideOutDown"
+          transparent
+          animationType="slide"
           statusBarTranslucent
-          style={styles.modalWrapper}
         >
-          <View style={styles.fullScreenModalContainer}>
+          <Pressable
+            style={styles.fullScreenModalBackdrop}
+            onPress={() => {
+              setIsViewAllTemplatesVisible(false);
+              setIsViewAllCommunityVisible(false);
+            }}
+          >
+            <View
+              style={styles.fullScreenModalContainer}
+              onStartShouldSetResponder={() => true}
+            >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {isViewAllTemplatesVisible
@@ -593,7 +600,7 @@ export default function CreateScreen() {
               >
                 <Ionicons name="close" size={22} color="#666" />
               </TouchableOpacity>
-            </View>
+              </View>
 
             {/* Templates Grid using TemplateCard */}
             <View style={styles.fullScreenModalContent}>
@@ -646,7 +653,8 @@ export default function CreateScreen() {
                 </View>
               </ScrollView>
             </View>
-          </View>
+            </View>
+          </Pressable>
         </Modal>
       </View>
 
@@ -780,6 +788,12 @@ const styles = StyleSheet.create({
     margin: 0,
     justifyContent: "flex-end",
   },
+  centeredModalBackdrop: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
   centeredModalWrapper: {
     margin: 0,
     justifyContent: "center",
@@ -800,6 +814,11 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 0,
     height: "90%",
+  },
+  fullScreenModalBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   fullScreenModalContent: {
     flex: 1,

@@ -12,6 +12,7 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
   Keyboard,
+  Modal,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,7 +22,6 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from "react-native-reanimated";
-import Modal from "react-native-modal";
 import { API_BASE_URL } from "@/constants/api";
 
 // ====================== Type Definitions ======================
@@ -212,14 +212,11 @@ export default function TemplateModal({
   return (
     <View>
       <Modal
-        isVisible={isVisible}
-        avoidKeyboard={true}
-        backdropTransitionOutTiming={0}
-        animationIn="zoomIn"
-        animationOut="zoomOut"
-        useNativeDriver={true}
+        visible={isVisible}
+        onRequestClose={onClose}
+        transparent
+        animationType="fade"
         statusBarTranslucent
-        hideModalContentWhileAnimating={true}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.overlay}>
@@ -628,6 +625,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContainer: {
     width: SCREEN_WIDTH * 0.9,

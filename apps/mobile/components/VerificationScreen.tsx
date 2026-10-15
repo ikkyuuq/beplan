@@ -16,7 +16,6 @@ import Animated, {
   withTiming,
   withDelay,
   Easing,
-  FadeIn,
 } from "react-native-reanimated";
 
 interface VerificationScreenProps {

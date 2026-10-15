@@ -1,5 +1,4 @@
 from datetime import date
-from enum import Enum
 from typing import List, Optional
 
 from asyncpg import Connection
@@ -63,7 +62,7 @@ async def get_goals_today(
             today,
         )
 
-        goals: List[Goal] = []
+        goals: List[FetchGoal] = []
         for ag in assigned_goals:
             tasks = await conn.fetch(
                 """
@@ -79,14 +78,14 @@ async def get_goals_today(
             )
 
             # Fetch task details and append to the goal's tasks list
-            task_list: List[Task] = []
+            task_list: List[FetchTask] = []
             for task in tasks:
                 task_detail = await conn.fetchrow(
                     "SELECT title, description FROM public.task WHERE id = $1",
                     task["task_id"],
                 )
                 task_list.append(
-                    Task(
+                    FetchTask(
                         id=task["task_id"],
                         title=task_detail["title"],
                         description=task_detail["description"],
@@ -97,7 +96,7 @@ async def get_goals_today(
             # Append the goal to the list if it has tasks
             if task_list:
                 goals.append(
-                    Goal(
+                    FetchGoal(
                         id=ag["goal_id"],
                         title=ag["title"],
                         status=T.Status(ag["status"]),
@@ -176,7 +175,7 @@ async def check_goal_status(conn: Connection, assigned_goal_id: int):
         """
         SELECT 
             COUNT(*) AS total_tasks,
-            SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS completed_tasks
+            SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS completed_tasks,
             SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_tasks
         FROM public.assigned_task
         WHERE assigned_goal_id = $1

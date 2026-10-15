@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -83,7 +83,7 @@ export default function Analysis() {
   const [refreshing, setRefreshing] = useState(false);
 
   // ====================== Data Fetching ======================
-  const fetchAnalyticsData = async () => {
+  const fetchAnalyticsData = useCallback(async () => {
     if (!isLoaded || !user) return;
 
     try {
@@ -108,14 +108,16 @@ export default function Analysis() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [isLoaded, user]);
 
   // ====================== Initial Load & Refresh ======================
   useEffect(() => {
     if (isLoaded && user) {
-      fetchAnalyticsData();
+      // Defer the stateful fetch to the microtask queue so the effect only
+      // schedules the external request, rather than updating state directly.
+      void Promise.resolve().then(fetchAnalyticsData);
     }
-  }, [isLoaded, user]);
+  }, [fetchAnalyticsData, isLoaded, user]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -214,10 +216,16 @@ export default function Analysis() {
   };
 
   // category usage data for pie chart
-  const prepareCategoryData = () => {
+  const getUsedCategoryEntries = () => {
     if (!analyticsData) return [];
 
-    const categories = Object.entries(analyticsData.templates.category_usage);
+    return Object.entries(analyticsData.templates.category_usage).filter(
+      ([category, count]) => category.toLowerCase() !== "all" && count > 0
+    );
+  };
+
+  const prepareCategoryData = () => {
+    const categories = getUsedCategoryEntries();
 
     // Color palette for categories
     const categoryColors = {
@@ -249,7 +257,11 @@ export default function Analysis() {
     const counts = Object.values(analyticsData.tasks.weekly_distribution);
 
     const dayLabels = dates.map((date) => {
-      const day = new Date(date).getDay();
+      // API dates are calendar dates, not UTC timestamps. Constructing the
+      // date from local components avoids shifting the weekday in UTC-offset
+      // time zones.
+      const [year, month, dayOfMonth] = date.split("-").map(Number);
+      const day = new Date(year, month - 1, dayOfMonth).getDay();
       return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day];
     });
 
@@ -482,7 +494,7 @@ export default function Analysis() {
               {analyticsData && analyticsData.templates.total > 0 ? (
                 <View style={styles.statItem}>
                   <Text style={styles.statValue}>
-                    {Object.keys(analyticsData.templates.category_usage).length}
+                    {getUsedCategoryEntries().length}
                   </Text>
                   <Text style={styles.statLabel}>Categories</Text>
                 </View>
@@ -494,22 +506,21 @@ export default function Analysis() {
               )}
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>
-                  {analyticsData && analyticsData.templates.total > 0
-                    ? Math.max(
-                        ...Object.values(analyticsData.templates.category_usage)
-                      )
-                    : 0}
+                  {getUsedCategoryEntries().reduce(
+                    (mostUsed, [, count]) => Math.max(mostUsed, count),
+                    0
+                  )}
                 </Text>
                 <Text style={styles.statLabel}>Most Used</Text>
               </View>
             </View>
 
             {/* Popular Categories Section */}
-            {analyticsData && analyticsData.templates.total > 0 && (
+            {getUsedCategoryEntries().length > 0 && (
               <View style={styles.categoriesContainer}>
                 <Text style={styles.categoriesTitle}>Popular Categories</Text>
                 <View style={styles.categoriesList}>
-                  {Object.entries(analyticsData.templates.category_usage)
+                  {getUsedCategoryEntries()
                     .sort((a, b) => b[1] - a[1])
                     .slice(0, 3)
                     .map(([category, count], index) => (
@@ -524,7 +535,8 @@ export default function Analysis() {
                               styles.categoryBarFill,
                               {
                                 width: `${
-                                  (count / analyticsData.templates.total) * 100
+                                  (count / (analyticsData?.templates.total ?? 0)) *
+                                  100
                                 }%`,
                               },
                             ]}
@@ -614,7 +626,7 @@ export default function Analysis() {
           {/* Template Categories Chart */}
           <View style={styles.chartCard}>
             <Text style={styles.chartTitle}>Template Categories</Text>
-            {analyticsData && analyticsData.templates.total > 0 ? (
+            {getUsedCategoryEntries().length > 0 ? (
               <PieChart
                 data={prepareCategoryData()}
                 width={350}

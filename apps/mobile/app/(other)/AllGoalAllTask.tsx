@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
 import { useUser } from "@clerk/clerk-expo";
 import { useFocusEffect, useNavigation } from "expo-router";
