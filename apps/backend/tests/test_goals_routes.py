@@ -116,6 +116,7 @@ def test_update_goal_deletes_intervals_before_assigned_tasks(monkeypatch):
     connection = FakeConnection()
     connection.execute.return_value = "UPDATE 1"
     connection.fetchrow.return_value = {"id": 5}
+    connection.fetch.return_value = [{"id": 100}, {"id": 101}]
     patch_pool(monkeypatch, connection)
 
     response = asyncio.run(goals.update_goal(make_update_request(), user_id="user-1"))
@@ -130,8 +131,13 @@ def test_update_goal_deletes_intervals_before_assigned_tasks(monkeypatch):
     )
     assert interval_delete < task_delete
     assert "DELETE FROM task WHERE id = $1 AND goal_id = $2" in sql
-    # One assigned_task_interval per day of the daily task (Oct 5 and 6).
-    assert sum(s.startswith("INSERT INTO assigned_task_interval") for s in sql) == 2
+    # The daily task's two days (Oct 5 and 6) are inserted in one batch.
+    interval_inserts = [
+        call.args for call in connection.execute.await_args_list
+        if "INSERT INTO public.assigned_task_interval" in call.args[0]
+    ]
+    assert len(interval_inserts) == 1
+    assert interval_inserts[0][1:] == ([100, 101], [date(2026, 10, 5), date(2026, 10, 6)])
 
 
 def test_update_goal_rejects_goal_not_owned_by_user(monkeypatch):

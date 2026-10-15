@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 from s3 import make_object_key, upload_public_file
 from utils import date_calculation
+from utils.goal_creation import insert_assigned_task_dates, insert_tmpl_task_dates
 
 import uuid
 from uuid import UUID
@@ -446,16 +447,9 @@ async def create_template(
                             new_task["id"],
                         )
 
-                        for interval in interval_dates:
-                            await conn.execute(
-                                """
-                                INSERT INTO public.tmpl_goal_task_interval 
-                                    (tmpl_goal_task_id, interval_date)
-                                VALUES ($1, $2)
-                                """,
-                                new_tmpl_goal_task["id"],
-                                interval,
-                            )
+                        await insert_tmpl_task_dates(
+                            conn, new_tmpl_goal_task["id"], interval_dates
+                        )
             return {"message": "Template created"}
 
         except HTTPException:
@@ -687,28 +681,16 @@ async def create_template_from_user_goals(
                                         detail="Invalid task type; must be daily, weekly, or monthly",
                                     )
 
-                                for interval in interval_dates:
-                                    await conn.execute(
-                                        """INSERT INTO tmpl_goal_task_interval
-                                           (tmpl_goal_task_id, interval_date)
-                                           VALUES ($1, $2)""",
-                                        tmpl_goal_task_rec["id"],
-                                        interval,
-                                    )
+                                await insert_tmpl_task_dates(
+                                    conn, tmpl_goal_task_rec["id"], interval_dates
+                                )
                             else:
                                 intervals = assigned_task_intervals_dict.get(
                                     (goal["assigned_goal_id"], task_row["id"]), []
                                 )
-                                for interval_date in intervals:
-                                    await conn.execute(
-                                        """
-                                        INSERT INTO public.tmpl_goal_task_interval
-                                            (tmpl_goal_task_id, interval_date)
-                                        VALUES ($1, $2)
-                                        """,
-                                        tmpl_goal_task_rec["id"],
-                                        interval_date,
-                                    )
+                                await insert_tmpl_task_dates(
+                                    conn, tmpl_goal_task_rec["id"], intervals
+                                )
 
                 if new_goals_data:
                     for goal in new_goals_data:
@@ -780,16 +762,9 @@ async def create_template_from_user_goals(
                                 tmpl_goal_rec["id"],
                                 new_task_rec["id"],
                             )
-                            for interval in interval_dates:
-                                await conn.execute(
-                                    """
-                                    INSERT INTO public.tmpl_goal_task_interval 
-                                        (tmpl_goal_task_id, interval_date)
-                                    VALUES ($1, $2)
-                                    """,
-                                    tmpl_goal_task_rec["id"],
-                                    interval,
-                                )
+                            await insert_tmpl_task_dates(
+                                conn, tmpl_goal_task_rec["id"], interval_dates
+                            )
 
                 return {
                     "message": "Template created from user goals",
@@ -869,34 +844,17 @@ async def assign_template(
                             tmpl_goal_task["id"],
                         )
 
-                        for tmpl_goal_task_interval in tmpl_goal_task_intervals:
-                            assign_task = await conn.fetchrow(
-                                """
-                                INSERT INTO public.assigned_task 
-                                    (assigned_goal_id, task_id)
-                                VALUES ($1, $2)
-                                RETURNING id
-                                """,
-                                assign_goal["id"],
-                                tmpl_goal_task["task_id"],
-                            )
-
-                            original_interval_date = tmpl_goal_task_interval[
-                                "interval_date"
-                            ]
-                            new_interval_date = new_start_date_dt + (
-                                original_interval_date - original_start_date
-                            )
-
-                            await conn.execute(
-                                """
-                                INSERT INTO public.assigned_task_interval 
-                                    (assigned_task_id, interval_date)
-                                VALUES ($1, $2)
-                                """,
-                                assign_task["id"],
-                                new_interval_date,
-                            )
+                        # Shift each template date so the plan starts on the chosen start date.
+                        await insert_assigned_task_dates(
+                            conn,
+                            assign_goal["id"],
+                            tmpl_goal_task["task_id"],
+                            [
+                                new_start_date_dt
+                                + (row["interval_date"] - original_start_date)
+                                for row in tmpl_goal_task_intervals
+                            ],
+                        )
             return {"message": "Template added to user"}
 
         except UniqueViolationError:

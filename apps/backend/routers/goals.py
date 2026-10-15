@@ -213,26 +213,9 @@ async def update_goal(
                             task, req.goal.start_date, req.goal.due_date
                         )
 
-                        # Create a new assigned_task and assigned_task_interval for each date.
-                        for interval_date in interval_dates:
-                            assigned_task_id = await conn.fetchrow(
-                                """
-                                INSERT INTO assigned_task (assigned_goal_id, task_id)
-                                VALUES ($1, $2)
-                                RETURNING id
-                                """,
-                                req.assigned_goal_id,
-                                task.id,
-                            )
-
-                            await conn.execute(
-                                """
-                                INSERT INTO assigned_task_interval (assigned_task_id, interval_date)
-                                VALUES ($1, $2)
-                                """,
-                                assigned_task_id["id"],
-                                interval_date,
-                            )
+                        await goal_creation.insert_assigned_task_dates(
+                            conn, req.assigned_goal_id, task.id, interval_dates
+                        )
 
             return JSONResponse(
                 content={
