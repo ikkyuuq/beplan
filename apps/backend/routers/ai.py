@@ -16,7 +16,7 @@ from starlette.concurrency import run_in_threadpool
 from utils import goal_creation
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-ANTHROPIC_MODEL = "claude-3-5-sonnet-20241022"
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL") or "claude-sonnet-5-5"
 client = Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
 
 
@@ -171,7 +171,7 @@ async def generate_questions(request: PredictionResult):
             Generate Questions for Missing SMART Criteria
 
             INPUT:
-            {json.dumps(request.dict(), indent=2)}
+            {json.dumps(request.model_dump(), indent=2)}
 
             TASK:
             1. Examine the prediction object's arrays.
@@ -269,7 +269,10 @@ async def generate_goal(request: PredictionResult):
     try:
         today = datetime.today().date().strftime("%Y-%m-%d")
         start_date = today
-        due_date = request.prediction["time_bound"][0]["text"]
+        time_bound = request.prediction.get("time_bound")
+        if not time_bound or not time_bound[0].get("text"):
+            raise HTTPException(status_code=400, detail="time_bound is required")
+        due_date = time_bound[0]["text"]
 
         goal_input = {
             "original_text": request.original_text,
