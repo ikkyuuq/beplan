@@ -332,16 +332,10 @@ export default function CustomGoal() {
       const responseData = await response.json();
       console.log("📌 API Response:", JSON.stringify(responseData, null, 2));
 
-      Alert.alert(
-        "Success!",
-        "Your custom goal has been created successfully.",
-        [
-          {
-            text: "OK",
-            onPress: () => router.back(),
-          },
-        ]
-      );
+      // Go straight to the schedule (calendar). Don't wait for the alert's
+      // OK button: Alert.alert is a no-op on web, so its onPress never ran there.
+      router.dismissTo("/(tabs)/schedule");
+      Alert.alert("Success!", "Your custom goal has been created successfully.");
     } catch (error: any) {
       console.error("Failed to create goal:", error);
       Alert.alert(
