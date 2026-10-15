@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ScrollView, ViewStyle, StyleProp, View } from 'react-native';
 
 interface PagerViewProps {
@@ -17,6 +17,16 @@ export default function PagerViewWrapper({
   const scrollViewRef = useRef<ScrollView>(null);
   const pages = React.Children.toArray(children);
   const [containerWidth, setContainerWidth] = React.useState<number>(0);
+  const didScrollToInitialPage = useRef(false);
+
+  // Native PagerView opens on `initialPage`; a ScrollView always starts at
+  // page 0. Jump there once the width is known, or the schedule's week strip
+  // showed (and on the first scroll selected) the earliest week, 60 days ago.
+  useEffect(() => {
+    if (didScrollToInitialPage.current || containerWidth === 0) return;
+    didScrollToInitialPage.current = true;
+    scrollViewRef.current?.scrollTo({ x: initialPage * containerWidth, animated: false });
+  }, [containerWidth, initialPage]);
 
   return (
     <ScrollView
