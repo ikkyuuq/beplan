@@ -10,8 +10,6 @@ import {
   ScrollView,
   Alert,
   Dimensions,
-  TouchableWithoutFeedback,
-  Keyboard,
   Modal,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -24,6 +22,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
+import DismissKeyboard from "@/components/DismissKeyboard";
 
 // ====================== Type Definitions ======================
 type Creator = {
@@ -220,7 +219,7 @@ export default function TemplateModal({
         animationType="fade"
         statusBarTranslucent
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <DismissKeyboard>
           <View style={styles.overlay}>
             <View style={styles.modalContainer}>
               <View style={styles.modalContent}>
@@ -612,7 +611,7 @@ export default function TemplateModal({
               </View>
             </View>
           </View>
-        </TouchableWithoutFeedback>
+        </DismissKeyboard>
       </Modal>
     </View>
   );
