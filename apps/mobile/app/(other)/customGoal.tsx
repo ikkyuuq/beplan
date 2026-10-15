@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { KeyboardAvoidingView, Platform } from "react-native";
+import { Alert } from "@/utils/alert";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useUser } from "@clerk/clerk-expo";
 import {

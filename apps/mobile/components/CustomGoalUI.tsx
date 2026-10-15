@@ -9,8 +9,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
-  Alert,
 } from "react-native";
+import { Alert } from "@/utils/alert";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { format, isValid, parseISO } from "date-fns";
