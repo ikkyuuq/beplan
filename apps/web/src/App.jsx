@@ -73,6 +73,11 @@ const ProtectedRoute = ({ children }) => {
         <div className="login-box">
           <h2>Not authorized</h2>
           <p>This account does not have admin access.</p>
+          <p>
+            Signed in as {user.primaryEmailAddress?.emailAddress ?? "unknown"}
+            <br />
+            <code>{user.id}</code>
+          </p>
           <button className="back-btn" onClick={() => signOut()}>Sign out</button>
         </div>
       </div>
