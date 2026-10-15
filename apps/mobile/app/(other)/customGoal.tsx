@@ -473,13 +473,14 @@ export default function CustomGoal() {
   };
 
   // ====================== Check if Goal Has Started ======================
+  // Only an existing goal can have started: lock dates/tasks when editing a goal
+  // whose *saved* start date is today or earlier. A new goal starting today,
+  // or an unstarted goal whose start date is being moved, stays editable.
+  const savedStartDate: string | undefined = initialGoalData?.start_date;
   useEffect(() => {
-    if (startDate) {
-      const today = format(new Date(), "yyyy-MM-dd");
-      const hasStarted = today >= startDate;
-      setGoalStarted(hasStarted);
-    }
-  }, [startDate]);
+    const today = format(new Date(), "yyyy-MM-dd");
+    setGoalStarted(isEditingGoal && !!savedStartDate && today >= savedStartDate);
+  }, [isEditingGoal, savedStartDate]);
 
   // ====================== Load Initial Data ======================
   useEffect(() => {
