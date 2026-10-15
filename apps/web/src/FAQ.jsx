@@ -1,4 +1,3 @@
-import { useState } from "react";
 import "./FAQ.css";
 
 const faqCategories = [
@@ -33,10 +32,7 @@ const faqCategories = [
 ];
 
 const FAQ = () => {
-    const [activeCategory, setActiveCategory] = useState(null);
-
     const scrollToCategory = (index) => {
-        setActiveCategory(index);
         document.getElementById(`faq-category-${index}`).scrollIntoView({ behavior: "smooth" });
     };
 
@@ -63,8 +59,8 @@ const FAQ = () => {
                         ))}
                     </div>
                 ))}
-                <footer class="footer">
-                    <div class="footer-container">
+                <footer className="footer">
+                    <div className="footer-container">
                         <p>© 2025 Planner. All Rights Reserved.</p>
                         <p>Designed & Developed by <strong>BE PLANNER</strong></p>
                     </div>

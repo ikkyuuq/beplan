@@ -18,8 +18,8 @@ const Home = () => {
       <div className="button-download">
         <button className="Download">Download</button>
       </div>
-      <footer class="footer">
-        <div class="footer-container">
+      <footer className="footer">
+        <div className="footer-container">
           <p>© 2025 Planner. All Rights Reserved.</p>
           <p>Designed & Developed by <strong>BE PLANNER</strong></p>
         </div>

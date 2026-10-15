@@ -325,13 +325,6 @@ const AdminDashboard = () => {
         });
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString || isNaN(new Date(dateString))) {
-            return "No Date"; // หรือคืนค่าที่คุณต้องการ เช่น "N/A"
-        }
-        return new Date(dateString).toLocaleDateString(); // แปลงเป็นรูปแบบวันที่ที่อ่านง่าย
-    };
-
     const handleRemoveTask = (goalId, taskId) => {
         if (selectedTaskId === taskId) {
             const updatedTemplate = {

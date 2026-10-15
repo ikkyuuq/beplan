@@ -24,7 +24,7 @@ const AboutMe = () => {
 
       <h2>Why Choose Planner?</h2>
       <p>
-        Unlike traditional to-do lists, Planner provides a structured approach to goal-setting, ensuring clarity, motivation, and accountability. Whether you're working on self-improvement, career growth, or personal projects, Planner adapts to your needs and helps you stay focused on success.
+        Unlike traditional to-do lists, Planner provides a structured approach to goal-setting, ensuring clarity, motivation, and accountability. Whether you&apos;re working on self-improvement, career growth, or personal projects, Planner adapts to your needs and helps you stay focused on success.
       </p>
 
       <footer className="footer">
