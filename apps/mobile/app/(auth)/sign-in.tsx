@@ -7,7 +7,8 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useSignIn, useSSO } from "@clerk/clerk-expo";
+import { useSSO } from "@clerk/expo";
+import { useSignIn } from "@clerk/expo/legacy";
 import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
 import * as WebBrowser from "expo-web-browser";
@@ -172,6 +173,12 @@ export default function SignInScreen() {
       if (signInAttempt.status === "complete") {
         await setActive({ session: signInAttempt.createdSessionId });
         router.replace(routes.loggedInRedirect);
+      } else if ((signInAttempt.status as string) === "needs_client_trust") {
+        // Clerk Core 3: Device Trust (if enabled in Clerk) asks the user to
+        // confirm a new device before the session is created.
+        setErrorMessage(
+          "Please confirm this new device (check your email), then sign in again."
+        );
       } else {
         setErrorMessage("Sign-in is incomplete. Please try again.");
       }

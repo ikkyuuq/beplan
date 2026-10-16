@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import { useSignIn, useClerk } from "@clerk/clerk-expo";
+import { useClerk } from "@clerk/expo";
+import { useSignIn } from "@clerk/expo/legacy";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
