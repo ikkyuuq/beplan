@@ -18,6 +18,8 @@ import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
 
 type Task = {
+  /** Saved task id (editing an existing goal); absent for new tasks. */
+  id?: number;
   title: string;
   description?: string;
   type: "normal" | "daily" | "weekly" | "monthly";
@@ -71,6 +73,17 @@ const formatGoalForBackend = (
     },
   };
 };
+
+// Editor task -> backend TaskUpdate. "normal" (specific dates) is "date" on
+// the backend, as in formatGoalForBackend.
+const toUpdateTask = (task: Task) => ({
+  id: task.id,
+  title: task.title,
+  description: task.description || "",
+  repeat_type: task.type === "normal" ? "date" : task.type,
+  date_interval: task.selectedDates || [],
+  week_interval: task.selectedDaysOfWeek || [],
+});
 
 // ====================== Main Component ======================
 export default function CustomGoal() {
@@ -169,6 +182,9 @@ export default function CustomGoal() {
   const [isStartDatePickerVisible, setStartDatePickerVisible] = useState(false);
   const [isDueDatePickerVisible, setDueDatePickerVisible] = useState(false);
   const [taskList, setTaskList] = useState<Task[]>([]);
+  // Saved tasks the user removed while editing; sent as "deleted" so the
+  // backend stops their upcoming days (their history is kept).
+  const [removedTasks, setRemovedTasks] = useState<Task[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isTaskModalVisible, setTaskModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -223,7 +239,10 @@ export default function CustomGoal() {
       setDueDate(newDate);
     }
 
-    if (clearTasks) setTaskList([]);
+    if (clearTasks) {
+      setRemovedTasks((prev) => [...prev, ...taskList.filter((t) => t.id)]);
+      setTaskList([]);
+    }
   };
 
   // ====================== Task Handlers ======================
@@ -232,6 +251,8 @@ export default function CustomGoal() {
       return;
     }
 
+    const removed = taskList[index];
+    if (removed?.id) setRemovedTasks((prev) => [...prev, removed]);
     setTaskList((prevTaskList) => prevTaskList.filter((_, i) => i !== index));
   };
 
@@ -266,7 +287,10 @@ export default function CustomGoal() {
 
       setTaskList((prevTasks) =>
         editingIndex !== null
-          ? prevTasks.map((t, index) => (index === editingIndex ? newTask : t))
+          ? prevTasks.map((t, index) =>
+              // Keep the saved id so the backend updates this task, not a new one.
+              index === editingIndex ? { ...newTask, id: t.id } : t
+            )
           : [...prevTasks, newTask]
       );
     }
@@ -386,15 +410,15 @@ export default function CustomGoal() {
               title: goalTitle,
               start_date: startDate,
               due_date: dueDate,
-              tasks: taskList.map((task, index) => ({
-                id: parsedGoalData.tasks[index]?.id,
-                title: task.title,
-                description: task.description || "",
-                repeat_type: task.type,
-                date_interval: task.selectedDates || [],
-                week_interval: task.selectedDaysOfWeek || [],
-                status: task.status,
-              })),
+              // Each task carries its own saved id (matching by list position
+              // sent the wrong id once a task was removed or added).
+              tasks: [
+                ...taskList.map((task) => toUpdateTask(task)),
+                ...removedTasks.map((task) => ({
+                  ...toUpdateTask(task),
+                  status: "deleted",
+                })),
+              ],
             }
           : null,
       };
@@ -488,6 +512,7 @@ export default function CustomGoal() {
 
       if (initialGoalData.tasks && Array.isArray(initialGoalData.tasks)) {
         const formattedTasks = initialGoalData.tasks.map((task: any) => ({
+          id: task.id,
           title: task.title || "",
           description: task.description || "",
           type: task.repeat_type || "normal",

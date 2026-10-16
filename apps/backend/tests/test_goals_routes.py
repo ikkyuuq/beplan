@@ -112,44 +112,71 @@ def make_update_request():
     )
 
 
-def test_update_goal_deletes_intervals_before_assigned_tasks(monkeypatch):
-    connection = FakeConnection()
-    connection.execute.return_value = "UPDATE 1"
-    connection.fetchrow.return_value = {"id": 5}
-    connection.fetch.return_value = [{"id": 100}, {"id": 101}]
+def run_update(monkeypatch, connection, request, today=date(2026, 10, 16)):
     patch_pool(monkeypatch, connection)
-
-    response = asyncio.run(goals.update_goal(make_update_request(), user_id="user-1"))
-
-    assert response.status_code == 200
-    sql = executed_sql(connection)
-    interval_delete = next(
-        i for i, s in enumerate(sql) if s.startswith("DELETE FROM assigned_task_interval")
+    return asyncio.run(
+        goals.update_goal(request, user_id="user-1", client_today=today)
     )
-    task_delete = next(
-        i for i, s in enumerate(sql) if s.startswith("DELETE FROM assigned_task WHERE")
-    )
-    assert interval_delete < task_delete
-    assert "DELETE FROM task WHERE id = $1 AND goal_id = $2" in sql
-    # The daily task's two days (Oct 5 and 6) are inserted in one batch.
-    interval_inserts = [
-        call.args for call in connection.execute.await_args_list
-        if "INSERT INTO public.assigned_task_interval" in call.args[0]
-    ]
-    assert len(interval_inserts) == 1
-    assert interval_inserts[0][1:] == ([100, 101], [date(2026, 10, 5), date(2026, 10, 6)])
 
 
 def test_update_goal_rejects_goal_not_owned_by_user(monkeypatch):
     connection = FakeConnection()
-    connection.execute.return_value = "UPDATE 0"
-    patch_pool(monkeypatch, connection)
+    connection.fetchrow.return_value = None  # the locked ownership lookup finds nothing
 
     with pytest.raises(HTTPException) as error:
-        asyncio.run(goals.update_goal(make_update_request(), user_id="user-1"))
+        run_update(monkeypatch, connection, make_update_request())
 
     assert error.value.status_code == 404
-    assert connection.execute.await_count == 1
+    connection.execute.assert_not_awaited()
+
+
+def test_update_goal_keeps_start_date_once_started(monkeypatch):
+    connection = FakeConnection()
+    # Saved start Oct 1 (already started on Oct 16); request moves it to Oct 5.
+    connection.fetchrow.return_value = {
+        "start_date": date(2026, 10, 1),
+        "due_date": date(2026, 10, 30),
+    }
+
+    with pytest.raises(HTTPException) as error:
+        run_update(monkeypatch, connection, make_update_request())
+
+    assert error.value.status_code == 400
+    assert "start date" in error.value.detail
+    connection.execute.assert_not_awaited()
+
+
+def test_update_goal_rejects_end_before_today_for_started_goal(monkeypatch):
+    connection = FakeConnection()
+    connection.fetchrow.return_value = {
+        "start_date": date(2026, 10, 5),
+        "due_date": date(2026, 10, 30),
+    }
+    request = make_update_request()
+    request.goal.due_date = date(2026, 10, 10)  # before today (Oct 16)
+
+    with pytest.raises(HTTPException) as error:
+        run_update(monkeypatch, connection, request)
+
+    assert error.value.status_code == 400
+    assert "before today" in error.value.detail
+
+
+def test_update_goal_rejects_end_before_start(monkeypatch):
+    connection = FakeConnection()
+    connection.fetchrow.return_value = {
+        "start_date": date(2026, 10, 20),
+        "due_date": date(2026, 10, 30),
+    }
+    request = make_update_request()
+    request.goal.start_date = date(2026, 10, 25)
+    request.goal.due_date = date(2026, 10, 22)
+
+    with pytest.raises(HTTPException) as error:
+        run_update(monkeypatch, connection, request)
+
+    assert error.value.status_code == 400
+    assert "before the start date" in error.value.detail
 
 
 def test_get_all_goals_returns_progress_and_settles_overdue_first(monkeypatch):

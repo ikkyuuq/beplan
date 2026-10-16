@@ -91,36 +91,98 @@ async def create_goal(
         )
 
 
+async def _delete_upcoming_pending(conn, assigned_goal_id: int, task_id: int, from_date: date):
+    """Delete a task's *pending* days on or after from_date (they get rebuilt).
+
+    Done/failed days and anything before from_date are history and stay.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT at.id
+        FROM public.assigned_task at
+        JOIN public.assigned_task_interval ati ON ati.assigned_task_id = at.id
+        WHERE at.assigned_goal_id = $1
+        AND at.task_id = $2
+        AND at.status = 'pending'
+        AND ati.interval_date >= $3
+        """,
+        assigned_goal_id,
+        task_id,
+        from_date,
+    )
+    ids = [row["id"] for row in rows]
+    if not ids:
+        return
+    await conn.execute(
+        "DELETE FROM public.assigned_task_interval WHERE assigned_task_id = ANY($1)", ids
+    )
+    await conn.execute("DELETE FROM public.assigned_task WHERE id = ANY($1)", ids)
+
+
 @router.put("/update")
 async def update_goal(
-    req: GoalUpdateRequest, user_id: str = Depends(get_current_user_id)
+    req: GoalUpdateRequest,
+    user_id: str = Depends(get_current_user_id),
+    client_today: date = Depends(get_client_today),
 ):
+    """Save an edited goal without rewriting its history.
+
+    Rules (today = the user's local date, see get_client_today):
+    - Titles, descriptions and the goal type are updated in place.
+    - Only *pending* days from today on are rebuilt from the new schedule;
+      done/failed days and earlier days are never touched or recreated.
+    - A removed task stops its upcoming days; its past results are kept.
+    - New tasks are scheduled from today (or the start date, if later).
+    - The start date can't change once the goal has started, and a started
+      goal's end date can't move before today.
+    (Previously every assigned task was deleted and recreated from the start
+    date, which reset completed tasks to pending and refailed the past.)
+    """
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
             async with conn.transaction():
-                # update assigned_goal first; it also confirms the user owns this goal
-                res = await conn.execute(
+                # Lock the goal so two saves can't interleave; also checks ownership.
+                saved = await conn.fetchrow(
                     """
-                    UPDATE assigned_goal
-                    SET start_date = $1, due_date = $2, updated_at = NOW()
-                    WHERE goal_id = $3
-                    AND user_id = $4
-                    AND id = $5
+                    SELECT start_date, due_date
+                    FROM public.assigned_goal
+                    WHERE id = $1 AND goal_id = $2 AND user_id = $3
+                    FOR UPDATE
                     """,
-                    req.goal.start_date,
-                    req.goal.due_date,
+                    req.assigned_goal_id,
                     req.goal.id,
                     user_id,
-                    req.assigned_goal_id,
                 )
-                if res != "UPDATE 1":
+                if not saved:
                     raise HTTPException(status_code=404, detail="Goal not found for this user")
 
-                # update goal
+                new_start, new_due = req.goal.start_date, req.goal.due_date
+                if new_due < new_start:
+                    raise HTTPException(400, detail="The end date can't be before the start date.")
+                started = saved["start_date"] <= client_today
+                if started and new_start != saved["start_date"]:
+                    raise HTTPException(
+                        400, detail="The start date can't change after the goal has started."
+                    )
+                if started and new_due < client_today:
+                    raise HTTPException(
+                        400, detail="The end date can't be before today for a goal that has started."
+                    )
+
                 await conn.execute(
                     """
-                    UPDATE goal
+                    UPDATE public.assigned_goal
+                    SET start_date = $1, due_date = $2, updated_at = NOW()
+                    WHERE id = $3
+                    """,
+                    new_start,
+                    new_due,
+                    req.assigned_goal_id,
+                )
+                await conn.execute(
+                    """
+                    UPDATE public.goal
                     SET title = $1, type = $2, updated_at = NOW()
                     WHERE id = $3
                     """,
@@ -129,93 +191,95 @@ async def update_goal(
                     req.goal.id,
                 )
 
-                # Delete old assigned_task_interval before the assigned_task rows it references
+                # First day whose (pending) tasks may be rebuilt.
+                from_date = max(client_today, new_start)
+
+                for task in req.goal.tasks:
+                    if task.id:
+                        owned = await conn.fetchval(
+                            "SELECT 1 FROM public.task WHERE id = $1 AND goal_id = $2",
+                            task.id,
+                            req.goal.id,
+                        )
+                        if not owned:
+                            raise HTTPException(
+                                status_code=404, detail=f"Task with id {task.id} not found"
+                            )
+                        await _delete_upcoming_pending(
+                            conn, req.assigned_goal_id, task.id, client_today
+                        )
+
+                    if task.status == T.Status.DELETED:
+                        # Removed: no upcoming days; its history stays.
+                        continue
+
+                    if task.id:
+                        await conn.execute(
+                            """
+                            UPDATE public.task
+                            SET title = $1, description = $2, type = $3, interval = $4, updated_at = NOW()
+                            WHERE id = $5 AND goal_id = $6
+                            """,
+                            task.title,
+                            task.description,
+                            task.repeat_type,
+                            task.week_interval if task.week_interval else None,
+                            task.id,
+                            req.goal.id,
+                        )
+                    else:
+                        task.id = await conn.fetchval(
+                            """
+                            INSERT INTO public.task (title, description, goal_id, interval, type)
+                            VALUES ($1, $2, $3, $4, $5)
+                            RETURNING id
+                            """,
+                            task.title,
+                            task.description,
+                            req.goal.id,
+                            task.week_interval if task.week_interval else None,
+                            task.repeat_type,
+                        )
+
+                    # Days this task still has (history, or anything before today):
+                    # never schedule a second record on the same day.
+                    kept = {
+                        row["interval_date"]
+                        for row in await conn.fetch(
+                            """
+                            SELECT ati.interval_date
+                            FROM public.assigned_task at
+                            JOIN public.assigned_task_interval ati ON ati.assigned_task_id = at.id
+                            WHERE at.assigned_goal_id = $1 AND at.task_id = $2
+                            """,
+                            req.assigned_goal_id,
+                            task.id,
+                        )
+                    }
+                    schedule = await goal_creation.get_interval_dates(task, new_start, new_due)
+                    upcoming = sorted(
+                        {d for d in schedule if from_date <= d <= new_due} - kept
+                    )
+                    await goal_creation.insert_assigned_task_dates(
+                        conn, req.assigned_goal_id, task.id, upcoming
+                    )
+
+                # A settled goal that has pending days again (e.g. extended) is
+                # running again; then settle it if nothing is pending anymore.
                 await conn.execute(
                     """
-                    DELETE FROM assigned_task_interval
-                    WHERE assigned_task_id IN (
-                        SELECT id FROM assigned_task WHERE assigned_goal_id = $1
+                    UPDATE public.assigned_goal
+                    SET status = 'pending'
+                    WHERE id = $1
+                    AND status <> 'pending'
+                    AND EXISTS (
+                        SELECT 1 FROM public.assigned_task
+                        WHERE assigned_goal_id = $1 AND status = 'pending'
                     )
                     """,
                     req.assigned_goal_id,
                 )
-
-                await conn.execute(
-                    """
-                    DELETE FROM assigned_task
-                    WHERE assigned_goal_id = $1
-                    """,
-                    req.assigned_goal_id,
-                )
-
-                # delete tasks with status as deleted
-                for task in req.goal.tasks:
-                    if task.status == T.Status.DELETED:
-                        await conn.execute(
-                            """
-                            DELETE FROM task
-                            WHERE id = $1 AND goal_id = $2
-                            """,
-                            task.id,
-                            req.goal.id,
-                        )
-
-                # Update or add new tasks
-                for task in req.goal.tasks:
-                    if task.status != T.Status.DELETED:
-                        if task.id:  # If the id is an existing task
-                            await conn.execute(
-                                """
-                                UPDATE task
-                                SET title = $1, description = $2, type = $3, interval = $4, updated_at = NOW()
-                                WHERE id = $5 AND goal_id = $6
-                                """,
-                                task.title,
-                                task.description,
-                                task.repeat_type,
-                                task.week_interval if task.week_interval else None,
-                                task.id,
-                                req.goal.id,
-                            )
-                        else:  # If there is no id, it is a new task.
-                            task_id = await conn.fetchrow(
-                                """
-                                INSERT INTO task (title, description, goal_id, interval, type)
-                                VALUES ($1, $2, $3, $4, $5)
-                                RETURNING id
-                                """,
-                                task.title,
-                                task.description,
-                                req.goal.id,
-                                task.week_interval if task.week_interval else None,
-                                task.repeat_type,
-                            )
-                            task.id = task_id["id"]  # Set the new task id
-
-                # Create new assigned_task and assigned_task_interval
-                for task in req.goal.tasks:
-                    if task.status != T.Status.DELETED:
-                        # Check the task exists and belongs to this goal.
-                        task_exists = await conn.fetchrow(
-                            """
-                            SELECT id FROM task WHERE id = $1 AND goal_id = $2
-                            """,
-                            task.id,
-                            req.goal.id,
-                        )
-
-                        if not task_exists:
-                            raise HTTPException(
-                                status_code=404, detail=f"Task with id {task.id} not found"
-                            )
-
-                        interval_dates = await goal_creation.get_interval_dates(
-                            task, req.goal.start_date, req.goal.due_date
-                        )
-
-                        await goal_creation.insert_assigned_task_dates(
-                            conn, req.assigned_goal_id, task.id, interval_dates
-                        )
+                await check_goal_status(conn, req.assigned_goal_id)
 
             return JSONResponse(
                 content={
@@ -284,7 +348,11 @@ async def get_all_goals(
 
 
 @router.get("/{assigned_goal_id}")
-async def get_goal(assigned_goal_id: int, user_id: str = Depends(get_current_user_id)):
+async def get_goal(
+    assigned_goal_id: int,
+    user_id: str = Depends(get_current_user_id),
+    client_today: date = Depends(get_client_today),
+):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
@@ -303,36 +371,50 @@ async def get_goal(assigned_goal_id: int, user_id: str = Depends(get_current_use
             if not goal_data:
                 raise HTTPException(status_code=404, detail="Goal not found")
 
+            # One row per task (the old SELECT DISTINCT ... at.status listed a
+            # task once per status, so a half-done task appeared twice and was
+            # scheduled twice on save). Status is pending while any day is.
             tasks_data = await conn.fetch(
                 """
-                SELECT DISTINCT t.id, t.title, t.description, t.type as repeat_type, t.interval as week_interval, at.status
+                SELECT
+                    t.id,
+                    t.title,
+                    t.description,
+                    t.type AS repeat_type,
+                    t.interval AS week_interval,
+                    CASE
+                        WHEN bool_or(at.status = 'pending') THEN 'pending'
+                        WHEN bool_or(at.status = 'success') THEN 'success'
+                        ELSE 'failed'
+                    END AS status,
+                    COALESCE(bool_or(ati.interval_date >= $2), false) AS has_upcoming,
+                    array_agg(ati.interval_date ORDER BY ati.interval_date)
+                        FILTER (WHERE ati.interval_date IS NOT NULL) AS dates
                 FROM task t
                 JOIN assigned_task at ON t.id = at.task_id
+                LEFT JOIN assigned_task_interval ati ON ati.assigned_task_id = at.id
                 WHERE at.assigned_goal_id = $1
+                GROUP BY t.id, t.title, t.description, t.type, t.interval
+                ORDER BY t.id
                 """,
                 assigned_goal_id,
+                client_today,
             )
+
+            # The editor shows tasks that still have days from today on; tasks
+            # with only past days are history. A finished goal shows them all.
+            if any(task["has_upcoming"] for task in tasks_data):
+                tasks_data = [task for task in tasks_data if task["has_upcoming"]]
 
             tasks = []
             for task in tasks_data:
-                # Get date_interval for jobs with Repeat_type of 'date'
-                date_interval = []
-                if task["repeat_type"] == "date":
-                    date_interval = await conn.fetch(
-                        """
-                        SELECT interval_date
-                        FROM assigned_task_interval
-                        WHERE assigned_task_id IN (
-                            SELECT id FROM assigned_task WHERE task_id = $1 AND assigned_goal_id = $2
-                        )
-                        """,
-                        task["id"],
-                        assigned_goal_id,
-                    )
-                    date_interval = [
-                        row["interval_date"].isoformat() for row in date_interval
-                    ]
-
+                # Specific dates for date and monthly tasks (monthly ones used to
+                # come back empty, so saving them failed).
+                date_interval = (
+                    [d.isoformat() for d in (task["dates"] or [])]
+                    if task["repeat_type"] in ("date", "monthly")
+                    else []
+                )
                 tasks.append(
                     {
                         "id": task["id"],
