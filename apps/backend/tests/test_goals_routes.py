@@ -181,3 +181,44 @@ def test_get_all_goals_returns_progress_and_settles_overdue_first(monkeypatch):
 def test_all_goals_route_is_declared_before_goal_id_route():
     paths = [route.path for route in goals.router.routes]
     assert paths.index("/all") < paths.index("/{assigned_goal_id}")
+
+
+def test_update_task_status_rejects_tasks_scheduled_after_today(monkeypatch):
+    connection = FakeConnection()
+    connection.fetch.return_value = [
+        {"id": 1, "assigned_goal_id": 7, "interval_date": date(2026, 10, 16)},
+        {"id": 2, "assigned_goal_id": 7, "interval_date": date(2026, 10, 20)},
+    ]
+    patch_pool(monkeypatch, connection)
+    request = TaskUpdateRequest(to=Status.SUCCESS, assigned_task_id=[1, 2])
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            goals.update_task_status(
+                request, user_id="user-1", client_today=date(2026, 10, 16)
+            )
+        )
+
+    assert error.value.status_code == 400
+    assert "Oct 20" in error.value.detail
+    connection.execute.assert_not_awaited()
+
+
+def test_update_task_status_allows_today_and_past_tasks(monkeypatch):
+    connection = FakeConnection()
+    connection.fetch.return_value = [
+        {"id": 1, "assigned_goal_id": 7, "interval_date": date(2026, 10, 16)},
+        {"id": 2, "assigned_goal_id": 7, "interval_date": date(2026, 10, 15)},
+    ]
+    connection.execute.return_value = "UPDATE 2"
+    monkeypatch.setattr(goals, "check_goal_status", AsyncMock())
+    patch_pool(monkeypatch, connection)
+    request = TaskUpdateRequest(to=Status.FAILED, assigned_task_id=[1, 2])
+
+    result = asyncio.run(
+        goals.update_task_status(
+            request, user_id="user-1", client_today=date(2026, 10, 16)
+        )
+    )
+
+    assert result["assigned_task_id"] == [1, 2]

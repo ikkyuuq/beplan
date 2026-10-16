@@ -12,6 +12,7 @@ import {
   eachWeekOfInterval,
   subDays,
   format,
+  isAfter,
   isBefore,
   isSameDay,
   isTomorrow,
@@ -103,6 +104,8 @@ export default function Schedule() {
         ? "Yesterday"
         : null;
   const showTodayButton = !isTodaySelected || pageIndex !== todayPage;
+  // Tasks can only be marked on their day; future days are a read-only preview.
+  const isFutureDay = isAfter(startOfDay(selectedDate), startOfDay(today));
 
   // Browsing weeks (swipe or arrows) only changes what's visible. The selected
   // day changes only when the user taps a day, so their pick stays highlighted
@@ -181,7 +184,9 @@ export default function Schedule() {
       },
     );
     if (!response.ok) {
-      throw new Error(`Status update failed (HTTP ${response.status})`);
+      // Prefer the server's reason (e.g. "This task is scheduled for Oct 20...").
+      const body = await response.json().catch(() => null);
+      throw new Error(body?.detail || `Status update failed (HTTP ${response.status})`);
     }
   };
 
@@ -189,7 +194,12 @@ export default function Schedule() {
   // on failure reload the list; cards are keyed by refreshKey and remount visible.
   const handleStatusUpdateError = (error: unknown) => {
     console.error("Failed to update task status:", error);
-    Alert.alert("Couldn't update", "Your change wasn't saved. Please try again.");
+    Alert.alert(
+      "Couldn't update",
+      error instanceof Error && error.message
+        ? error.message
+        : "Your change wasn't saved. Please try again.",
+    );
     setRefreshKey((key) => key + 1);
   };
 
@@ -473,10 +483,27 @@ export default function Schedule() {
             minHeight: 32,
           }}
         >
-          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
-            {selectedLabel ? `${selectedLabel} · ` : ""}
-            {format(selectedDate, "EEEE, MMM d")}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
+            <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
+              {selectedLabel ? `${selectedLabel} · ` : ""}
+              {format(selectedDate, "EEEE, MMM d")}
+            </Text>
+            {/* Future days are a read-only preview: tasks are marked on their day. */}
+            {isFutureDay && (
+              <View
+                style={{
+                  paddingHorizontal: 8,
+                  paddingVertical: 2,
+                  borderRadius: 999,
+                  backgroundColor: "#2A2C3A",
+                }}
+              >
+                <Text style={{ color: "#B7B7B7", fontSize: 11, fontWeight: "600" }}>
+                  Upcoming
+                </Text>
+              </View>
+            )}
+          </View>
           {showTodayButton && (
             <Pressable
               onPress={goToToday}
@@ -551,6 +578,7 @@ export default function Schedule() {
             data.map((goal) => (
               <Collapsable
                 key={`${goal.id}-${refreshKey}`}
+                markable={!isFutureDay}
                 title={goal.title}
                 type={goal.type || "Goal"}
                 onComplete={() =>
@@ -591,6 +619,7 @@ export default function Schedule() {
                 {goal.tasks.map((task) => (
                   <CollapseItem
                     key={task.id}
+                    markable={!isFutureDay}
                     title={task.title}
                     description={task.description || ""}
                     onComplete={() =>

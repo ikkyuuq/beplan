@@ -23,6 +23,8 @@ type CollapseItemProps = {
   onFail?: () => void;
   onReschedule?: (date: string) => void;
   onCustomize?: () => void;
+  /** false for future days: no swipe, Completed/Failed disabled in the menu. */
+  markable?: boolean;
 };
 
 export default function CollapseItem({
@@ -32,6 +34,7 @@ export default function CollapseItem({
   onFail,
   onReschedule,
   onCustomize,
+  markable = true,
 }: CollapseItemProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
@@ -107,6 +110,7 @@ export default function CollapseItem({
     onComplete: onComplete,
     onFail: onFail,
     collapseConfig,
+    swipeEnabled: markable,
   });
 
   const handleContextMenuClose = useCallback(() => {
@@ -208,7 +212,7 @@ export default function CollapseItem({
             title: "Completed",
             icon: <Feather name="check" size={16} color={"green"} />,
             type: "default",
-            status: "enabled",
+            status: markable ? "enabled" : "disabled",
             onPress: () => {
               handleContextMenuClose();
               runSwipeAnimation("right", () => onComplete?.(), 600);
@@ -218,7 +222,7 @@ export default function CollapseItem({
             title: "Failed",
             icon: <Feather name="x" size={16} color={"red"} />,
             type: "default",
-            status: "enabled",
+            status: markable ? "enabled" : "disabled",
             onPress: () => {
               handleContextMenuClose();
               runSwipeAnimation("left", () => onFail?.(), 600);

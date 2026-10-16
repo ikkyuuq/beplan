@@ -26,6 +26,8 @@ type CollapsableProps = {
   onDelete?: () => void;
   onCustomize?: () => void;
   onCollapseFinish?: () => void;
+  /** false for future days: no swipe, Completed/Failed disabled in the menu. */
+  markable?: boolean;
 };
 
 export default function Collapsable({
@@ -38,6 +40,7 @@ export default function Collapsable({
   onDelete,
   onCustomize,
   onCollapseFinish,
+  markable = true,
 }: CollapsableProps) {
   const INITIAL_CONTAINER_HEIGHT = 70;
   const [collapsed, setCollapsed] = useState(false);
@@ -102,6 +105,7 @@ export default function Collapsable({
     onToggleCollapse: toggleCollapse,
     onLongPress: handleContextMenuOpen,
     collapseConfig,
+    swipeEnabled: markable,
   });
 
   const handleContextMenuClose = useCallback(() => {
@@ -293,7 +297,7 @@ export default function Collapsable({
             title: "Completed",
             icon: <Feather name="check" size={16} color={"green"} />,
             type: "default",
-            status: "enabled",
+            status: markable ? "enabled" : "disabled",
             onPress: () => {
               handleContextMenuClose();
               handleCompleteContextMenu();
@@ -303,7 +307,7 @@ export default function Collapsable({
             title: "Failed",
             icon: <Feather name="x" size={16} color={"red"} />,
             type: "default",
-            status: "enabled",
+            status: markable ? "enabled" : "disabled",
             onPress: () => {
               handleContextMenuClose();
               handleFailContextMenu();

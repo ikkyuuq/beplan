@@ -30,6 +30,8 @@ export interface UseCollapsibleGestureProps {
   velocityThreshold?: number;
   resistance?: number;
   collapseConfig?: CollapseConfig;
+  /** false disables swipe-to-complete/fail (tap and long-press still work). */
+  swipeEnabled?: boolean;
 }
 
 /**
@@ -49,6 +51,7 @@ export function useCollapsibleGesture({
   velocityThreshold = 500,
   resistance = 1,
   collapseConfig,
+  swipeEnabled = true,
 }: UseCollapsibleGestureProps) {
   const translateX = useSharedValue(0);
   const opacity = useSharedValue(1);
@@ -174,6 +177,7 @@ export function useCollapsibleGesture({
   });
 
   const gesturePan = Gesture.Pan()
+    .enabled(swipeEnabled)
     .activeOffsetX([-10, 10])
     // Let vertical scrolling win: a mostly-vertical drag never swipes a card.
     .failOffsetY([-15, 15])

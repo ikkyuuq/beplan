@@ -457,7 +457,9 @@ async def get_goals_today(
 
 @router.put("/update_task_status")
 async def update_task_status(
-    request: TaskUpdateRequest, user_id: str = Depends(get_current_user_id)
+    request: TaskUpdateRequest,
+    user_id: str = Depends(get_current_user_id),
+    client_today: date = Depends(get_client_today),
 ):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -466,18 +468,38 @@ async def update_task_status(
         # Every requested task must be pending and belong to this user
         assigned_tasks = await conn.fetch(
             """
-            SELECT at.id, at.assigned_goal_id
+            SELECT at.id, at.assigned_goal_id, MAX(ati.interval_date) AS interval_date
             FROM public.assigned_task at
             JOIN public.assigned_goal ag ON at.assigned_goal_id = ag.id
+            LEFT JOIN public.assigned_task_interval ati ON ati.assigned_task_id = at.id
             WHERE at.id = ANY($1)
             AND ag.user_id = $2
             AND at.status = 'pending'
+            GROUP BY at.id, at.assigned_goal_id
             """,
             task_ids,
             user_id,
         )
         if not task_ids or len(assigned_tasks) != len(task_ids):
             raise HTTPException(status_code=404, detail="Task not found for this user")
+
+        # Tasks can only be marked on (or after) their day: marking future days
+        # early would let a long goal be "completed" today. client_today is the
+        # user's local date (X-Local-Date, clamped to UTC +/- 1 day).
+        future_dates = sorted(
+            row.get("interval_date")
+            for row in assigned_tasks
+            if row.get("interval_date") and row.get("interval_date") > client_today
+        )
+        if future_dates:
+            day = future_dates[0]
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"This task is scheduled for {day:%b} {day.day}. "
+                    "You can mark it on that day."
+                ),
+            )
 
         async with conn.transaction():
             res = await conn.execute(
