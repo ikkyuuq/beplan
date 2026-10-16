@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useSignIn, useOAuth } from "@clerk/clerk-expo";
+import { useSignIn, useSSO } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
 import * as WebBrowser from "expo-web-browser";
@@ -42,8 +42,6 @@ export const useWarmUpBrowser = () => {
     };
   }, []);
 };
-
-WebBrowser.maybeCompleteAuthSession(); // Handle any pending authentication sessions
 
 // ====================== Main Component ======================
 export default function SignInScreen() {
@@ -115,12 +113,8 @@ export default function SignInScreen() {
   useWarmUpBrowser();
   const { signIn, isLoaded, setActive } = useSignIn();
   const router = useRouter();
-  const { startOAuthFlow: startGoogleOAuth } = useOAuth({
-    strategy: "oauth_google",
-  });
-  const { startOAuthFlow: startGitHubOAuth } = useOAuth({
-    strategy: "oauth_github",
-  });
+  // useSSO replaces the deprecated useOAuth (same flow, maintained by Clerk).
+  const { startSSOFlow } = useSSO();
 
   // ====================== State Management ======================
   const [identifier, setIdentifier] = React.useState("");
@@ -195,33 +189,61 @@ export default function SignInScreen() {
   };
 
   // ====================== OAuth Handlers ======================
-  const handleOAuthSignIn = async (startOAuthFlow: any, provider: string) => {
+  const handleSocialSignIn = async (
+    strategy: "oauth_google" | "oauth_github",
+    provider: string,
+  ) => {
+    if (!isLoaded) return;
+    setErrorMessage("");
+    setIsSigningIn(true);
     try {
-      if (!isLoaded) return;
+      if (Platform.OS === "web") {
+        // Full-page redirect instead of a popup: the popup would open after a
+        // request to Clerk, too late to count as a click, and browsers block it.
+        // app/(auth)/sso-callback.tsx finishes the sign-in on return.
+        await signIn.authenticateWithRedirect({
+          strategy,
+          redirectUrl: `${window.location.origin}/sso-callback`,
+          redirectUrlComplete: `${window.location.origin}/schedule`,
+        });
+        return; // the page is navigating away
+      }
 
-      setIsSigningIn(true);
+      const { createdSessionId, setActive: setSSOActive, authSessionResult } =
+        await startSSOFlow({ strategy, redirectUrl: Linking.createURL("/") });
 
-      const redirectUrl = Linking.createURL("/");
-      const result = await startOAuthFlow({ redirectUrl });
-
-      if (result?.createdSessionId) {
-        await setActive({ session: result.createdSessionId });
+      if (createdSessionId) {
+        await (setSSOActive ?? setActive)({ session: createdSessionId });
         router.replace(routes.loggedInRedirect);
+      } else if (
+        authSessionResult?.type === "cancel" ||
+        authSessionResult?.type === "dismiss"
+      ) {
+        // The user closed the browser/popup: not an error.
+        setErrorMessage(`${provider} sign-in was cancelled.`);
       } else {
-        setErrorMessage(`${provider} Sign-in failed. Please try again.`);
+        // Signed in with the provider but Clerk needs more (e.g. extra fields).
+        console.warn(`${provider} sign-in incomplete`, authSessionResult);
+        setErrorMessage(`${provider} sign-in couldn't be completed. Please try again.`);
       }
     } catch (err: any) {
-      setErrorMessage(`${provider} OAuth failed. Please check your settings.`);
+      // Show Clerk's own reason (e.g. a provider not enabled in the Clerk
+      // Dashboard, or a blocked popup) instead of a generic message.
+      console.error(`${provider} sign-in failed`, err);
+      const reason =
+        err?.errors?.[0]?.longMessage ||
+        err?.errors?.[0]?.message ||
+        err?.message ||
+        "Unknown error";
+      setErrorMessage(`${provider} sign-in failed: ${reason}`);
     } finally {
       setIsSigningIn(false);
     }
   };
 
-  const onGoogleSignInPress = async () =>
-    handleOAuthSignIn(startGoogleOAuth, "Google");
+  const onGoogleSignInPress = () => handleSocialSignIn("oauth_google", "Google");
 
-  const onGitHubSignInPress = async () =>
-    handleOAuthSignIn(startGitHubOAuth, "GitHub");
+  const onGitHubSignInPress = () => handleSocialSignIn("oauth_github", "GitHub");
 
   // ====================== Render UI ======================
   return (
