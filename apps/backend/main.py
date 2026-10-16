@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from auth import get_current_user_id
 from database import lifespan
-from routers import ai, analysis, goals, reschedule, template, user
+from routers import ai, analysis, drafts, goals, reschedule, template, user
 
 app = FastAPI(lifespan=lifespan)
 
@@ -23,6 +23,7 @@ authenticated = [Depends(get_current_user_id)]
 
 app.include_router(ai.router, prefix="/api/v1/ai", dependencies=authenticated)
 app.include_router(goals.router, prefix="/api/v1/goal", dependencies=authenticated)
+app.include_router(drafts.router, prefix="/api/v1/drafts", dependencies=authenticated)
 app.include_router(
     reschedule.router, prefix="/api/v1/reschedule", dependencies=authenticated
 )

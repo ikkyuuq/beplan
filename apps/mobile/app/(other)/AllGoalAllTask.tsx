@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { format, parseISO } from "date-fns";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
+import { Alert } from "@/utils/alert";
 
 // ====================== Types ======================
 // One row of GET /api/v1/goal/all
@@ -31,6 +32,15 @@ type GoalSummary = {
 };
 
 type Section = { key: string; title: string; goals: GoalSummary[] };
+
+// One row of GET /api/v1/drafts (the editor's own format).
+type Draft = {
+  id: number;
+  title: string;
+  start_date: string | null;
+  due_date: string | null;
+  tasks: unknown[];
+};
 
 const STATUS_STYLE: Record<GoalSummary["status"], { label: string; color: string }> = {
   pending: { label: "In progress", color: "#4E5A94" },
@@ -105,11 +115,60 @@ function GoalCard({ goal, onPress }: { goal: GoalSummary; onPress: () => void })
   );
 }
 
+// ====================== Draft card ======================
+function DraftCard({
+  draft,
+  onOpen,
+  onStart,
+  onDelete,
+}: {
+  draft: Draft;
+  onOpen: () => void;
+  onStart: () => void;
+  onDelete: () => void;
+}) {
+  const planned =
+    draft.start_date && draft.due_date
+      ? formatRange(draft.start_date, draft.due_date)
+      : "No dates yet";
+  const taskCount = `${draft.tasks.length} task${draft.tasks.length === 1 ? "" : "s"}`;
+
+  return (
+    <Pressable
+      onPress={onOpen}
+      accessibilityRole="button"
+      accessibilityLabel={`Draft ${draft.title || "Untitled"}, ${planned}, ${taskCount}`}
+      style={({ pressed }) => [styles.card, styles.draftCard, pressed && styles.cardPressed]}
+    >
+      <View style={styles.cardHeader}>
+        <Text style={styles.goalTitle} numberOfLines={2}>
+          {draft.title.trim() || "Untitled draft"}
+        </Text>
+        <View style={[styles.badge, { borderColor: "#8D8D99" }]}>
+          <Text style={[styles.badgeText, { color: "#8D8D99" }]}>Draft</Text>
+        </View>
+      </View>
+      <Text style={styles.meta}>
+        Planned {planned} · {taskCount}
+      </Text>
+      <View style={styles.draftActions}>
+        <Pressable onPress={onDelete} hitSlop={8} accessibilityRole="button" style={styles.draftDelete}>
+          <Text style={styles.draftDeleteText}>Delete</Text>
+        </Pressable>
+        <Pressable onPress={onStart} hitSlop={8} accessibilityRole="button" style={styles.draftStart}>
+          <Text style={styles.draftStartText}>Start</Text>
+        </Pressable>
+      </View>
+    </Pressable>
+  );
+}
+
 // ====================== Screen ======================
 export default function AllGoalAllTask() {
   const apiFetch = useApiFetch();
   const router = useRouter();
   const [goals, setGoals] = useState<GoalSummary[]>([]);
+  const [drafts, setDrafts] = useState<Draft[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
@@ -118,9 +177,19 @@ export default function AllGoalAllTask() {
   const loadGoals = useCallback(async () => {
     setError(null);
     try {
-      const response = await apiFetch(`${API_BASE_URL}/api/v1/goal/all`);
+      const [response, draftsResponse] = await Promise.all([
+        apiFetch(`${API_BASE_URL}/api/v1/goal/all`),
+        apiFetch(`${API_BASE_URL}/api/v1/drafts`).catch(() => null),
+      ]);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       setGoals(await response.json());
+      // Drafts are optional: if they can't load, still show the goals.
+      if (draftsResponse?.ok) {
+        setDrafts(await draftsResponse.json());
+      } else {
+        console.warn("Couldn't load drafts:", draftsResponse?.status);
+        setDrafts([]);
+      }
     } catch (err) {
       console.error("Failed to load goals:", err);
       setError("Couldn't load your goals. Pull down to try again.");
@@ -157,6 +226,59 @@ export default function AllGoalAllTask() {
     }
   };
 
+  const openDraft = (draft: Draft) => {
+    router.push({
+      pathname: "/(other)/customGoal",
+      params: { draftId: draft.id, initialDraft: JSON.stringify(draft) },
+    });
+  };
+
+  const startDraft = (draft: Draft) => {
+    Alert.alert(
+      "Start this goal?",
+      "It goes on your schedule and becomes limited to title and description edits. If its planned start has passed, it starts today and keeps the same length.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Start",
+          onPress: async () => {
+            try {
+              const response = await apiFetch(
+                `${API_BASE_URL}/api/v1/drafts/${draft.id}/start`,
+                { method: "POST" }
+              );
+              if (!response.ok) {
+                const body = await response.json().catch(() => null);
+                throw new Error(body?.detail || `HTTP ${response.status}`);
+              }
+              void loadGoals();
+            } catch (err: any) {
+              // e.g. "Add at least one task before starting." -> open it to finish
+              Alert.alert("Can't start yet", err?.message || "Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const deleteDraft = (draft: Draft) => {
+    Alert.alert("Delete this draft?", "This can't be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          const response = await apiFetch(`${API_BASE_URL}/api/v1/drafts/${draft.id}`, {
+            method: "DELETE",
+          });
+          if (!response.ok) Alert.alert("Couldn't delete the draft", "Please try again.");
+          void loadGoals();
+        },
+      },
+    ]);
+  };
+
   const sections = groupGoals(goals, format(new Date(), "yyyy-MM-dd"));
 
   return (
@@ -185,7 +307,22 @@ export default function AllGoalAllTask() {
         >
           {!!error && <Text style={styles.errorText}>{error}</Text>}
 
-          {!error && sections.length === 0 && (
+          {drafts.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Drafts ({drafts.length})</Text>
+              {drafts.map((draft) => (
+                <DraftCard
+                  key={`draft-${draft.id}`}
+                  draft={draft}
+                  onOpen={() => openDraft(draft)}
+                  onStart={() => startDraft(draft)}
+                  onDelete={() => deleteDraft(draft)}
+                />
+              ))}
+            </View>
+          )}
+
+          {!error && sections.length === 0 && drafts.length === 0 && (
             <Text style={styles.emptyText}>
               No goals yet. Create one from the Create tab.
             </Text>
@@ -261,6 +398,38 @@ const styles = StyleSheet.create({
   },
   cardPressed: {
     opacity: 0.7,
+  },
+  draftCard: {
+    backgroundColor: "#FAFAFC",
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: "#C9CAD6",
+  },
+  draftActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 4,
+  },
+  draftDelete: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  draftDeleteText: {
+    color: "#D64545",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  draftStart: {
+    backgroundColor: "#4E5A94",
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  draftStartText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
   cardHeader: {
     flexDirection: "row",

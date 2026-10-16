@@ -62,6 +62,8 @@ type CustomGoalUIProps = {
   setTaskModalVisible: (visible: boolean) => void;
   handleSubmit: () => void;
   handleUpdate: () => void;
+  /** Shown for new goals and drafts (not for started goals). */
+  handleSaveDraft?: () => void;
 
   // Debug Functions
   testLogData: () => void;
@@ -128,6 +130,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
   setTaskModalVisible,
   handleSubmit,
   handleUpdate,
+  handleSaveDraft,
 }) => {
   return (
     <>
@@ -350,11 +353,24 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                   color="#FFF"
                 />
                 <Text style={styles.createButtonText}>
-                  {isEditingGoal ? "Update Goal" : "Create Goal"}
+                  {isEditingGoal ? "Update Goal" : "Start Goal"}
                 </Text>
               </>
             )}
           </TouchableOpacity>
+
+          {/* Plan now, start later: drafts stay fully editable. */}
+          {!!handleSaveDraft && (
+            <TouchableOpacity
+              style={styles.draftButton}
+              onPress={handleSaveDraft}
+              disabled={isLoading}
+              accessibilityRole="button"
+            >
+              <Ionicons name="document-text-outline" size={20} color="#4E5A94" />
+              <Text style={styles.draftButtonText}>Save as draft</Text>
+            </TouchableOpacity>
+          )}
         </Animated.View>
       </ScrollView>
 
@@ -586,6 +602,8 @@ const TaskItem = ({
         <TouchableOpacity
           style={styles.taskAction}
           onPress={() => handleEditTask(index)}
+          accessibilityRole="button"
+          accessibilityLabel={`Edit ${task.title}`}
         >
           <Ionicons name="pencil" size={20} color="#4F46E5" />
         </TouchableOpacity>
@@ -593,11 +611,16 @@ const TaskItem = ({
           style={styles.taskAction}
           onPress={() => !goalStarted && handleDeleteTask(index)}
           disabled={goalStarted}
+          accessibilityRole="button"
+          accessibilityLabel={`Delete ${task.title}`}
+          accessibilityState={{ disabled: goalStarted }}
         >
+          {/* Neutral grey when disabled (started goals can't remove tasks);
+              a faded red still read as an active delete button. */}
           <Ionicons
             name="trash-outline"
             size={20}
-            color={goalStarted ? "rgba(255, 59, 48, 0.4)" : "#FF3B30"}
+            color={goalStarted ? "#6B6F80" : "#FF3B30"}
           />
         </TouchableOpacity>
       </View>
@@ -869,6 +892,22 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: "#fff",
     fontSize: 18,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  draftButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#4E5A94",
+    padding: 14,
+    borderRadius: 12,
+    marginVertical: 4,
+  },
+  draftButtonText: {
+    color: "#4E5A94",
+    fontSize: 16,
     fontWeight: "600",
     marginLeft: 8,
   },

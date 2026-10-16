@@ -95,6 +95,11 @@ export default function CustomGoal() {
   const initialGoalData = params.initialGoalData
     ? JSON.parse(params.initialGoalData as string)
     : null;
+  // Editing a draft (from All goals): fully editable, saved to /api/v1/drafts.
+  const draftId = params.draftId ? Number(params.draftId) : null;
+  const initialDraft = params.initialDraft
+    ? JSON.parse(params.initialDraft as string)
+    : null;
 
   // ====================== Animation Values ======================
   const headerOpacity = useSharedValue(0);
@@ -176,12 +181,23 @@ export default function CustomGoal() {
   }));
 
   // ====================== State Management ======================
-  const [goalTitle, setGoalTitle] = useState<string>("");
-  const [startDate, setStartDate] = useState<string>("");
-  const [dueDate, setDueDate] = useState<string>("");
+  // A draft being edited seeds the editor's initial state.
+  const [goalTitle, setGoalTitle] = useState<string>(() => initialDraft?.title || "");
+  const [startDate, setStartDate] = useState<string>(() => initialDraft?.start_date || "");
+  const [dueDate, setDueDate] = useState<string>(() => initialDraft?.due_date || "");
   const [isStartDatePickerVisible, setStartDatePickerVisible] = useState(false);
   const [isDueDatePickerVisible, setDueDatePickerVisible] = useState(false);
-  const [taskList, setTaskList] = useState<Task[]>([]);
+  const [taskList, setTaskList] = useState<Task[]>(() =>
+    (initialDraft?.tasks || []).map((task: any) => ({
+      title: task.title || "",
+      description: task.description || "",
+      type: task.type || "normal",
+      selectedDates: task.selectedDates || [],
+      selectedDaysOfWeek: task.selectedDaysOfWeek || [],
+      monthlyMode: task.monthlyMode || "start",
+      status: "pending",
+    }))
+  );
   // Saved tasks the user removed while editing; sent as "deleted" so the
   // backend stops their upcoming days (their history is kept).
   const [removedTasks, setRemovedTasks] = useState<Task[]>([]);
@@ -299,6 +315,75 @@ export default function CustomGoal() {
   };
 
   // ====================== Submit Handler ======================
+  // ====================== Drafts ======================
+  // The draft body is the editor's own format; the backend converts it when
+  // the draft is started.
+  const draftPayload = () => ({
+    title: goalTitle,
+    start_date: startDate || null,
+    due_date: dueDate || null,
+    tasks: taskList.map((task) => ({
+      title: task.title,
+      description: task.description || null,
+      type: task.type,
+      selectedDates: task.selectedDates || [],
+      selectedDaysOfWeek: task.selectedDaysOfWeek || [],
+      monthlyMode: task.monthlyMode || null,
+    })),
+  });
+
+  const readError = async (response: Response) => {
+    const body = await response.json().catch(() => null);
+    return body?.detail || body?.message || `Server error: ${response.status}`;
+  };
+
+  /** Create or update the draft; returns its id. */
+  const saveDraftRequest = async (): Promise<number> => {
+    const response = await apiFetch(
+      draftId
+        ? `${API_BASE_URL}/api/v1/drafts/${draftId}`
+        : `${API_BASE_URL}/api/v1/drafts`,
+      {
+        method: draftId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draftPayload()),
+      }
+    );
+    if (!response.ok) throw new Error(await readError(response));
+    return (await response.json()).id;
+  };
+
+  const handleSaveDraft = async () => {
+    setIsLoading(true);
+    try {
+      await saveDraftRequest();
+      router.dismissTo("/(other)/AllGoalAllTask");
+      Alert.alert("Draft saved", "Find it under Drafts in All goals and start it when you're ready.");
+    } catch (error: any) {
+      console.error("Failed to save draft:", error);
+      Alert.alert("Couldn't save draft", error.message || "Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /** Start goal from a draft: save the latest edits, then start it. */
+  const startDraft = async () => {
+    const id = await saveDraftRequest();
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/drafts/${id}/start`, {
+      method: "POST",
+    });
+    if (!response.ok) throw new Error(await readError(response));
+    const result = await response.json();
+    router.dismissTo("/(tabs)/schedule");
+    Alert.alert(
+      "Goal started",
+      result.shifted_days > 0
+        ? "Its planned start had passed, so it starts today and keeps the same length."
+        : "Your goal is on the schedule."
+    );
+  };
+
   const handleSubmit = async () => {
     if (!isFormValid) {
       Alert.alert(
@@ -317,6 +402,11 @@ export default function CustomGoal() {
     setIsLoading(true);
 
     try {
+      if (draftId) {
+        await startDraft();
+        return;
+      }
+
       const userId = user?.id;
 
       if (!userId) {
@@ -574,6 +664,7 @@ export default function CustomGoal() {
         setTaskModalVisible={setTaskModalVisible}
         handleSubmit={handleSubmit}
         handleUpdate={handleUpdate}
+        handleSaveDraft={isEditingGoal ? undefined : handleSaveDraft}
         // Debug
         testLogData={testLogData}
       />
