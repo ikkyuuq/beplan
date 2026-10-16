@@ -1,35 +1,114 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Link,
+  Outlet,
+  Navigate,
+} from "react-router-dom";
+import { useClerk, useUser } from "@clerk/clerk-react";
+import Home from "./Home";
+import AboutMe from "./AboutMe";
+import Donate from "./Donate";
+import FAQ from "./FAQ";
+import Login from "./Login";
+import AdminDashboard from "./AdminDashboard";
+import "./Home.css";
+
+const Layout = () => {
+  return (
+    <div>
+      <header className="App-header">
+        <nav>
+          <ul>
+            <div className="logo-container">
+              <img
+                src="https://img2.pic.in.th/pic/Screenshot-2025-02-11-215739.png"
+                alt="Logo"
+              />
+              <a href="/">SMART GOAL</a>
+            </div>
+            <li>
+              <Link to="/">Home</Link>
+            </li>
+            <li>
+              <Link to="/aboutme">About Me</Link>
+            </li>
+            <li>
+              <Link to="/donate">Donate</Link>
+            </li>
+            <li>
+              <Link to="/faq">FAQ</Link>
+            </li>
+          </ul>
+        </nav>
+      </header>
+      <main>
+        <Outlet />
+      </main>
+    </div>
+  );
+};
+
+// สร้าง ProtectedRoute สำหรับตรวจสอบสิทธิ์
+// The backend enforces the admin role on every admin API call; this guard only
+// keeps non-admins from seeing the dashboard UI.
+// eslint-disable-next-line react/prop-types
+const ProtectedRoute = ({ children }) => {
+  const { isLoaded, isSignedIn, user } = useUser();
+  const { signOut } = useClerk();
+
+  if (!isLoaded) {
+    return null;
+  }
+
+  // หากยังไม่ได้เข้าสู่ระบบ ให้ Redirect ไปหน้า Login
+  if (!isSignedIn) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.publicMetadata?.role !== "admin") {
+    return (
+      <div className="login-container">
+        <div className="login-box">
+          <h2>Not authorized</h2>
+          <p>This account does not have admin access.</p>
+          <p>
+            Signed in as {user.primaryEmailAddress?.emailAddress ?? "unknown"}
+            <br />
+            <code>{user.id}</code>
+          </p>
+          <button className="back-btn" onClick={() => signOut()}>Sign out</button>
+        </div>
+      </div>
+    );
+  }
+
+  return children;
+};
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <Router>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="aboutme" element={<AboutMe />} />
+          <Route path="donate" element={<Donate />} />
+          <Route path="faq" element={<FAQ />} />
+        </Route>
+        <Route path="login" element={<Login />} />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;

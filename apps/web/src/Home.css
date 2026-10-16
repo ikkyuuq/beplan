@@ -1,0 +1,157 @@
+body {
+    font-family: "Noto Sans Thai", sans-serif;
+    background-color: #0b0d21;
+    color: white;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+  }
+  
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 20px 0;
+    z-index: 1000;
+  }
+  
+  nav ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+  }
+  
+  nav ul li {
+    display: inline;
+  }
+  
+  nav ul li a {
+    color: white;
+    text-decoration: none;
+    font-size: 1rem;
+    padding: 10px 15px;
+    transition: color 0.3s ease-in-out;
+  }
+  
+  nav ul li a:hover {
+    color: #5865f2;
+  }
+  
+  .home-container {
+    max-width: 1000px;
+    margin: auto;
+    padding: 120px 20px 50px;
+    text-align: left;
+  }
+  
+  h2 {
+    font-size: 1.8rem;
+    color: #b0b3ff;
+  }
+  
+  p {
+    font-size: 1.2rem;
+    line-height: 1.8;
+    color: #d1d1e9;
+  }
+  
+  .button-download {
+    margin-top: 30px;
+    display: flex;
+    gap: 15px;
+    justify-content: start;
+  }
+
+  
+  
+.App-header button {
+    position: absolute;
+    top: 8px;
+    right: 50px;
+    font-size: 1.2rem;
+    padding: 10px 30px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.button-download button {
+    color: white;
+    font-size: 1.2rem;
+    border: none;
+    padding: 15px 85px;
+    margin: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  .App-header .start {
+    background-color: #7e88f5;
+    color: white;
+  }
+
+  .App-header .start:hover {
+    background-color: #858888;
+  }
+
+  .button-download .Download {
+    background-color: #238636;
+    color: white;
+  }
+  
+  .button-download .Download:hover {
+    background-color: #979abe;
+  }
+  
+  .hero-section {
+    background: linear-gradient(to right, #1f1f41, #0b0d21);
+    padding: 100px 20px;
+  }
+  
+  .logo-container img{
+    position: absolute;
+    margin-top: 10px;
+    left: 70px;
+    transform: translate(-50%, -50%);
+    width: 55px;
+    border-radius: 90px;
+  }
+
+  .logo-container a{
+    position: absolute;
+    font-size: 30px;
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    top: 15px;
+    left: 110px;
+    text-decoration: none;
+    color: white;
+    transition: color 0.3s ease-in-out;
+  }
+
+  .logo-container a:hover {
+    color:#5865f2;
+  }
+  
+  .footer {
+    background: #111;
+    color: #ffffff;
+    text-align: center;
+    padding: 30px 0;
+    font-size: 14px;
+    margin-top: 400px;
+  }
+  
+  .footer-container p {
+    margin: 6px 0;
+  }
+  
+  .footer-container strong {
+    color: #6495ED;
+  }
+  

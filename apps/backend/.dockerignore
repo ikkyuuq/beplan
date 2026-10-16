@@ -1,0 +1,16 @@
+# Secrets are provided at runtime via env_file, never baked into the image.
+.env
+.env.*
+
+# Local environments and caches
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Not needed at runtime
+tests/
+requirements_win.txt
+Dockerfile
+.dockerignore

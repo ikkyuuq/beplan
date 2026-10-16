@@ -59,10 +59,27 @@ source venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
+For a physical device, bind the backend to the network and keep the API port at
+`8000`:
+```sh
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
 #### Development
 - Make API changes in `main.py` or create custom services for each route.
 - Test endpoints using Postman or a browser.
 - The backend connects to **Neon PostgreSQL**.
+
+#### Authentication
+All `/api/v1/*` routes (except public shared-template links) require a Clerk
+session token: `Authorization: Bearer <token>`. The backend takes the user id
+from the token, so any `user_id` a client sends is ignored. Set these in
+`docker/.env` (see `docker/.env.example`):
+- `CLERK_ISSUER`: the Clerk Frontend API URL, e.g. `https://<name>.clerk.accounts.dev`
+- `CLERK_SECRET_KEY`: needed for admin-only endpoints (creating, updating and
+  deleting BePlan templates)
+
+To make someone an admin of the web dashboard, open their user in the Clerk Dashboard
+and set **Public metadata** to `{ "role": "admin" }`.
 
 ---
 
@@ -74,6 +91,11 @@ docker-compose up --build --watch
 ```
 This will:
 - Start **server** on port `8000`
+- Expo/Metro may use ports `8081`, `8082`, or `8083`; those serve the
+  JavaScript bundle and are not backend API ports.
+- Set `apps/mobile/.env` to
+  `EXPO_PUBLIC_API_URL=http://<computer-LAN-IP>:8000`, then restart Expo with
+  `npx expo start --clear` after changing it.
 
 ---
 

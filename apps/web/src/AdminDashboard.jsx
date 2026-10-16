@@ -1,0 +1,633 @@
+import { useState, useEffect, useCallback } from "react";
+import axios from "axios";
+import { useAuth, useClerk, useUser } from "@clerk/clerk-react";
+import { useNavigate } from "react-router-dom"; // นำเข้า useNavigate
+import "./AdminDashboard.css";
+
+const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+const AdminDashboard = () => {
+    const { getToken } = useAuth();
+    const { signOut } = useClerk();
+    const { user } = useUser();
+    const [templates, setTemplates] = useState([]);
+    const [editingTemplate, setEditingTemplate] = useState({
+        title: "",
+        description: "",
+        image_url: null,
+        category: "",
+        goals: [],
+    });
+    const [newName, setNewName] = useState("");
+    const [newDescription, setNewDescription] = useState("");
+    const [newImage, setNewImage] = useState(null);
+    const [newCategory, setNewCategory] = useState("");
+    const [newGoal, setNewGoal] = useState("");
+    const [newTask, setNewTask] = useState("");
+    const [newGoalStartDate, setNewGoalStartDate] = useState("");
+    const [newGoalDueDate, setNewGoalDueDate] = useState("");
+    const categories = ["Workout Routine", "Personal Budgeting", "Healthy Eating"];
+    const userAccount = {
+        name: user?.fullName || user?.primaryEmailAddress?.emailAddress || "Admin",
+        profilePic: user?.imageUrl || "https://cdn-icons-png.flaticon.com/512/847/847969.png",
+    };
+    const [newTaskType, setNewTaskType] = useState(null);
+    const [selectedDays, setSelectedDays] = useState([]);
+    const [goalEditingMode, setGoalEditingMode] = useState(false);
+    const [showDescription, setShowDescription] = useState(null);
+    const [selectedGoalId, setSelectedGoalId] = useState(null);
+    const [selectedTaskId, setSelectedTaskId] = useState(null);
+    const [creatingTemplate, setCreatingTemplate] = useState(false);
+    const [savingTemplate, setSavingTemplate] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
+
+    const navigate = useNavigate(); // เรียกใช้ useNavigate
+
+    const handleLogout = async () => {
+        await signOut();
+        navigate("/login"); // Redirect ไปหน้า Login
+    };
+
+    // Every admin API call carries the Clerk session token; the backend checks the admin role.
+    const authConfig = useCallback(async (headers = {}) => {
+        const token = await getToken();
+        return { headers: { ...headers, Authorization: `Bearer ${token}` } };
+    }, [getToken]);
+
+
+    const fetchTemplates = useCallback(async () => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/api/v1/template`, await authConfig());
+            setTemplates(response.data);
+            return true;
+        } catch (error) {
+            const message = error.response?.data?.detail || error.message || "Unable to load templates.";
+            setErrorMessage(message);
+            console.error("Error fetching templates:", message);
+            return false;
+        }
+    }, [authConfig]);
+
+    useEffect(() => {
+        fetchTemplates();
+    }, [fetchTemplates]);
+
+    const handleCreateTemplate = async () => {
+        const newTemplate = {
+            title: "",
+            description: "Edit this template.",
+            image_url: null,
+            category: "Workout Routine",
+            goals: [],
+        };
+        setEditingTemplate(newTemplate);
+        setCreatingTemplate(true);
+        setGoalEditingMode(false);
+        setNewName("");
+        setNewDescription("Edit this template.");
+        setNewImage(null);
+        setNewCategory("Workout Routine");
+        setErrorMessage("");
+    };
+
+    const handleEditTemplate = (template) => {
+        setEditingTemplate({
+            ...template,
+            name: template.title,
+            image: template.image_url,
+            goals: (template.goals || []).map((goal, goalIndex) => ({
+                ...goal,
+                id: goal.id ?? `${template.id}-goal-${goalIndex}`,
+                text: goal.title ?? goal.text,
+                tasks: (goal.tasks || []).map((task, taskIndex) => ({
+                    ...task,
+                    id: task.id ?? `${template.id}-goal-${goalIndex}-task-${taskIndex}`,
+                    text: task.title ?? task.text,
+                    type: task.repeat_type ?? task.type,
+                    selectedDays: task.selectedDays ?? task.week_interval?.map((day) =>
+                        ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][day]
+                    ),
+                })),
+            })),
+        });
+        setCreatingTemplate(false);
+        setGoalEditingMode(false);
+        setNewName(template.title);
+        setNewDescription(template.description || "");
+        setNewImage(template.image_url);
+        setNewCategory(template.category);
+        setSelectedGoalId(null);
+        setSelectedTaskId(null);
+        setErrorMessage("");
+    };
+
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const img = new Image();
+                img.src = reader.result;
+
+                img.onload = () => {
+                    const MAX_WIDTH = 200; // ความกว้างสูงสุด
+                    const MAX_HEIGHT = 200; // ความสูงสูงสุด
+                    let width = img.width;
+                    let height = img.height;
+
+                    // ปรับขนาดรูปภาพให้พอดีกับขนาดสูงสุด
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    // สร้าง canvas เพื่อปรับขนาดรูปภาพ
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // แปลง canvas เป็นรูปภาพขนาดเล็ก
+                    const resizedImage = canvas.toDataURL("image/jpeg", 0.8); // คุณภาพ 80%
+                    setNewImage(resizedImage); // บันทึกรูปภาพขนาดเล็กลง state
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingTemplate || savingTemplate) return;
+
+        if (!(editingTemplate.goals || []).length) {
+            setErrorMessage("Add at least one goal before saving.");
+            return;
+        }
+        if (editingTemplate.goals.some((goal) => !goal.start_date || !goal.due_date)) {
+            setErrorMessage("Set a start and due date for every goal before saving.");
+            return;
+        }
+
+        const templateData = {
+            title: newName || "New Template",
+            description: newDescription || "Edit this template.",
+            image_url: newImage || "https://example.com/default-image.jpg",
+            created_by: userAccount.name,
+            category: newCategory || "Workout Routine",
+            goals: (editingTemplate.goals || []).map((goal) => ({
+                title: goal.text || goal.title || "New Goal",
+                type: "template",
+                start_date: goal.start_date,
+                due_date: goal.due_date,
+                tasks: (goal.tasks || []).map((task) => ({
+                    title: task.text || task.title || "New Task",
+                    description: task.description || "",
+                    repeat_type: task.type || task.repeat_type || "daily",
+                    date_interval: task.date_interval || [],
+                    week_interval: task.selectedDays
+                        ? task.selectedDays.map((day) => ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(day)).filter((day) => day >= 0)
+                        : task.week_interval || [],
+                })),
+            })),
+        };
+
+        setSavingTemplate(true);
+        setErrorMessage("");
+        try {
+            if (creatingTemplate) {
+                await axios.post(
+                    `${API_BASE_URL}/api/v1/template/create`,
+                    templateData,
+                    await authConfig({ "Content-Type": "application/json" }),
+                );
+            } else {
+                const response = await axios.put(`${API_BASE_URL}/api/v1/template/update`, {
+                    template_id: editingTemplate.id,
+                    ...templateData,
+                }, await authConfig({ "Content-Type": "application/json" }));
+                if (!response.data) {
+                    throw new Error("The server did not confirm the template update.");
+                }
+            }
+
+            if (await fetchTemplates()) {
+                setEditingTemplate(null);
+                setCreatingTemplate(false);
+            }
+        } catch (error) {
+            const message = error.response?.data?.detail || error.message || "Unable to save template.";
+            setErrorMessage(message);
+            console.error("Error saving template:", message);
+        } finally {
+            setSavingTemplate(false);
+        }
+    };
+
+    const handleDeleteTemplate = async (id) => {
+        setErrorMessage("");
+        try {
+            await axios.delete(
+                `${API_BASE_URL}/api/v1/template/delete?template_id=${id}`,
+                await authConfig(),
+            );
+            await fetchTemplates();
+        } catch (error) {
+            const message = error.response?.data?.detail || error.message || "Unable to delete template.";
+            setErrorMessage(message);
+            console.error("Error deleting template:", message);
+        }
+    };
+
+    const handleAddGoal = () => {
+        if (!newGoalStartDate || !newGoalDueDate) {
+            alert("กรุณากรอก Start Date และ Due Date ก่อนที่จะเพิ่ม Goal.");
+            return;
+        }
+
+        if (newGoal.trim()) {
+            const updatedTemplate = {
+                ...editingTemplate,
+                goals: [...editingTemplate.goals, {
+                    id: Date.now(),
+                    title: newGoal,
+                    tasks: [],
+                    start_date: newGoalStartDate,
+                    due_date: newGoalDueDate
+                }]
+            };
+            setEditingTemplate(updatedTemplate);
+            setNewGoal("");
+            setNewGoalStartDate("");
+            setNewGoalDueDate("");
+        }
+    };
+
+    const handleUpdateGoalDate = (goalId, field, value) => {
+        setEditingTemplate((current) => ({
+            ...current,
+            goals: current.goals.map((goal) =>
+                goal.id === goalId ? { ...goal, [field]: value } : goal
+            ),
+        }));
+    };
+
+    const handleRemoveGoal = (goalId) => {
+        const updatedTemplate = {
+            ...editingTemplate,
+            goals: editingTemplate.goals.filter((goal) => goal.id !== goalId)
+        };
+        setEditingTemplate(updatedTemplate);
+    };
+
+    const handleAddTask = () => {
+        if (newTask.trim() && selectedGoalId) {
+            const updatedTemplate = {
+                ...editingTemplate,
+                goals: editingTemplate.goals.map(goal =>
+                    goal.id === selectedGoalId
+                        ? {
+                            ...goal,
+                            tasks: [
+                                ...goal.tasks,
+                                {
+                                    id: Date.now(),
+                                    title: newTask,
+                                    type: newTaskType,
+                                    week_interval: newTaskType === "weekly" ? selectedDays : [],
+                                }
+                            ]
+                        }
+                        : goal
+                )
+            };
+            setEditingTemplate(updatedTemplate);
+            setNewTask("");
+            setNewTaskType(null);
+            setSelectedDays([]);
+        }
+    };
+
+    const handleDaySelect = (day) => {
+        setSelectedDays(prev => {
+            if (prev.includes(day)) {
+                return prev.filter(d => d !== day);
+            }
+            return [...prev, day];
+        });
+    };
+
+    const handleRemoveTask = (goalId, taskId) => {
+        if (selectedTaskId === taskId) {
+            const updatedTemplate = {
+                ...editingTemplate,
+                goals: editingTemplate.goals.map(goal =>
+                    goal.id === goalId
+                        ? { ...goal, tasks: goal.tasks.filter(task => task.id !== taskId) }
+                        : goal
+                )
+            };
+            setEditingTemplate(updatedTemplate);
+            setSelectedTaskId(null);
+        }
+    };
+
+    const toggleDescription = (templateId) => {
+        setShowDescription(showDescription === templateId ? null : templateId);
+    };
+
+    return (
+        <div className="admin-container">
+            <nav className="admin-navbar">
+                <div className="navbar-title">Admin Dashboard</div>
+                <div className="navbar-user">
+                    <img src={userAccount.profilePic} alt="User" className="user-icon" />
+                    <span className="user-name">{userAccount.name}</span>
+                    <button className="logout-btn" onClick={handleLogout}>🚪 Logout</button>
+                </div>
+            </nav>
+
+            <div className="dashboard-content">
+                <header>
+                    <h1>Admin Template</h1>
+                    <button className="create-btn" onClick={handleCreateTemplate}>Create Template</button>
+                </header>
+                {errorMessage && <p role="alert" className="error-message">{errorMessage}</p>}
+
+                <table className="template-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Template Name</th>
+                            <th>Image</th>
+                            <th>Category</th>
+                            <th>Goals</th>
+                            <th>Task</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {templates.map((template, index) => (
+                            <tr key={template.id}>
+                                <td>{index + 1}</td>
+                                <td>{template.title}</td>
+                                <td>
+                                    {template.image_url ? (
+                                        <img src={template.image_url} alt="Template" className="template-img" />
+                                    ) : (
+                                        "No Image"
+                                    )}
+                                </td>
+                                <td>{template.category}</td>
+                                <td>
+                                    <ul>
+                                        {(template.goals || []).map((goal, goalIndex) => (
+                                            <li key={goal.id ?? `${template.id}-goal-${goalIndex}`}>
+                                                <strong>{goal.title}</strong>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </td>
+                                <td>
+                                    <ul>
+                                        {(template.goals || []).map((goal, index) => (
+                                            <li key={goal.id ?? index}>
+                                                <ul>
+                                                    {(goal.tasks || []).map((task, taskIndex) => (
+                                                        <li key={task.id ?? taskIndex}>
+                                                            <strong>Task: {task.title}</strong>
+                                                            {(task.repeat_type ?? task.type) === "weekly" && task.week_interval && (
+                                                                <p>Selected Days: {task.week_interval.map((day) => ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][day]).join(", ")}</p>
+                                                            )}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </td>
+                                <td>
+                                    <button className="description-btn" onClick={() => handleEditTemplate(template)}>
+                                        Edit
+                                    </button>
+                                    <button className="description-btn" onClick={() => toggleDescription(template.id)}>
+                                        Description
+                                    </button>
+                                    <button className="delete-btn" onClick={() => handleDeleteTemplate(template.id)}>
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+
+                {showDescription && (
+                    <div className="description-modal">
+                        <div className="modal-content">
+                            <h3>Description</h3>
+                            <p>{templates.find(template => template.id === showDescription)?.description}</p>
+                            <button onClick={() => setShowDescription(null)}>❌ Close</button>
+                        </div>
+                    </div>
+                )}
+                {editingTemplate && (
+                    <div className="modal">
+                        <div className="modal-content">
+                            <h2>{creatingTemplate ? "Create Template" : "Edit Template"}</h2>
+                            <button
+                                onClick={() => setGoalEditingMode(!goalEditingMode)}
+                                className={`goal-edit-btn ${goalEditingMode ? "close" : ""}`}
+                            >
+                                <span>{goalEditingMode ? "Edit Template" : "✏ Edit Goals"}</span>
+                            </button>
+
+                            {!goalEditingMode && (
+                                <>
+                                    <label>Template Name:</label>
+                                    <input
+                                        type="text"
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                    />
+                                    <label>Description:</label>
+                                    <textarea
+                                        value={newDescription}
+                                        onChange={(e) => setNewDescription(e.target.value)}
+                                    />
+                                    <label>Category:</label>
+                                    <select
+                                        value={newCategory}
+                                        onChange={(e) => setNewCategory(e.target.value)}
+                                    >
+                                        {categories.map((category, index) => (
+                                            <option key={index} value={category}>{category}</option>
+                                        ))}
+                                    </select>
+                                    <label>Upload Image:</label>
+                                    <input type="file" accept="image/*" onChange={handleImageUpload} />
+                                    {newImage && <img src={newImage} alt="Preview" className="preview-img" />}
+                                </>
+                            )}
+
+                            {goalEditingMode && (
+                                <div>
+                                    <h3>Editing Goals for Template: {editingTemplate.title}</h3>
+                                    <div>
+                                        <input
+                                            type="text"
+                                            value={newGoal}
+                                            onChange={(e) => setNewGoal(e.target.value)}
+                                            placeholder="Add a new goal"
+                                        />
+                                        <label>Start Date:</label>
+                                        <input
+                                            type="date"
+                                            value={newGoalStartDate}
+                                            onChange={(e) => setNewGoalStartDate(e.target.value)}
+                                        />
+                                        <label>Due Date:</label>
+                                        <input
+                                            type="date"
+                                            value={newGoalDueDate}
+                                            onChange={(e) => setNewGoalDueDate(e.target.value)}
+                                        />
+                                        <button onClick={handleAddGoal} className="add-goal-btn">
+                                            <span>+ Add Goal</span>
+                                        </button>
+                                    </div>
+                                    <div className="goals-list">
+                                        {editingTemplate.goals.map((goal, index) => (
+                                            <div
+                                                key={goal.id}
+                                                className={selectedGoalId === goal.id ? "goal-selected" : "goal-not-selected"}
+                                                onClick={() => setSelectedGoalId(goal.id)}
+                                            >
+                                                <h3>Goal{index + 1}: {goal.title}</h3>
+                                                {selectedGoalId === goal.id && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleRemoveGoal(goal.id)}
+                                                            className="remove-goal-btn"
+                                                        >
+                                                            <span>🗑 Remove Goal</span>
+                                                        </button>
+                                                        <ul className="task-list">
+                                                            <label>Start Date:</label>
+                                                            <input
+                                                                type="date"
+                                                                value={goal.start_date || ""}
+                                                                onChange={(e) => handleUpdateGoalDate(goal.id, "start_date", e.target.value)}
+                                                            />
+                                                            <label>Due Date:</label>
+                                                            <input
+                                                                type="date"
+                                                                value={goal.due_date || ""}
+                                                                onChange={(e) => handleUpdateGoalDate(goal.id, "due_date", e.target.value)}
+                                                            />
+                                                            {goal.tasks.map((task) => (
+                                                                <li
+                                                                    key={task.id}
+                                                                    className={`task-item ${selectedTaskId === task.id ? "task-selected" : ""}`}
+                                                                    onClick={() => setSelectedTaskId(task.id)}
+                                                                >
+                                                                    <span>
+                                                                        {task.title}
+                                                                        {task.type === "weekly" && task.week_interval && task.week_interval.length > 0 && (
+                                                                            <span className="selected-days">
+                                                                                ({task.week_interval.join(", ")})
+                                                                            </span>
+                                                                        )}
+                                                                    </span>
+                                                                    {selectedTaskId === task.id && (
+                                                                        <button onClick={(e) => { e.stopPropagation(); handleRemoveTask(goal.id, task.id); }} className="remove-task-btn">
+                                                                            <span>Remove task</span>
+                                                                        </button>
+                                                                    )}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+
+                                                        <div>
+                                                            <input
+                                                                type="text"
+                                                                value={newTask}
+                                                                onChange={(e) => setNewTask(e.target.value)}
+                                                                placeholder="Add task"
+                                                            />
+
+                                                            <div className="task-type-container">
+                                                                <label className="task-type-label">
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="taskType"
+                                                                        value="daily"
+                                                                        checked={newTaskType === "daily"}
+                                                                        onChange={() => setNewTaskType("daily")}
+                                                                    />
+                                                                    Daily
+                                                                </label>
+                                                                <label className="task-type-label">
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="taskType"
+                                                                        value="weekly"
+                                                                        checked={newTaskType === "weekly"}
+                                                                        onChange={() => setNewTaskType("weekly")}
+                                                                    />
+                                                                    Weekly
+                                                                </label>
+                                                            </div>
+
+                                                            {newTaskType === "weekly" && (
+                                                                <div className="weekly-days-container">
+                                                                    <label>Select Days of the Week:</label>
+                                                                    <div className="days-checkbox-container">
+                                                                        {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => (
+                                                                            <label key={day} className="day-checkbox">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={selectedDays.includes(day)}
+                                                                                    onChange={() => handleDaySelect(day)}
+                                                                                />
+                                                                                {day}
+                                                                            </label>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            <button onClick={handleAddTask} className="add-task-btn">
+                                                                <span>+ Add Task</span>
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="modal-buttons">
+                                <button className="save-btn" onClick={handleSaveEdit} disabled={savingTemplate}>
+                                    {savingTemplate ? "Saving..." : "💾 Save"}
+                                </button>
+                                <button className="cancel-btn" onClick={() => { setEditingTemplate(null); setCreatingTemplate(false); }} disabled={savingTemplate}>❌ Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default AdminDashboard;

@@ -1,0 +1,90 @@
+/* ตั้งค่าสไตล์ของหน้า Donate */
+.donate-container {
+    font-family: "Arial", sans-serif;
+    max-width: 800px;
+    margin: 80px auto; /* ให้มีระยะจาก Navbar */
+    padding: 40px 40px;
+    background: linear-gradient(135deg, #1b1b1b, #282c34);
+    color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+    text-align: center;
+  }
+  
+  /* หัวข้อหลัก */
+  .donate-container h1 {
+    font-size: 2.5rem;
+    color: #58a6ff;
+    margin-bottom: 20px;
+  }
+  
+  .donate-container h2 {
+    font-size: 2rem;
+    color: #79c0ff;
+    border-bottom: 2px solid #79c0ff;
+    padding-bottom: 5px;
+    display: inline-block;
+    margin-top: 30px;
+  }
+  
+  /* ตัวเลือกการบริจาค */
+  .donate-options {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  
+  /* กล่องบริจาค */
+  .donate-card {
+    background: #22272e;
+    border-radius: 10px;
+    padding: 20px;
+    width: 220px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(255, 255, 255, 0.1);
+    margin: 10px;
+    transition: 0.3s;
+  }
+  
+  .donate-card img {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 10px;
+  }
+  
+  .donate-card h3 {
+    color: #9ecbff;
+    font-size: 1.5rem;
+  }
+  
+  .donate-card p {
+    color: #c9d1d9;
+    font-size: 1rem;
+    margin-bottom: 15px;
+  }
+  
+  /* ปุ่มบริจาค */
+  .donate-card button {
+    background-color: #238636;
+    color: white;
+    font-size: 1.1rem;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  
+  .donate-card button:hover {
+    background-color: #2ea043;
+    opacity: 0.8;
+  }
+  
+  /* ข้อความขอบคุณ */
+  .donate-footer {
+    margin-top: 30px;
+    font-size: 1.2rem;
+    color: #9ecbff;
+  }
+  

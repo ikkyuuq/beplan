@@ -1,0 +1,86 @@
+.about-container {
+  font-family: "Arial", sans-serif;
+  max-width: 800px;
+  margin: 80px auto; /* เพิ่ม margin-top ให้ไม่ทับ navbar */
+  padding: 50px 40px;
+  background: linear-gradient(135deg, #121212, #1e1e1e);
+  color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.about-container h1 {
+  font-size: 2.5rem;
+  color: #58a6ff;
+  margin-bottom: 20px;
+}
+
+.about-container h2 {
+  font-size: 2rem;
+  color: #79c0ff;
+  border-bottom: 2px solid #79c0ff;
+  padding-bottom: 5px;
+  display: inline-block;
+  margin-top: 30px;
+}
+
+.about-container h3 {
+  font-size: 1.5rem;
+  color: #9ecbff;
+  margin-top: 20px;
+}
+
+/* ข้อความเนื้อหา */
+.about-container p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #c9d1d9;
+  margin-bottom: 15px;
+}
+
+/* ปุ่ม Download & Sign-in */
+.button-download {
+  margin-top: 30px;
+}
+
+.button-download button {
+  background-color: #238636;
+  color: white;
+  font-size: 1.2rem;
+  border: none;
+  padding: 15px 85px;
+  margin: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.button-download .Download {
+  background-color: #2ea043;
+}
+
+.button-download .sign-in {
+  background-color: #1f6feb;
+}
+
+.button-download button:hover {
+  opacity: 0.8;
+}
+
+.footer {
+  background: #111;  /* ไล่สีแบบ Discord */
+  color: #ffffff;
+  text-align: center;
+  padding: 30px 0;
+  font-size: 14px;
+  margin-top: 400px;
+}
+
+.footer-container p {
+  margin: 6px 0;
+}
+
+.footer-container strong {
+  color: #6495ED; /* สีเน้น */
+}
