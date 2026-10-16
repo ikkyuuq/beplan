@@ -30,6 +30,54 @@ async def get_interval_dates(task: T.Task, start_date: date, due_date: date):
         )
 
 
+async def insert_assigned_task_dates(
+    conn: Connection, assigned_goal_id: int, task_id: int, interval_dates
+):
+    """Create one assigned_task (+ its assigned_task_interval) per date.
+
+    Batched: two queries per task regardless of how many dates, instead of two
+    per date (a 1-year daily task was ~730 sequential round trips). A task's
+    assigned_task rows are identical apart from their id, so pairing the new
+    ids with the dates in any order is equivalent.
+    """
+    interval_dates = list(interval_dates)
+    if not interval_dates:
+        return
+    rows = await conn.fetch(
+        """
+        INSERT INTO public.assigned_task (assigned_goal_id, task_id)
+        SELECT $1, $2 FROM generate_series(1, $3)
+        RETURNING id
+        """,
+        assigned_goal_id,
+        task_id,
+        len(interval_dates),
+    )
+    await conn.execute(
+        """
+        INSERT INTO public.assigned_task_interval (assigned_task_id, interval_date)
+        SELECT * FROM unnest($1::int[], $2::date[])
+        """,
+        [row["id"] for row in rows],
+        interval_dates,
+    )
+
+
+async def insert_tmpl_task_dates(conn: Connection, tmpl_goal_task_id: int, interval_dates):
+    """Create all tmpl_goal_task_interval rows of a template task in one query."""
+    interval_dates = list(interval_dates)
+    if not interval_dates:
+        return
+    await conn.execute(
+        """
+        INSERT INTO public.tmpl_goal_task_interval (tmpl_goal_task_id, interval_date)
+        SELECT $1, d FROM unnest($2::date[]) AS d
+        """,
+        tmpl_goal_task_id,
+        interval_dates,
+    )
+
+
 async def Create(conn: Connection, req: T.GoalCreateRequest, user_id: str):
     """Creates a goal along with its tasks, assigned goal, and assigned task intervals."""
     goal_row = await conn.fetchrow(
@@ -78,22 +126,4 @@ async def Create(conn: Connection, req: T.GoalCreateRequest, user_id: str):
         interval_dates = await get_interval_dates(
             task, req.goal.start_date, req.goal.due_date
         )
-        for interval_date in interval_dates:
-            assigned_task_row = await conn.fetchrow(
-                """
-                INSERT INTO assigned_task (assigned_goal_id, task_id)
-                VALUES ($1, $2)
-                RETURNING id
-                """,
-                assigned_goal_id,
-                task_id,
-            )
-            assigned_task_id = assigned_task_row["id"]
-            await conn.execute(
-                """
-                INSERT INTO assigned_task_interval (assigned_task_id, interval_date)
-                VALUES ($1, $2)
-                """,
-                assigned_task_id,
-                interval_date,
-            )
+        await insert_assigned_task_dates(conn, assigned_goal_id, task_id, interval_dates)
