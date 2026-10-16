@@ -125,28 +125,22 @@ export default function Collapsable({
     }
   }, [collapsed]);
 
+  // When the last task is gone, fade the whole card out while it shrinks.
+  // Only the height used to animate, and the card doesn't clip its content, so
+  // the white background vanished while the title and arrow lingered until the
+  // goal was removed. Height and margin now collapse together, and the goal is
+  // removed as soon as the height has settled.
   useEffect(() => {
     if (React.Children.count(children) === 0) {
       setCollapsed(false);
-      containerHeight.value = withSpring(
-        0,
-        { damping: 20, stiffness: 100 },
-        (finished) => {
-          if (finished) {
-            collapseMarginBottom.value = withSpring(
-              0,
-              {
-                damping: 20,
-                stiffness: 100,
-              },
-              (finished) => {
-                if (finished && onCollapseFinish) {
-                  runOnJS(onCollapseFinish)();
-                }
-              }
-            );
+      opacity.set(withTiming(0, { duration: 200 }));
+      collapseMarginBottom.set(withSpring(0, { damping: 20, stiffness: 100 }));
+      containerHeight.set(
+        withSpring(0, { damping: 20, stiffness: 100 }, (finished) => {
+          if (finished && onCollapseFinish) {
+            runOnJS(onCollapseFinish)();
           }
-        }
+        })
       );
     }
   }, [children]);

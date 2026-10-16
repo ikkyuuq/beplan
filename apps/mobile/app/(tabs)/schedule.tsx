@@ -179,114 +179,64 @@ export default function Schedule() {
 
   const userId = user?.id;
 
-  const handleCompleteAllTasks = async (
-    index: number,
-    userId: string,
+  // Mark tasks done/failed on the server. Throws unless the server confirms,
+  // so the UI only drops a task or goal after a successful update.
+  const updateTaskStatus = async (
     taskIds: number[],
+    to: "success" | "failed",
   ) => {
-    try {
-      await apiFetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
+    const response = await apiFetch(
+      `${API_BASE_URL}/api/v1/goal/update_task_status`,
+      {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          assigned_task_id: taskIds,
-          assigned_goal_id: data[index].id,
-          to: "success",
-        }),
-      });
-      setTimeout(() => {
-        setData((prev) => prev.filter((_, i) => i !== index));
-      }, 300);
-    } catch (error) {
-      console.error("Failed to complete all tasks:", error);
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assigned_task_id: taskIds, to }),
+      },
+    );
+    if (!response.ok) {
+      throw new Error(`Status update failed (HTTP ${response.status})`);
     }
   };
 
-  const handleFailAllTasks = async (
-    index: number,
-    userId: string,
-    taskIds: number[],
-  ) => {
-    try {
-      await apiFetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          assigned_task_id: taskIds,
-          assigned_goal_id: data[index].id,
-          to: "failed",
-        }),
-      });
-      setTimeout(() => {
-        setData((prev) => prev.filter((_, i) => i !== index));
-      }, 300);
-    } catch (error) {
-      console.error("Failed to fail all tasks:", error);
-    }
+  // The swipe animation has already hidden the card when the request runs, so
+  // on failure reload the list; cards are keyed by refreshKey and remount visible.
+  const handleStatusUpdateError = (error: unknown) => {
+    console.error("Failed to update task status:", error);
+    Alert.alert("Couldn't update", "Your change wasn't saved. Please try again.");
+    setRefreshKey((key) => key + 1);
   };
 
-  const handleCompleteTask = async (
-    taskId: number,
-    userId: string,
-    taskIds: number[],
+  // Swipe on a goal card: complete or fail all of its tasks for this day.
+  const handleGoalStatus = async (
     goalId: number,
+    taskIds: number[],
+    to: "success" | "failed",
   ) => {
     try {
-      await apiFetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          assigned_task_id: taskIds,
-          assigned_goal_id: goalId,
-          to: "success",
-        }),
-      });
+      await updateTaskStatus(taskIds, to);
+      setData((prev) => prev.filter((goal) => goal.id !== goalId));
+    } catch (error) {
+      handleStatusUpdateError(error);
+    }
+  };
+
+  // Swipe on a single task.
+  const handleTaskStatus = async (
+    goalId: number,
+    taskId: number,
+    to: "success" | "failed",
+  ) => {
+    try {
+      await updateTaskStatus([taskId], to);
       setData((prev) =>
-        prev.map((goal) => ({
-          ...goal,
-          tasks: goal.tasks.filter((task) => task.id !== taskId),
-        })),
+        prev.map((goal) =>
+          goal.id === goalId
+            ? { ...goal, tasks: goal.tasks.filter((task) => task.id !== taskId) }
+            : goal,
+        ),
       );
     } catch (error) {
-      console.error("Failed to complete task:", error);
-    }
-  };
-
-  const handleFailTask = async (
-    userId: string,
-    taskId: number,
-    goalId: number,
-  ) => {
-    try {
-      await apiFetch(`${API_BASE_URL}/api/v1/goal/update_task_status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          assigned_task_id: [taskId],
-          assigned_goal_id: goalId,
-          to: "failed",
-        }),
-      });
-      setData((prev) =>
-        prev.map((goal) => ({
-          ...goal,
-          tasks: goal.tasks.filter((task) => task.id !== taskId),
-        })),
-      );
-    } catch (error) {
-      console.error("Failed to fail task:", error);
+      handleStatusUpdateError(error);
     }
   };
 
@@ -559,25 +509,23 @@ export default function Schedule() {
               </Text>
             </View>
           ) : (
-            data.map((goal, i) => (
+            data.map((goal) => (
               <Collapsable
-                key={goal.id}
+                key={`${goal.id}-${refreshKey}`}
                 title={goal.title}
                 type={goal.type || "Goal"}
                 onComplete={() =>
-                  user &&
-                  handleCompleteAllTasks(
-                    i,
-                    user.id,
+                  handleGoalStatus(
+                    goal.id,
                     goal.tasks.map((t) => t.id),
+                    "success",
                   )
                 }
                 onFail={() =>
-                  user &&
-                  handleFailAllTasks(
-                    i,
-                    user.id,
+                  handleGoalStatus(
+                    goal.id,
                     goal.tasks.map((t) => t.id),
+                    "failed",
                   )
                 }
                 onCustomize={() => handleCustomizeGoal(goal)}
@@ -597,11 +545,9 @@ export default function Schedule() {
                     ],
                   );
                 }}
-                onCollapseFinish={() => {
-                  setTimeout(() => {
-                    setData((prev) => prev.filter((g) => g.id !== goal.id));
-                  }, 300);
-                }}
+                onCollapseFinish={() =>
+                  setData((prev) => prev.filter((g) => g.id !== goal.id))
+                }
               >
                 {goal.tasks.map((task) => (
                   <CollapseItem
@@ -609,12 +555,9 @@ export default function Schedule() {
                     title={task.title}
                     description={task.description || ""}
                     onComplete={() =>
-                      user &&
-                      handleCompleteTask(task.id, user.id, [task.id], goal.id)
+                      handleTaskStatus(goal.id, task.id, "success")
                     }
-                    onFail={() =>
-                      user && handleFailTask(user.id, task.id, goal.id)
-                    }
+                    onFail={() => handleTaskStatus(goal.id, task.id, "failed")}
                     onReschedule={(date) =>
                       handleReschedule(goal.id, task.id, date)
                     }
