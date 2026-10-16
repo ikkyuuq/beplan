@@ -33,8 +33,12 @@ async def initialize(req: User, user_id: str = Depends(get_current_user_id)):
             async with conn.transaction():
                 await conn.execute(
                     """
-                    INSERT INTO public.user (id, username, occupation, about) 
+                    INSERT INTO public.user (id, username, occupation, about)
                       VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (id) DO UPDATE SET
+                      username = EXCLUDED.username,
+                      occupation = EXCLUDED.occupation,
+                      about = EXCLUDED.about
                     """,
                     user_id,
                     req.username,
