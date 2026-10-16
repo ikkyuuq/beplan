@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Alert } from "@/utils/alert";
+import { useTabBarSpace } from "@/constants/layout";
 import { useState, useEffect, useCallback } from "react";
 import TemplateCard from "@/components/TemplateCard";
 import TemplateModal from "@/components/TemplateModal";
@@ -57,6 +58,8 @@ type Template = {
 
 // ====================== Main Component ======================
 export default function Community() {
+  // Room for the floating tab bar on any device (was a fixed guess).
+  const tabBarSpace = useTabBarSpace();
   // ====================== State Management ======================
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
@@ -346,7 +349,7 @@ export default function Community() {
             showsVerticalScrollIndicator={false}
             numColumns={2}
             columnWrapperStyle={styles.templateRow}
-            contentContainerStyle={styles.templateList}
+            contentContainerStyle={[styles.templateList, { paddingBottom: tabBarSpace }]}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -480,7 +483,6 @@ const styles = StyleSheet.create({
   },
   templateList: {
     padding: 16,
-    paddingBottom: 80,
     minHeight: "100%",
   },
   templateRow: {

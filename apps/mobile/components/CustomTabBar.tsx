@@ -2,18 +2,27 @@ import { View, StyleSheet, LayoutChangeEvent } from "react-native";
 import TabBarButton from "./TabBarButton";
 import type { BottomTabBarProps } from "expo-router/tabs";
 import { useEffect, useState } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
+  withTiming,
 } from "react-native-reanimated";
+import { MOTION } from "@/constants/motion";
+import { TAB_BAR_HEIGHT, useTabBarBottomOffset } from "@/constants/layout";
+
+const BAR_PADDING_X = 8;
+const BAR_PADDING_Y = 8;
+const HIGHLIGHT_INSET = 4;
 
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const insets = useSafeAreaInsets();
-  const bottomPadding = Math.max(insets.bottom, 8);
-  const buttonWidth = dimensions.width / state.routes.length;
+  // Float above the home indicator instead of filling it: on rounded-corner
+  // iPhones a bar glued to the bottom edge looked clipped.
+  const bottomOffset = useTabBarBottomOffset();
+  // Buttons share the bar's width minus its horizontal padding, so the
+  // highlight must use the same width or it drifts right tab by tab.
+  const buttonWidth =
+    (dimensions.width - BAR_PADDING_X * 2) / state.routes.length;
   const tabPosX = useSharedValue(0);
 
   const onTabBarLayout = (e: LayoutChangeEvent) => {
@@ -31,18 +40,14 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
   useEffect(() => {
     if (buttonWidth > 0) {
-      tabPosX.value = withSpring(buttonWidth * state.index, {
-        mass: 0.8,
-        damping: 18,
-        stiffness: 180,
-      });
+      tabPosX.value = withTiming(buttonWidth * state.index, MOTION.base);
     }
   }, [buttonWidth, state.index, tabPosX]);
 
   return (
     <View
       onLayout={onTabBarLayout}
-      style={[styles.tabbar, { paddingBottom: bottomPadding }]}
+      style={[styles.tabbar, { bottom: bottomOffset }]}
     >
       <Animated.View
         style={[
@@ -50,11 +55,12 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           {
             borderRadius: 18,
             position: "absolute",
-            top: 8,
-            left: 8,
+            // Centered in the active button with an even inset on every side.
+            top: BAR_PADDING_Y,
+            left: BAR_PADDING_X + HIGHLIGHT_INSET,
             backgroundColor: "#4E5A94",
-            width: Math.max(buttonWidth - 16, 0),
-            height: Math.max(dimensions.height - bottomPadding - 16, 0),
+            width: Math.max(buttonWidth - HIGHLIGHT_INSET * 2, 0),
+            height: Math.max(dimensions.height - BAR_PADDING_Y * 2, 0),
           },
         ]}
       />
@@ -64,11 +70,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         const isFocused = state.index === index;
 
         const onPress = () => {
-          tabPosX.value = withSpring(buttonWidth * index, {
-            mass: 0.8,
-            damping: 18,
-            stiffness: 180,
-          });
+          tabPosX.value = withTiming(buttonWidth * index, MOTION.base);
           const event = navigation.emit({
             type: "tabPress",
             target: route.key,
@@ -107,14 +109,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 16,
     right: 16,
-    bottom: 0,
-    minHeight: 72,
+    minHeight: TAB_BAR_HEIGHT,
     flexDirection: "row",
     backgroundColor: "#fff",
     alignItems: "center",
     borderRadius: 24,
-    paddingHorizontal: 8,
-    paddingTop: 8,
+    paddingHorizontal: BAR_PADDING_X,
+    paddingVertical: BAR_PADDING_Y,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,

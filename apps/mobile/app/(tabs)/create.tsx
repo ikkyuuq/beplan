@@ -22,6 +22,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import Header from "@/components/Header";
+import { useTabBarSpace } from "@/constants/layout";
 import Slider from "@/components/Slider";
 import { LinearGradient } from "expo-linear-gradient";
 import TemplateCard from "@/components/TemplateCard";
@@ -67,6 +68,8 @@ type Template = {
 
 // ====================== Main Component ======================
 export default function CreateScreen() {
+  // Room for the floating tab bar on any device (was a fixed guess).
+  const tabBarSpace = useTabBarSpace();
   const apiFetch = useApiFetch();
   // ====================== Animation Values ======================
   const headerOpacity = useSharedValue(0);
@@ -363,7 +366,7 @@ export default function CreateScreen() {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarSpace }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Template Section */}
@@ -681,7 +684,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: Platform.OS === "ios" ? 70 : 120,
     paddingTop: 10,
   },
   overlay: {

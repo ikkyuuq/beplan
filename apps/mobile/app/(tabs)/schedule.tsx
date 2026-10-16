@@ -4,7 +4,9 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
+  useWindowDimensions,
 } from "react-native";
+import { DENSE_TEXT_MAX_SCALE, useTabBarSpace } from "@/constants/layout";
 import { Alert } from "@/utils/alert";
 import {
   addDays,
@@ -89,6 +91,11 @@ export default function Schedule() {
     week.some((day) => isSameDay(day, today)),
   );
   const [pageIndex, setPageIndex] = useState(todayPage);
+  // Sizing that follows the device: the strip grows with (capped) accessibility
+  // text, and the list leaves room for the floating tab bar on any phone.
+  const { fontScale } = useWindowDimensions();
+  const stripScale = Math.min(fontScale, DENSE_TEXT_MAX_SCALE);
+  const tabBarSpace = useTabBarSpace();
   const pagerRef = useRef<PagerHandle>(null);
 
   // Month/year of the visible week, taken from its middle day so a week that
@@ -374,7 +381,12 @@ export default function Schedule() {
                 color={pageIndex === 0 ? "#555" : "#fff"}
               />
             </Pressable>
-            <Text style={{ color: "#fff", fontSize: 28, fontWeight: "bold" }}>
+            <Text
+              style={{ color: "#fff", fontSize: 28, fontWeight: "bold", flexShrink: 1 }}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              maxFontSizeMultiplier={DENSE_TEXT_MAX_SCALE}
+            >
               {visibleMonth}
             </Text>
             <Pressable
@@ -397,7 +409,7 @@ export default function Schedule() {
             today = bold with a dot, past days dimmed. */}
         <PagerView
           ref={pagerRef}
-          style={{ height: 76 }}
+          style={{ height: Math.round(76 * stripScale) }}
           initialPage={todayPage}
           onPageSelected={(e: any) => handleWeekChange(e.nativeEvent.position)}
         >
@@ -422,7 +434,9 @@ export default function Schedule() {
                     accessibilityState={{ selected: isSelected }}
                     accessibilityLabel={`${isTodayCell ? "Today, " : ""}${format(day, "EEEE, MMMM d")}`}
                     style={{
-                      width: 44,
+                      flex: 1,
+                      maxWidth: 52,
+                      marginHorizontal: 2,
                       paddingVertical: 8,
                       borderRadius: 14,
                       alignItems: "center",
@@ -431,6 +445,7 @@ export default function Schedule() {
                     }}
                   >
                     <Text
+                      maxFontSizeMultiplier={DENSE_TEXT_MAX_SCALE}
                       style={{
                         fontSize: 12,
                         color: isSelected ? "#fff" : isPast ? "#6F6F7A" : "#B7B7B7",
@@ -439,6 +454,7 @@ export default function Schedule() {
                       {format(day, "EEEEE")}
                     </Text>
                     <Text
+                      maxFontSizeMultiplier={DENSE_TEXT_MAX_SCALE}
                       style={{
                         fontSize: 17,
                         fontWeight: isSelected || isTodayCell ? "700" : "500",
@@ -484,7 +500,11 @@ export default function Schedule() {
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
-            <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
+            <Text
+              style={{ color: "#fff", fontSize: 15, fontWeight: "600", flexShrink: 1 }}
+              numberOfLines={1}
+              maxFontSizeMultiplier={DENSE_TEXT_MAX_SCALE}
+            >
               {selectedLabel ? `${selectedLabel} · ` : ""}
               {format(selectedDate, "EEEE, MMM d")}
             </Text>
@@ -527,7 +547,7 @@ export default function Schedule() {
       </Header>
 
       <ScrollView>
-        <Animated.View style={{ marginTop: 20, marginBottom: 120 }}>
+        <Animated.View style={{ marginTop: 20, marginBottom: tabBarSpace }}>
           {isLoading ? (
             <View
               style={{
