@@ -1,8 +1,9 @@
 import { useCallback } from "react";
-import { Dimensions, LayoutChangeEvent } from "react-native";
+import { Dimensions, LayoutChangeEvent, Platform } from "react-native";
+import * as Haptics from "expo-haptics";
+import { MOTION } from "@/constants/motion";
 import {
   useSharedValue,
-  withSpring,
   withTiming,
   runOnJS,
   SharedValue,
@@ -39,17 +40,29 @@ export function useCollapsibleGesture({
   onFail,
   onToggleCollapse,
   onLongPress,
-  minSwipeDistance = 60,
-  swipeThreshold = 0.4,
-  velocityThreshold = 800,
-  resistance = 0.3,
+  // Tuned so a swipe is easy to finish: the card follows the finger 1:1, a
+  // slow drag counts after a quarter of the card's width, and a gentle flick
+  // counts at any distance past minSwipeDistance. (Was 60 px / 40% / 800 px/s
+  // with 0.3 resistance: a slow drag needed ~400 px of finger travel.)
+  minSwipeDistance = 40,
+  swipeThreshold = 0.25,
+  velocityThreshold = 500,
+  resistance = 1,
   collapseConfig,
 }: UseCollapsibleGestureProps) {
   const translateX = useSharedValue(0);
   const opacity = useSharedValue(1);
   const scaleValue = useSharedValue(1);
   const containerWidth = useSharedValue(0);
+  // Whether the drag is currently far enough to count, for the haptic tick.
+  const pastThreshold = useSharedValue(false);
   const screenWidth = Dimensions.get("window").width;
+
+  const tickHaptic = useCallback(() => {
+    if (Platform.OS !== "web") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  }, []);
 
   const handleToggleCollapse = useCallback(() => {
     if (onToggleCollapse) {
@@ -87,13 +100,11 @@ export function useCollapsibleGesture({
       if (collapseConfig && collapseConfig.collapsed) {
         runOnJS(collapseConfig.setCollapsed)(false);
 
-        collapseConfig.innerCollapsePaddingBottom.value = withTiming(0, {
-          duration: 200,
-        });
+        collapseConfig.innerCollapsePaddingBottom.value = withTiming(0, MOTION.base);
 
         collapseConfig.innerCollapseHeight.value = withTiming(
           0,
-          { duration: 200 },
+          MOTION.base,
           () => {
             if (callback) {
               runOnJS(callback)();
@@ -164,8 +175,22 @@ export function useCollapsibleGesture({
 
   const gesturePan = Gesture.Pan()
     .activeOffsetX([-10, 10])
+    // Let vertical scrolling win: a mostly-vertical drag never swipes a card.
+    .failOffsetY([-15, 15])
+    .onBegin(() => {
+      pastThreshold.value = false;
+    })
     .onUpdate(({ translationX }) => {
       translateX.value = translationX * resistance;
+      // Light haptic tick when the drag crosses the "will count" point.
+      const distance = Math.abs(translateX.value);
+      const isPast =
+        distance > minSwipeDistance &&
+        distance > containerWidth.value * swipeThreshold;
+      if (isPast !== pastThreshold.value) {
+        pastThreshold.value = isPast;
+        if (isPast) runOnJS(tickHaptic)();
+      }
     })
     .onEnd((e) => {
       const normalizedDrag = translateX.value / containerWidth.value;
@@ -180,31 +205,26 @@ export function useCollapsibleGesture({
       if (isSignificantSwipe) {
         if (translateX.value > 0) {
           runOnJS(handleComplete)();
-          translateX.value = withSpring(containerWidth.value);
-          opacity.value = withTiming(0, { duration: 300 });
+          translateX.value = withTiming(containerWidth.value, MOTION.base);
+          opacity.value = withTiming(0, MOTION.base);
         } else if (translateX.value < 0) {
           runOnJS(handleFail)();
-
-          translateX.value = withSpring(-containerWidth.value);
-          opacity.value = withTiming(0, { duration: 300 });
+          translateX.value = withTiming(-containerWidth.value, MOTION.base);
+          opacity.value = withTiming(0, MOTION.base);
         }
       } else {
-        translateX.value = withSpring(0, {
-          damping: 12,
-          stiffness: 400,
-          velocity: e.velocityX,
-        });
+        translateX.value = withTiming(0, MOTION.base);
       }
     });
 
   const gestureLongPress = Gesture.LongPress()
     .minDuration(600)
     .onStart(() => {
-      scaleValue.value = withSpring(1.1, { damping: 10, stiffness: 100 });
+      scaleValue.value = withTiming(1.03, MOTION.fast);
       runOnJS(handleLongPress)();
     })
     .onEnd(() => {
-      scaleValue.value = withSpring(1, { damping: 10, stiffness: 100 });
+      scaleValue.value = withTiming(1, MOTION.fast);
     });
 
   const composedGesture = Gesture.Race(

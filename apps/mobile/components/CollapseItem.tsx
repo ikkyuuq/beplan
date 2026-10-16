@@ -1,9 +1,9 @@
 // CollapseItem.tsx
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { View, Text, LayoutChangeEvent } from "react-native";
+import { MOTION } from "@/constants/motion";
 import Animated, {
   useAnimatedStyle,
-  withSpring,
   withTiming,
   interpolateColor,
   useSharedValue,
@@ -66,6 +66,9 @@ export default function CollapseItem({
   const collapseMarginBottom = useSharedValue(10);
   const innerCollapseHeight = useSharedValue(0);
   const innerCollapsePaddingBottom = useSharedValue(12);
+  // 0 = description hidden, 1 = shown. Drives the description fade so it moves
+  // in step with the height (same timing, same source).
+  const descriptionProgress = useSharedValue(0);
 
   const collapseConfig: CollapseConfig = {
     collapsed,
@@ -80,12 +83,11 @@ export default function CollapseItem({
     setContentHeight(event.nativeEvent.layout.height);
   };
 
+  // The single place that animates the description open/closed. (A second,
+  // measure()-based effect used to animate the same value at the same time.)
   useEffect(() => {
-    if (collapsed) {
-      innerCollapseHeight.value = withTiming(contentHeight, { duration: 200 });
-    } else {
-      innerCollapseHeight.value = withTiming(0, { duration: 200 });
-    }
+    innerCollapseHeight.value = withTiming(collapsed ? contentHeight : 0, MOTION.base);
+    descriptionProgress.value = withTiming(collapsed ? 1 : 0, MOTION.base);
   }, [collapsed, contentHeight]);
 
   const handleContextMenuOpen = useCallback(() => {
@@ -109,7 +111,7 @@ export default function CollapseItem({
 
   const handleContextMenuClose = useCallback(() => {
     setContextMenuVisible(false);
-    scaleValue.value = withSpring(1, { damping: 20, stiffness: 100 });
+    scaleValue.value = withTiming(1, MOTION.fast);
   }, [scaleValue]);
 
   const animatedContainerStyle = useAnimatedStyle(() => ({
@@ -120,18 +122,14 @@ export default function CollapseItem({
       [-65, -20, 0, 20, 65],
       ["#F05353", "#1E1F29", "#1E1F29", "#53F07D", "#53F07D"],
     ),
-    height: withSpring(containerHeight.value + innerCollapseHeight.value, {
-      damping: 20,
-      stiffness: 100,
-    }),
+    // Read the animated values directly: wrapping them in another withTiming
+    // restarted an animation every frame and made the motion stutter.
+    height: containerHeight.value + innerCollapseHeight.value,
   }));
 
   const animatedCollapseStyle = useAnimatedStyle(() => ({
-    height: withSpring(containerHeight.value + innerCollapseHeight.value, {
-      damping: 20,
-      stiffness: 100,
-    }),
-    opacity: withSpring(collapsed ? 1 : 0),
+    height: innerCollapseHeight.value,
+    opacity: descriptionProgress.value,
     overflow: "hidden",
   }));
 
@@ -155,15 +153,6 @@ export default function CollapseItem({
 
   const collapseContentRef = useRef<any>(null);
 
-  useEffect(() => {
-    if (collapsed) {
-      collapseContentRef.current?.measure((_x: any, _y: any, _width: any, height: any) => {
-        innerCollapseHeight.value = withTiming(height, { duration: 200 });
-      });
-    } else {
-      innerCollapseHeight.value = withTiming(0, { duration: 200 });
-    }
-  }, [collapsed]);
 
   const [rescheduleVisible, setRescheduleVisible] = useState(false);
 
@@ -203,7 +192,7 @@ export default function CollapseItem({
             >
               <Text style={{ color: "#fff", fontSize: 14 }}>{title}</Text>
               <View>
-                {description && (
+                {!!description && (
                   <Feather
                     name="info"
                     size={16}
@@ -272,7 +261,7 @@ export default function CollapseItem({
           >
             <Text style={{ color: "#fff", fontSize: 14 }}>{title}</Text>
             <View>
-              {description && (
+              {!!description && (
                 <Feather
                   name="info"
                   size={16}
@@ -283,7 +272,7 @@ export default function CollapseItem({
           </Animated.View>
         </GestureDetector>
         <Animated.View style={[animatedCollapseStyle]}>
-          {description && (
+          {!!description && (
             <Animated.View
               ref={collapseContentRef}
               style={{
