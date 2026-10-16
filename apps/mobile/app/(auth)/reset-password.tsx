@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Text, View, TouchableOpacity, StyleSheet } from "react-native";
 import { Alert } from "@/utils/alert";
 import { Ionicons } from "@expo/vector-icons";
-import { useSignIn } from "@clerk/clerk-expo";
+import { useSignIn } from "@clerk/expo/legacy";
 import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
 import SignButton from "@/components/SignButton";

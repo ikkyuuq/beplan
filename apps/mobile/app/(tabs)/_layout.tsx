@@ -1,6 +1,6 @@
 // ====================== Imports ======================
 import { Tabs } from "expo-router";
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@clerk/expo";
 import CustomTabBar from "@/components/CustomTabBar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 

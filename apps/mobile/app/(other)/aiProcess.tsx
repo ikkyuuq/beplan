@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@clerk/expo";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
 import { useScreenTopPadding } from "@/constants/layout";
