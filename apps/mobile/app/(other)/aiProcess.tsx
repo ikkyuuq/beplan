@@ -14,6 +14,7 @@ import {
 import { useUser } from "@clerk/clerk-expo";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
+import { useScreenTopPadding } from "@/constants/layout";
 import Animated, {
   interpolateColor,
   runOnJS,
@@ -219,6 +220,7 @@ interface Goal {
 }
 
 export default function AiProcess() {
+  const topPadding = useScreenTopPadding(16);
   const params = useLocalSearchParams();
   const initialText =
     typeof params.textToProcess === "string"
@@ -571,7 +573,7 @@ export default function AiProcess() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+      style={[styles.container, { paddingTop: topPadding }]}
     >
       <LinearGradient
         colors={["#6A11CB", "#2575FC"]}
@@ -699,7 +701,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F4F6FA", // Soft, light background
     paddingHorizontal: 20,
-    paddingTop: 50,
   },
   gradientBackground: {
     position: "absolute",

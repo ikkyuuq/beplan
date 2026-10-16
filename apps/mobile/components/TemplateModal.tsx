@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Dimensions,
   Modal,
 } from "react-native";
 import { Alert } from "@/utils/alert";
@@ -620,8 +619,6 @@ export default function TemplateModal({
 }
 
 // ====================== Styles ======================
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-
 const styles = StyleSheet.create({
   // Modal Layout
   overlay: {
@@ -631,8 +628,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContainer: {
-    width: SCREEN_WIDTH * 0.9,
-    height: SCREEN_HEIGHT * 0.8,
+    // Relative to the full-screen overlay (was the screen size measured once at
+    // app start, wrong after resizing or in split view); capped for tablets.
+    width: "90%",
+    maxWidth: 560,
+    height: "80%",
     backgroundColor: "transparent",
     borderRadius: 24,
     overflow: "hidden",
@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
 
   // Hero Section
   heroContainer: {
-    height: SCREEN_HEIGHT * 0.35,
+    height: "44%", // of the modal (= 35% of the screen, as before)
     position: "relative",
     width: "100%",
   },

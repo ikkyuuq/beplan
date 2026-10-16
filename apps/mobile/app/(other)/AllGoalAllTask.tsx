@@ -15,6 +15,7 @@ import { format, parseISO } from "date-fns";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
 import { Alert } from "@/utils/alert";
+import { useScreenTopPadding } from "@/constants/layout";
 
 // ====================== Types ======================
 // One row of GET /api/v1/goal/all
@@ -165,6 +166,8 @@ function DraftCard({
 
 // ====================== Screen ======================
 export default function AllGoalAllTask() {
+  // Keep the Back button clear of the notch / Dynamic Island.
+  const topPadding = useScreenTopPadding(8);
   const apiFetch = useApiFetch();
   const router = useRouter();
   const [goals, setGoals] = useState<GoalSummary[]>([]);
@@ -282,7 +285,7 @@ export default function AllGoalAllTask() {
   const sections = groupGoals(goals, format(new Date(), "yyyy-MM-dd"));
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: topPadding }]}>
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <Ionicons name="arrow-back" size={24} color="#4E5A94" />
         <Text style={styles.backButtonText}>Back to Schedule</Text>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,9 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
 } from "react-native";
 import { Alert } from "@/utils/alert";
+import { useScreenTopPadding } from "@/constants/layout";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { format, isValid, parseISO } from "date-fns";
@@ -132,10 +132,18 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
   handleUpdate,
   handleSaveDraft,
 }) => {
+  // The header floats over the content: pad it below the notch, and start the
+  // content under the header's real height (was a fixed 100 px).
+  const headerTop = useScreenTopPadding(12);
+  const [headerHeight, setHeaderHeight] = useState(headerTop + 52);
+
   return (
     <>
       {/* Header with Back Button */}
-      <Animated.View style={[styles.header, headerAnimatedStyle]}>
+      <Animated.View
+        style={[styles.header, { paddingTop: headerTop }, headerAnimatedStyle]}
+        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+      >
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color="white" />
           <Text style={styles.backText}>Back</Text>
@@ -144,7 +152,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: headerHeight + 16 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Title Section */}
@@ -648,7 +656,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 100,
     paddingBottom: 40,
     paddingHorizontal: 20,
   },
@@ -659,7 +666,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingTop: Platform.OS === "ios" ? 60 : 30,
     paddingBottom: 20,
     paddingHorizontal: 20,
     flexDirection: "row",

@@ -8,6 +8,7 @@ import { routes } from "@/routesConfig";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
 import VerificationScreen from "@/components/VerificationScreen";
+import { useScreenTopPadding } from "@/constants/layout";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,6 +20,7 @@ import Animated, {
 
 // ====================== Main Component ======================
 export default function ResetPasswordScreen() {
+  const topPadding = useScreenTopPadding(20);
   // ====================== Animation Values ======================
   const titleOpacity = useSharedValue(0);
   const titleTranslateY = useSharedValue(20);
@@ -195,7 +197,7 @@ export default function ResetPasswordScreen() {
 
   // ====================== Render Reset Password Form ======================
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: topPadding }]}>
       {/* Back Button */}
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <Ionicons name="arrow-back" size={24} color="black" />

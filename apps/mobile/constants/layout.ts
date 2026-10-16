@@ -17,3 +17,10 @@ export const useTabBarSpace = () => useTabBarBottomOffset() + TAB_BAR_HEIGHT + 1
 
 /** Largest text scaling dense UI (calendar strip, tab bar) allows. */
 export const DENSE_TEXT_MAX_SCALE = 1.3;
+
+/**
+ * Top padding for a full screen: the device's safe area (status bar, notch,
+ * Dynamic Island) plus a small gap. Screens draw their own headers
+ * (headerShown: false), so each one has to stay clear of it.
+ */
+export const useScreenTopPadding = (gap = 12) => useSafeAreaInsets().top + gap;
