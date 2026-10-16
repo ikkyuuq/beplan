@@ -300,7 +300,7 @@ export default function TemplateModal({
                       </View>
 
                       {/* Duration Badge */}
-                      {data.duration && (
+                      {!!data.duration && (
                         <View style={styles.durationBadge}>
                           <Ionicons
                             name="time-outline"

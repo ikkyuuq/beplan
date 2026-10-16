@@ -24,7 +24,7 @@ export default function InputField({
   // ====================== Render UI ======================
   return (
     <View style={[styles.inputWrapper, { marginBottom }]}>
-      {iconName && (
+      {!!iconName && (
         <Ionicons
           name={iconName}
           size={30}

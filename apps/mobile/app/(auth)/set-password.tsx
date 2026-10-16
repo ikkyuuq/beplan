@@ -195,7 +195,7 @@ export default function SetPasswordScreen() {
           }}
           secureTextEntry={true}
         />
-        {errorMessage && (
+        {!!errorMessage && (
           <Animated.Text
             entering={FadeIn.duration(300)}
             style={styles.errorText}

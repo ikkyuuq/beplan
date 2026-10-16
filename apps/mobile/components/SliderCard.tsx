@@ -261,7 +261,7 @@ export default function SliderCard({
                   </View>
 
                   {/* Duration Badge */}
-                  {duration && (
+                  {!!duration && (
                     <View style={styles.durationBadge}>
                       <Ionicons name="time-outline" size={12} color="#fff" />
                       <Text style={styles.durationText}>

@@ -120,7 +120,7 @@ export default function AllGoalAllTask() {
                 <View key={task.id} style={styles.taskContainer}>
                   <Text style={styles.taskTitle}>{task.title}</Text>
                   <Text style={styles.taskDescription}>{task.description}</Text>
-                  {task.repeat_type && (
+                  {!!task.repeat_type && (
                     <Text style={styles.taskRepeatType}>
                       Repeat Type: {task.repeat_type}
                     </Text>
@@ -130,7 +130,7 @@ export default function AllGoalAllTask() {
                       Date Interval: {task.date_interval.join(", ")}
                     </Text>
                   )}
-                  {task.week_interval && (
+                  {!!task.week_interval && (
                     <Text style={styles.taskWeekInterval}>
                       Week Interval: {task.week_interval}
                     </Text>

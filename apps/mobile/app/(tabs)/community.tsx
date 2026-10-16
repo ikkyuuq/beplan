@@ -316,7 +316,7 @@ export default function Community() {
                   color={getIconColor(category.id)}
                   style={styles.filterIcon}
                 />
-                {category.label && (
+                {!!category.label && (
                   <Text style={styles.filterText}>{category.label}</Text>
                 )}
               </Pressable>

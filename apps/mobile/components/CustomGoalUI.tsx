@@ -558,7 +558,7 @@ const TaskItem = ({
           <Text style={styles.taskType}>{getTaskLabel(task.type)}</Text>
           <Text style={styles.taskTitle}>{task.title}</Text>
         </View>
-        {task.description && (
+        {!!task.description && (
           <Text style={styles.taskDescription} numberOfLines={2}>
             {task.description}
           </Text>
