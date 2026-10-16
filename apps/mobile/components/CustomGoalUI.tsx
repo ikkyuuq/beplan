@@ -9,10 +9,18 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
-  Alert,
 } from "react-native";
+import { Alert } from "@/utils/alert";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { format, isValid, parseISO } from "date-fns";
+
+// Show a stored yyyy-MM-dd date as weekday, month and day, e.g. "Fri, Oct 16".
+// parseISO reads date-only strings as local dates, so no timezone shift.
+const formatPickedDate = (value: string) => {
+  const parsed = parseISO(value);
+  return isValid(parsed) ? format(parsed, "EEE, MMM d") : value;
+};
 
 type Task = {
   title: string;
@@ -184,7 +192,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                     disabled={goalStarted}
                   >
                     <Text style={{ color: startDate ? "#fff" : "#AAA" }}>
-                      {startDate || "Select Date"}
+                      {startDate ? formatPickedDate(startDate) : "Select Date"}
                     </Text>
                     <Feather name="calendar" size={20} color="#fff" />
                   </Pressable>
@@ -208,7 +216,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                     disabled={goalStarted}
                   >
                     <Text style={{ color: dueDate ? "#fff" : "#AAA" }}>
-                      {dueDate || "Select Date"}
+                      {dueDate ? formatPickedDate(dueDate) : "Select Date"}
                     </Text>
                     <Feather name="calendar" size={20} color="#fff" />
                   </Pressable>

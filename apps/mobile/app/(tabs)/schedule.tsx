@@ -4,9 +4,9 @@ import {
   Pressable,
   LayoutChangeEvent,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from "react-native";
+import { Alert } from "@/utils/alert";
 import {
   addDays,
   eachDayOfInterval,

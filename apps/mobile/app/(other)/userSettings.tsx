@@ -9,8 +9,8 @@ import {
   Image,
   TextInput,
   ActivityIndicator,
-  Alert,
 } from "react-native";
+import { Alert } from "@/utils/alert";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useUser, useClerk } from "@clerk/clerk-expo";

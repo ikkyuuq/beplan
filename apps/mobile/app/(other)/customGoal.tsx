@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { KeyboardAvoidingView, Platform } from "react-native";
+import { Alert } from "@/utils/alert";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useUser } from "@clerk/clerk-expo";
 import {
@@ -12,6 +13,7 @@ import {
 import TaskModal from "@/components/TaskModal";
 import CalendarPicker from "@/components/CalendarPicker";
 import CustomGoalUI from "@/components/CustomGoalUI";
+import { format } from "date-fns";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
 
@@ -331,16 +333,10 @@ export default function CustomGoal() {
       const responseData = await response.json();
       console.log("📌 API Response:", JSON.stringify(responseData, null, 2));
 
-      Alert.alert(
-        "Success!",
-        "Your custom goal has been created successfully.",
-        [
-          {
-            text: "OK",
-            onPress: () => router.back(),
-          },
-        ]
-      );
+      // Go straight to the schedule (calendar). Don't wait for the alert's
+      // OK button: Alert.alert is a no-op on web, so its onPress never ran there.
+      router.dismissTo("/(tabs)/schedule");
+      Alert.alert("Success!", "Your custom goal has been created successfully.");
     } catch (error: any) {
       console.error("Failed to create goal:", error);
       Alert.alert(
@@ -472,13 +468,14 @@ export default function CustomGoal() {
   };
 
   // ====================== Check if Goal Has Started ======================
+  // Only an existing goal can have started: lock dates/tasks when editing a goal
+  // whose *saved* start date is today or earlier. A new goal starting today,
+  // or an unstarted goal whose start date is being moved, stays editable.
+  const savedStartDate: string | undefined = initialGoalData?.start_date;
   useEffect(() => {
-    if (startDate) {
-      const today = new Date().toISOString().split("T")[0];
-      const hasStarted = today >= startDate;
-      setGoalStarted(hasStarted);
-    }
-  }, [startDate]);
+    const today = format(new Date(), "yyyy-MM-dd");
+    setGoalStarted(isEditingGoal && !!savedStartDate && today >= savedStartDate);
+  }, [isEditingGoal, savedStartDate]);
 
   // ====================== Load Initial Data ======================
   useEffect(() => {
@@ -582,7 +579,7 @@ export default function CustomGoal() {
         initialDates={startDate ? [startDate] : []}
         highlightColor="#4F46E5"
         singleSelect
-        minDate={new Date().toISOString().split("T")[0]}
+        minDate={format(new Date(), "yyyy-MM-dd")}
         maxDate={dueDate}
         otherSelectedDate={dueDate}
         otherHighlightColor="#FF5733"
@@ -599,7 +596,7 @@ export default function CustomGoal() {
         initialDates={dueDate ? [dueDate] : []}
         highlightColor="#FF5733"
         singleSelect
-        minDate={startDate || new Date().toISOString().split("T")[0]}
+        minDate={startDate || format(new Date(), "yyyy-MM-dd")}
         otherSelectedDate={startDate}
         otherHighlightColor="#4F46E5"
       />

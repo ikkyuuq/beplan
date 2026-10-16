@@ -7,9 +7,8 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
-  TouchableWithoutFeedback,
-  Alert,
 } from "react-native";
+import { Alert } from "@/utils/alert";
 import Modal from "react-native-modal";
 import CalendarPicker from "./CalendarPicker";
 import { format, eachMonthOfInterval, getDaysInMonth } from "date-fns";
@@ -19,6 +18,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
+import DismissKeyboard from "@/components/DismissKeyboard";
 
 type Task = {
   title: string;
@@ -260,7 +260,7 @@ export default function TaskModal({
   return (
     <View>
       <Modal isVisible={visible} avoidKeyboard={true}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <DismissKeyboard>
           <View style={styles.overlay}>
             <Animated.View style={[styles.container, modalAnimatedStyle]}>
               {/* Restricted Editing Banner */}
@@ -453,7 +453,7 @@ export default function TaskModal({
               </View>
             </Animated.View>
           </View>
-        </TouchableWithoutFeedback>
+        </DismissKeyboard>
       </Modal>
     </View>
   );

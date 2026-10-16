@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Calendar } from "react-native-calendars";
+import { endOfMonth, format, parseISO } from "date-fns";
 import Modal from "react-native-modal";
 import Animated, {
   useSharedValue,
@@ -44,13 +45,24 @@ export default function CalendarPicker({
   dueDate,
 }: CalendarPickerProps) {
   // ====================== Constants ======================
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayString = today.toISOString().split("T")[0];
+  // Local calendar date. (toISOString() would convert to UTC and give
+  // yesterday's date in timezones ahead of UTC, e.g. Thailand.)
+  const todayString = format(new Date(), "yyyy-MM-dd");
 
   // ====================== State Management ======================
   const [selectedDates, setSelectedDates] = useState<string[]>(initialDates);
   const [totalDays, setTotalDays] = useState<number>(initialDates.length);
+
+  // Month shown by the calendar, and the month/year jump grid. `jumpKey`
+  // remounts the calendar so it opens on a month chosen from the grid.
+  const [displayMonth, setDisplayMonth] = useState<string>(
+    initialDates[0] || todayString
+  );
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState<number>(
+    parseISO(initialDates[0] || todayString).getFullYear()
+  );
+  const [jumpKey, setJumpKey] = useState(0);
 
   // ====================== Animation Values ======================
   const modalTranslateY = useSharedValue(300);
@@ -108,42 +120,94 @@ export default function CalendarPicker({
     });
   };
 
-  // ====================== Disabled Dates Generation ======================
-  const createDisabledDates = () => {
-    const disabledDates: Record<string, any> = {};
-    const currentDate = new Date(finalMinDate || todayString);
-    const endDate = new Date(finalMaxDate || "2099-12-31");
+  // ====================== Month/Year Jump ======================
+  // A month is selectable if any of its days falls inside [min, max].
+  const isMonthSelectable = (year: number, monthIndex: number) => {
+    const first = format(new Date(year, monthIndex, 1), "yyyy-MM-dd");
+    const last = format(endOfMonth(new Date(year, monthIndex, 1)), "yyyy-MM-dd");
+    if (finalMinDate && last < finalMinDate) return false;
+    if (finalMaxDate && first > finalMaxDate) return false;
+    return true;
+  };
 
-    if (finalMinDate) {
-      const tempDate = new Date(currentDate);
-      while (tempDate >= new Date(todayString)) {
-        const dateString = tempDate.toISOString().split("T")[0];
-        if (tempDate < today) {
-          disabledDates[dateString] = {
-            disabled: true,
-            disableTouchEvent: true,
-          };
-        }
-        tempDate.setDate(tempDate.getDate() - 1);
-      }
-    }
+  // Each time the picker opens, start on the selected (or earliest) month.
+  const resetDisplayedMonth = () => {
+    const start = initialDates[0] || todayString;
+    setDisplayMonth(start);
+    setPickerYear(parseISO(start).getFullYear());
+    setShowMonthPicker(false);
+    setJumpKey((k) => k + 1);
+  };
 
-    if (finalMaxDate) {
-      const tempDate = new Date(endDate);
-      tempDate.setDate(tempDate.getDate() + 1);
-      while (tempDate <= new Date("2099-12-31")) {
-        const dateString = tempDate.toISOString().split("T")[0];
-        disabledDates[dateString] = { disabled: true, disableTouchEvent: true };
-        tempDate.setDate(tempDate.getDate() + 1);
-      }
-    }
+  const openMonthPicker = () => {
+    setPickerYear(parseISO(displayMonth).getFullYear());
+    setShowMonthPicker(true);
+  };
 
-    return disabledDates;
+  const jumpToMonth = (year: number, monthIndex: number) => {
+    setDisplayMonth(format(new Date(year, monthIndex, 1), "yyyy-MM-dd"));
+    setShowMonthPicker(false);
+    setJumpKey((k) => k + 1);
+  };
+
+  const renderMonthPicker = () => {
+    const shownMonth = parseISO(displayMonth);
+    return (
+      <View>
+        <View style={styles.yearRow}>
+          <Pressable
+            onPress={() => setPickerYear((y) => y - 1)}
+            hitSlop={10}
+            accessibilityLabel="Previous year"
+          >
+            <Text style={styles.yearArrow}>‹</Text>
+          </Pressable>
+          <Text style={styles.calendarHeader}>{pickerYear}</Text>
+          <Pressable
+            onPress={() => setPickerYear((y) => y + 1)}
+            hitSlop={10}
+            accessibilityLabel="Next year"
+          >
+            <Text style={styles.yearArrow}>›</Text>
+          </Pressable>
+        </View>
+        <View style={styles.monthGrid}>
+          {Array.from({ length: 12 }, (_, monthIndex) => {
+            const selectable = isMonthSelectable(pickerYear, monthIndex);
+            const isShown =
+              shownMonth.getFullYear() === pickerYear &&
+              shownMonth.getMonth() === monthIndex;
+            return (
+              <Pressable
+                key={monthIndex}
+                disabled={!selectable}
+                onPress={() => jumpToMonth(pickerYear, monthIndex)}
+                style={[styles.monthCell, isShown && styles.monthCellShown]}
+              >
+                <Text
+                  style={[
+                    styles.monthCellText,
+                    isShown && styles.monthCellTextShown,
+                    !selectable && styles.monthCellTextDisabled,
+                  ]}
+                >
+                  {format(new Date(pickerYear, monthIndex, 1), "MMM")}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Pressable onPress={() => setShowMonthPicker(false)} style={styles.backToCalendar}>
+          <Text style={styles.backToCalendarText}>Back to calendar</Text>
+        </Pressable>
+      </View>
+    );
   };
 
   // ====================== Calendar Markings ======================
+  // Only selected dates are marked; minDate/maxDate already grey out and
+  // block everything outside the allowed range.
   const markedDates = {
-    ...createDisabledDates(),
     ...selectedDates.reduce(
       (acc, date) => ({
         ...acc,
@@ -162,21 +226,52 @@ export default function CalendarPicker({
   // ====================== Render UI ======================
   return (
     <View>
-      <Modal isVisible={visible}>
+      {/* A custom backdrop keeps react-native-modal from wrapping it in
+          TouchableWithoutFeedback, which logs a React 19 element.ref error on web. */}
+      <Modal
+        isVisible={visible}
+        customBackdrop={<View style={styles.backdrop} />}
+        onModalWillShow={resetDisplayedMonth}
+      >
         <Animated.View style={[styles.modalContent, modalAnimatedStyle]}>
           {/* Calendar Section */}
           <View style={styles.calendarContainer}>
             <Text style={styles.modalTitle}>{title}</Text>
+            {showMonthPicker ? (
+              renderMonthPicker()
+            ) : (
             <Calendar
+              key={jumpKey}
+              current={displayMonth}
+              onMonthChange={(month: { dateString: string }) =>
+                setDisplayMonth(month.dateString)
+              }
               minDate={finalMinDate}
               maxDate={finalMaxDate}
               onDayPress={(day: { dateString: string }) =>
                 toggleDateSelection(day.dateString)
               }
               markedDates={markedDates}
-              disableAllTouchEventsForDisabledDays={false}
+              disableAllTouchEventsForDisabledDays={true}
               enableSwipeMonths={true}
+              theme={calendarTheme}
+              renderHeader={(month: Date) => (
+                // The library's default title calls month.toString("MMMM yyyy"),
+                // which a plain Date ignores, printing "Fri Oct 16 2026 01:44:39 GMT+0700".
+                // Tapping it opens the month/year jump grid.
+                <Pressable
+                  onPress={openMonthPicker}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Choose month and year"
+                >
+                  <Text style={styles.calendarHeader}>
+                    {format(new Date(+month), "EEE MMM d")} ▾
+                  </Text>
+                </Pressable>
+              )}
             />
+            )}
           </View>
 
           {/* Total Days Display */}
@@ -207,8 +302,29 @@ export default function CalendarPicker({
   );
 }
 
+// ====================== Calendar Theme ======================
+// High-contrast days: available dates dark and slightly bold, unavailable
+// dates a readable grey (the library default #d9e1e8 is nearly invisible).
+const calendarTheme = {
+  dayTextColor: "#1f2933",
+  textDisabledColor: "#9aa5b1",
+  todayTextColor: "#2563eb",
+  monthTextColor: "#1f2933",
+  arrowColor: "#1f2933",
+  textSectionTitleColor: "#52606d",
+  textDayFontWeight: "500" as const,
+  textMonthFontWeight: "bold" as const,
+  textDayFontSize: 16,
+};
+
 // ====================== Styles ======================
 const styles = StyleSheet.create({
+  // Modal backdrop (react-native-modal fades it to backdropOpacity)
+  backdrop: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+
   // Modal Container
   modalContent: {
     width: "90%",
@@ -225,6 +341,61 @@ const styles = StyleSheet.create({
   },
 
   // Typography
+  calendarHeader: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1f2933",
+  },
+
+  // Month/year jump grid
+  yearRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  yearArrow: {
+    fontSize: 28,
+    color: "#1f2933",
+    paddingHorizontal: 8,
+  },
+  monthGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
+  },
+  monthCell: {
+    width: "31%",
+    paddingVertical: 14,
+    marginVertical: 4,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  monthCellShown: {
+    backgroundColor: "#2563eb",
+  },
+  monthCellText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#1f2933",
+  },
+  monthCellTextShown: {
+    color: "#fff",
+  },
+  monthCellTextDisabled: {
+    color: "#9aa5b1",
+  },
+  backToCalendar: {
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  backToCalendarText: {
+    color: "#2563eb",
+    fontSize: 14,
+    fontWeight: "500",
+  },
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",

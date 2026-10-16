@@ -460,7 +460,8 @@ export default function AiProcess() {
       const data = await response.json();
       console.log("Response:", data);
       console.log("Goal created successfully");
-      router.push("/(tabs)/schedule");
+      // dismissTo closes the AI flow; push would stack a second copy of the tabs.
+      router.dismissTo("/(tabs)/schedule");
       return true;
     } catch (error) {
       markFailed("Goal creation", error);

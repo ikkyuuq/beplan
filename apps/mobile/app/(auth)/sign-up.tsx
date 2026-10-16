@@ -1,11 +1,11 @@
 import React, { useEffect } from "react";
 import {
   View,
-  Alert,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
+import { Alert } from "@/utils/alert";
 import { Ionicons } from "@expo/vector-icons";
 import { useSignUp, useClerk } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";

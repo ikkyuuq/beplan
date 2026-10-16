@@ -7,10 +7,10 @@ import {
   TextInput,
   FlatList,
   ScrollView,
-  Alert,
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
+import { Alert } from "@/utils/alert";
 import { useState, useEffect, useCallback } from "react";
 import TemplateCard from "@/components/TemplateCard";
 import TemplateModal from "@/components/TemplateModal";
