@@ -144,3 +144,40 @@ def test_update_goal_rejects_goal_not_owned_by_user(monkeypatch):
 
     assert error.value.status_code == 404
     assert connection.execute.await_count == 1
+
+
+def test_get_all_goals_returns_progress_and_settles_overdue_first(monkeypatch):
+    connection = FakeConnection()
+    connection.fetch.return_value = [
+        {
+            "id": 3,
+            "title": "Invest monthly",
+            "type": "custom goal",
+            "status": "pending",
+            "start_date": date(2026, 10, 1),
+            "due_date": date(2027, 9, 30),
+            "total_tasks": 12,
+            "completed_tasks": 1,
+            "failed_tasks": 0,
+            "pending_tasks": 11,
+        }
+    ]
+    overdue = AsyncMock()
+    monkeypatch.setattr(goals, "fail_overdue_tasks", overdue)
+    patch_pool(monkeypatch, connection)
+
+    result = asyncio.run(
+        goals.get_all_goals(user_id="user-1", client_today=date(2026, 10, 16))
+    )
+
+    overdue.assert_awaited_once_with(connection, "user-1", date(2026, 10, 16))
+    assert connection.fetch.await_args.args[1:] == ("user-1",)
+    assert "WHERE ag.user_id = $1" in connection.fetch.await_args.args[0]
+    assert len(result) == 1
+    assert result[0].title == "Invest monthly"
+    assert (result[0].completed_tasks, result[0].total_tasks) == (1, 12)
+
+
+def test_all_goals_route_is_declared_before_goal_id_route():
+    paths = [route.path for route in goals.router.routes]
+    assert paths.index("/all") < paths.index("/{assigned_goal_id}")

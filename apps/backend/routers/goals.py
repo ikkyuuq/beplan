@@ -250,6 +250,56 @@ async def update_goal(
             )
 
 
+class GoalSummary(BaseModel):
+    id: int
+    title: str
+    type: str
+    status: T.Status
+    start_date: date
+    due_date: date
+    total_tasks: int
+    completed_tasks: int
+    failed_tasks: int
+    pending_tasks: int
+
+
+# Declared before /{assigned_goal_id}, which would otherwise try to read "all"
+# as a goal id.
+@router.get("/all", response_model=List[GoalSummary])
+async def get_all_goals(
+    user_id: str = Depends(get_current_user_id),
+    client_today: date = Depends(get_client_today),
+):
+    """Every goal of the user with its task progress, for the All goals screen."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Same as the schedule: settle overdue tasks so the counts are current.
+        await fail_overdue_tasks(conn, user_id, client_today)
+        rows = await conn.fetch(
+            """
+            SELECT
+                ag.id,
+                g.title,
+                g.type,
+                ag.status,
+                ag.start_date,
+                ag.due_date,
+                COUNT(at.id) AS total_tasks,
+                COUNT(at.id) FILTER (WHERE at.status = 'success') AS completed_tasks,
+                COUNT(at.id) FILTER (WHERE at.status = 'failed') AS failed_tasks,
+                COUNT(at.id) FILTER (WHERE at.status = 'pending') AS pending_tasks
+            FROM public.assigned_goal ag
+            JOIN public.goal g ON g.id = ag.goal_id
+            LEFT JOIN public.assigned_task at ON at.assigned_goal_id = ag.id
+            WHERE ag.user_id = $1
+            GROUP BY ag.id, g.title, g.type
+            ORDER BY ag.start_date DESC, ag.id DESC
+            """,
+            user_id,
+        )
+        return [GoalSummary(**dict(row)) for row in rows]
+
+
 @router.get("/{assigned_goal_id}")
 async def get_goal(assigned_goal_id: int, user_id: str = Depends(get_current_user_id)):
     pool = await get_db_pool()

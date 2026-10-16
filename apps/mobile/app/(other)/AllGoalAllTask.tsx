@@ -1,150 +1,218 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
-import { useUser } from "@clerk/clerk-expo";
-import { useFocusEffect, useNavigation } from "expo-router";
-import { Ionicons } from "@expo/vector-icons"; // สำหรับไอคอนปุ่มย้อนกลับ
+import React, { useCallback, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { format, parseISO } from "date-fns";
 import { API_BASE_URL } from "@/constants/api";
-import { type ApiFetch, useApiFetch } from "@/hooks/useApiFetch";
+import { useApiFetch } from "@/hooks/useApiFetch";
 
-type Task = {
-  id: number;
-  title: string;
-  description: string | null;
-  repeat_type?: string;
-  date_interval?: string[];
-  week_interval?: string[];
-  status?: string;
-};
-
-type Goal = {
+// ====================== Types ======================
+// One row of GET /api/v1/goal/all
+type GoalSummary = {
   id: number;
   title: string;
   type: string;
-  start_date: string;
+  status: "pending" | "success" | "failed";
+  start_date: string; // yyyy-MM-dd
   due_date: string;
-  tasks: Task[];
+  total_tasks: number;
+  completed_tasks: number;
+  failed_tasks: number;
+  pending_tasks: number;
 };
 
-// ====================== Service สำหรับดึงข้อมูล ======================
-const fetchAllGoalsAndTasks = async (
-  apiFetch: ApiFetch,
-  userId: string
-): Promise<Goal[]> => {
-  try {
-    if (!userId) throw new Error("User ID is required");
+type Section = { key: string; title: string; goals: GoalSummary[] };
 
-    // เรียกใช้ endpoint ที่มีอยู่
-    const response = await apiFetch(
-      `${API_BASE_URL}/api/v1/goal/?user_id=${encodeURIComponent(userId)}`
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Error: ${response.status} - ${JSON.stringify(errorData)}`);
-    }
-
-    const data = await response.json();
-    console.log("API Response:", data); // Log ข้อมูลที่ได้จาก API
-    return data;
-  } catch (error) {
-    console.error("Failed to fetch goals and tasks:", error);
-    throw error;
-  }
+const STATUS_STYLE: Record<GoalSummary["status"], { label: string; color: string }> = {
+  pending: { label: "In progress", color: "#4E5A94" },
+  success: { label: "Completed", color: "#2E9E5B" },
+  failed: { label: "Failed", color: "#D64545" },
 };
 
-// ====================== หน้า AllGoalAllTask ======================
+// Group goals for display: what's running now first, then what's next,
+// then finished ones.
+const groupGoals = (goals: GoalSummary[], today: string): Section[] => {
+  const inProgress = goals.filter((g) => g.status === "pending" && g.start_date <= today);
+  const upcoming = goals
+    .filter((g) => g.status === "pending" && g.start_date > today)
+    .sort((a, b) => a.start_date.localeCompare(b.start_date));
+  const completed = goals.filter((g) => g.status === "success");
+  const failed = goals.filter((g) => g.status === "failed");
+  return [
+    { key: "progress", title: "In progress", goals: inProgress },
+    { key: "upcoming", title: "Upcoming", goals: upcoming },
+    { key: "completed", title: "Completed", goals: completed },
+    { key: "failed", title: "Failed", goals: failed },
+  ].filter((section) => section.goals.length > 0);
+};
+
+const formatRange = (start: string, due: string) => {
+  const s = parseISO(start);
+  const d = parseISO(due);
+  return s.getFullYear() === d.getFullYear()
+    ? `${format(s, "MMM d")} – ${format(d, "MMM d, yyyy")}`
+    : `${format(s, "MMM d, yyyy")} – ${format(d, "MMM d, yyyy")}`;
+};
+
+// ====================== Goal card ======================
+function GoalCard({ goal, onPress }: { goal: GoalSummary; onPress: () => void }) {
+  const status = STATUS_STYLE[goal.status] ?? STATUS_STYLE.pending;
+  const progress = goal.total_tasks > 0 ? goal.completed_tasks / goal.total_tasks : 0;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${goal.title}, ${status.label}, ${goal.completed_tasks} of ${goal.total_tasks} tasks done`}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+    >
+      <View style={styles.cardHeader}>
+        <Text style={styles.goalTitle} numberOfLines={2}>
+          {goal.title}
+        </Text>
+        <View style={[styles.badge, { borderColor: status.color }]}>
+          <Text style={[styles.badgeText, { color: status.color }]}>{status.label}</Text>
+        </View>
+      </View>
+
+      <Text style={styles.meta}>
+        {goal.type} · {formatRange(goal.start_date, goal.due_date)}
+      </Text>
+
+      <View style={styles.progressTrack}>
+        <View
+          style={[
+            styles.progressFill,
+            { width: `${Math.round(progress * 100)}%`, backgroundColor: status.color },
+          ]}
+        />
+      </View>
+
+      <Text style={styles.counts}>
+        {goal.completed_tasks} of {goal.total_tasks} done · {goal.failed_tasks} missed ·{" "}
+        {goal.pending_tasks} left
+      </Text>
+    </Pressable>
+  );
+}
+
+// ====================== Screen ======================
 export default function AllGoalAllTask() {
-  const { user } = useUser();
   const apiFetch = useApiFetch();
-  const [goals, setGoals] = useState<Goal[]>([]);
+  const router = useRouter();
+  const [goals, setGoals] = useState<GoalSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const navigation = useNavigation(); // ใช้ useNavigation เพื่อนำทาง
 
-  // ดึงข้อมูล Goal และ Task ทั้งหมด
-  const fetchData = async () => {
-    if (!user || !user.id) {
-      setError("User ID is missing. Please log in again.");
-      setIsLoading(false);
-      return;
-    }
-    setIsLoading(true);
+  const loadGoals = useCallback(async () => {
     setError(null);
     try {
-      const data = await fetchAllGoalsAndTasks(apiFetch, user.id);
-      console.log("Fetched Data:", data); // Log ข้อมูลที่ได้
-      setGoals(data);
-    } catch (error) {
-      console.error("Failed to fetch goals and tasks:", error);
-      setError("Failed to load data. Please try again.");
+      const response = await apiFetch(`${API_BASE_URL}/api/v1/goal/all`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      setGoals(await response.json());
+    } catch (err) {
+      console.error("Failed to load goals:", err);
+      setError("Couldn't load your goals. Pull down to try again.");
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [apiFetch]);
+
+  // Reload whenever the screen is shown (e.g. after editing a goal).
+  useFocusEffect(
+    useCallback(() => {
+      void loadGoals();
+    }, [loadGoals])
+  );
+
+  // Open a goal in the editor, the same way the schedule's "Customize" does.
+  const openGoal = async (goal: GoalSummary) => {
+    if (isOpening) return;
+    setIsOpening(true);
+    try {
+      const response = await apiFetch(`${API_BASE_URL}/api/v1/goal/${goal.id}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const { goal: goalData } = await response.json();
+      router.push({
+        pathname: "/(other)/customGoal",
+        params: { initialGoalData: JSON.stringify(goalData), assignedGoalId: goal.id },
+      });
+    } catch (err) {
+      console.error("Failed to open goal:", err);
+      setError("Couldn't open that goal. Please try again.");
+    } finally {
+      setIsOpening(false);
     }
   };
 
-  // ใช้ useFocusEffect เพื่อดึงข้อมูลใหม่ทุกครั้งที่หน้าถูกโฟกัส
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchData();
-    }, [user])
-  );
+  const sections = groupGoals(goals, format(new Date(), "yyyy-MM-dd"));
 
   return (
     <View style={styles.container}>
-      {/* ปุ่มย้อนกลับ */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()} // นำทางกลับไปหน้าก่อนหน้า
-      >
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <Ionicons name="arrow-back" size={24} color="#4E5A94" />
         <Text style={styles.backButtonText}>Back to Schedule</Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>All Goals and Tasks</Text>
+      <Text style={styles.title}>All goals</Text>
+
       {isLoading ? (
-        <ActivityIndicator size="large" color="#4E5A94" />
-      ) : error ? (
-        <Text style={styles.errorText}>{error}</Text>
-      ) : goals.length === 0 ? (
-        <Text style={styles.emptyText}>No goals or tasks found.</Text>
+        <ActivityIndicator size="large" color="#4E5A94" style={styles.loader} />
       ) : (
-        <ScrollView>
-          {goals.map((goal) => (
-            <View key={goal.id} style={styles.goalContainer}>
-              <Text style={styles.goalTitle}>{goal.title}</Text>
-              <Text style={styles.goalType}>Type: {goal.type}</Text>
-              <Text style={styles.goalDates}>
-                Start Date: {goal.start_date} | Due Date: {goal.due_date}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={() => {
+                setIsRefreshing(true);
+                void loadGoals();
+              }}
+            />
+          }
+        >
+          {!!error && <Text style={styles.errorText}>{error}</Text>}
+
+          {!error && sections.length === 0 && (
+            <Text style={styles.emptyText}>
+              No goals yet. Create one from the Create tab.
+            </Text>
+          )}
+
+          {sections.map((section) => (
+            <View key={section.key} style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                {section.title} ({section.goals.length})
               </Text>
-              {goal.tasks.map((task) => (
-                <View key={task.id} style={styles.taskContainer}>
-                  <Text style={styles.taskTitle}>{task.title}</Text>
-                  <Text style={styles.taskDescription}>{task.description}</Text>
-                  {!!task.repeat_type && (
-                    <Text style={styles.taskRepeatType}>
-                      Repeat Type: {task.repeat_type}
-                    </Text>
-                  )}
-                  {task.date_interval && task.date_interval.length > 0 && (
-                    <Text style={styles.taskDateInterval}>
-                      Date Interval: {task.date_interval.join(", ")}
-                    </Text>
-                  )}
-                  {!!task.week_interval && (
-                    <Text style={styles.taskWeekInterval}>
-                      Week Interval: {task.week_interval}
-                    </Text>
-                  )}
-                  <Text style={styles.taskStatus}>Status: {task.status}</Text>
-                </View>
+              {section.goals.map((goal) => (
+                <GoalCard key={goal.id} goal={goal} onPress={() => openGoal(goal)} />
               ))}
             </View>
           ))}
         </ScrollView>
       )}
+
+      {isOpening && (
+        <View style={styles.openingOverlay}>
+          <ActivityIndicator size="large" color="#4E5A94" />
+        </View>
+      )}
     </View>
   );
 }
+
 // ====================== Styles ======================
 const styles = StyleSheet.create({
   container: {
@@ -152,79 +220,102 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: "#fff",
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 20,
-    color: "#16171F",
-  },
-  goalContainer: {
-    marginBottom: 20,
-    padding: 16,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 10,
-  },
-  goalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#4E5A94",
-    marginBottom: 10,
-  },
-  goalType: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 5,
-  },
-  goalDates: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 10,
-  },
-  taskContainer: {
-    marginLeft: 10,
-    marginBottom: 10,
-  },
-  taskTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#333",
-  },
-  taskDescription: {
-    fontSize: 14,
-    color: "#666",
-  },
-  taskRepeatType: {
-    fontSize: 14,
-    color: "#666",
-  },
-  taskDateInterval: {
-    fontSize: 14,
-    color: "#666",
-  },
-  taskWeekInterval: {
-    fontSize: 14,
-    color: "#666",
-  },
-  taskStatus: {
-    fontSize: 14,
-    color: "#666",
-  },
-  errorText: {
-    color: "red",
-    textAlign: "center",
-  },
-  emptyText: {
-    color: "#666",
-    textAlign: "center",
-  },
   backButton: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    gap: 8,
+    marginBottom: 12,
   },
   backButtonText: {
     fontSize: 16,
     color: "#4E5A94",
-    marginLeft: 5,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#16171F",
+    marginBottom: 8,
+  },
+  loader: {
+    marginTop: 40,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  section: {
+    marginTop: 16,
+    gap: 10,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  card: {
+    padding: 16,
+    backgroundColor: "#F5F5F7",
+    borderRadius: 12,
+    gap: 8,
+  },
+  cardPressed: {
+    opacity: 0.7,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  goalTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#16171F",
+  },
+  badge: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  meta: {
+    fontSize: 13,
+    color: "#666",
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#E2E3EA",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: 6,
+    borderRadius: 3,
+  },
+  counts: {
+    fontSize: 13,
+    color: "#444",
+  },
+  errorText: {
+    color: "#D64545",
+    textAlign: "center",
+    marginTop: 20,
+  },
+  emptyText: {
+    color: "#666",
+    textAlign: "center",
+    marginTop: 40,
+  },
+  openingOverlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.6)",
   },
 });
