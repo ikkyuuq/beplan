@@ -409,7 +409,9 @@ export default function TemplateModal({
                           </Text>
 
                           {/* Show More/Less Button */}
-                          {data.description &&
+                          {/* !! so an empty string renders nothing: a bare ""
+                              inside a <View> is an "Unexpected text node" error. */}
+                          {!!data.description &&
                             data.description.length > 150 && (
                               <TouchableOpacity
                                 style={styles.showMoreButton}
@@ -510,7 +512,7 @@ export default function TemplateModal({
                                   data.owner ||
                                   "BePlan User"}
                               </Text>
-                              {data.creator?.occupation && (
+                              {!!data.creator?.occupation && (
                                 <Text style={styles.creatorOccupation}>
                                   {data.creator.occupation}
                                 </Text>
@@ -529,7 +531,7 @@ export default function TemplateModal({
                           </View>
 
                           {/* Creator Bio */}
-                          {data.creator?.about && (
+                          {!!data.creator?.about && (
                             <>
                               <Text style={styles.aboutTitle}>About</Text>
                               <View style={styles.aboutContainer}>
