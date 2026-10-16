@@ -20,6 +20,7 @@ import Animated, {
 import { LineChart, PieChart } from "react-native-chart-kit";
 import { useUser } from "@clerk/clerk-expo";
 import Header from "@/components/Header";
+import { useTabBarSpace } from "@/constants/layout";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
 
@@ -67,6 +68,8 @@ type AnalyticsData = {
 
 // ====================== Main Component ======================
 export default function Analysis() {
+  // Room for the floating tab bar on any device (was a fixed guess).
+  const tabBarSpace = useTabBarSpace();
   // ====================== Animation Values ======================
   const headerOpacity = useSharedValue(0);
   const cardsOpacity1 = useSharedValue(0);
@@ -319,7 +322,7 @@ export default function Analysis() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <Header containerStyle={{ height: 220, gap: 0 }}>
+      <Header containerStyle={{ minHeight: 220, gap: 0 }}>
         <Animated.View style={[headerAnimatedStyle, styles.titleContainer]}>
           <Text style={styles.title}>Analysis</Text>
           <Text style={styles.subtitle}>
@@ -331,7 +334,7 @@ export default function Analysis() {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarSpace }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -665,7 +668,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
   },
 
   // Loading & Error Styles

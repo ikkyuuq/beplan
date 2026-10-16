@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 from s3 import make_object_key, upload_public_file
 from utils import date_calculation
+from utils.users import ensure_user_row
 from utils.goal_creation import insert_assigned_task_dates, insert_tmpl_task_dates
 
 import uuid
@@ -1011,6 +1012,7 @@ async def shared_template(
         share_url = f"{BASE_URL}/{unique_id}"
 
         try:
+            await ensure_user_row(conn, user_id)  # shared_tmpl references public.user
             row = await conn.fetchrow(
                 """
                 INSERT INTO  public.shared_tmpl (id, template_id, user_id, URL, created_at)

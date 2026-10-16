@@ -130,7 +130,7 @@ export default function VerificationScreen({
         />
 
         {/* Error Message */}
-        {errorMessage && (
+        {!!errorMessage && (
           <Animated.Text style={styles.errorText}>{errorMessage}</Animated.Text>
         )}
       </AnimatedView>

@@ -1,11 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { View, LayoutChangeEvent } from "react-native";
+import { MOTION } from "@/constants/motion";
 import Animated, {
   useAnimatedStyle,
   withTiming,
   interpolateColor,
   useSharedValue,
-  withSpring,
   runOnJS,
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
@@ -26,6 +26,8 @@ type CollapsableProps = {
   onDelete?: () => void;
   onCustomize?: () => void;
   onCollapseFinish?: () => void;
+  /** false for future days: no swipe, Completed/Failed disabled in the menu. */
+  markable?: boolean;
 };
 
 export default function Collapsable({
@@ -38,6 +40,7 @@ export default function Collapsable({
   onDelete,
   onCustomize,
   onCollapseFinish,
+  markable = true,
 }: CollapsableProps) {
   const INITIAL_CONTAINER_HEIGHT = 70;
   const [collapsed, setCollapsed] = useState(false);
@@ -102,11 +105,12 @@ export default function Collapsable({
     onToggleCollapse: toggleCollapse,
     onLongPress: handleContextMenuOpen,
     collapseConfig,
+    swipeEnabled: markable,
   });
 
   const handleContextMenuClose = useCallback(() => {
     setContextMenuVisible(false);
-    scaleValue.value = withSpring(1, { damping: 20, stiffness: 100 });
+    scaleValue.value = withTiming(1, MOTION.fast);
   }, [scaleValue]);
 
   useEffect(() => {
@@ -115,38 +119,41 @@ export default function Collapsable({
     }
   }, [contextMenuVisible, updateMenuPosition]);
 
+  // 0 = tasks hidden, 1 = shown. One value drives the tasks' fade and spacing,
+  // animated together with the height below.
+  const expandProgress = useSharedValue(0);
+
   useEffect(() => {
+    expandProgress.value = withTiming(collapsed ? 1 : 0, MOTION.base);
     if (collapsed) {
       collapseContentRef.current?.measure((_x: any, _y: any, _width: any, height: any) => {
-        innerCollapseHeight.value = withTiming(height, { duration: 200 });
+        innerCollapseHeight.value = withTiming(height, MOTION.base);
       });
     } else {
-      innerCollapseHeight.value = withTiming(0, { duration: 200 });
+      innerCollapseHeight.value = withTiming(0, MOTION.base);
     }
   }, [collapsed]);
 
+  // When the last task is gone, fade the whole card out while it shrinks.
+  // Only the height used to animate, and the card doesn't clip its content, so
+  // the white background vanished while the title and arrow lingered until the
+  // goal was removed. Height and margin now collapse together, and the goal is
+  // removed as soon as the height has settled.
   useEffect(() => {
     if (React.Children.count(children) === 0) {
       setCollapsed(false);
-      containerHeight.value = withSpring(
-        0,
-        { damping: 20, stiffness: 100 },
-        (finished) => {
-          if (finished) {
-            collapseMarginBottom.value = withSpring(
-              0,
-              {
-                damping: 20,
-                stiffness: 100,
-              },
-              (finished) => {
-                if (finished && onCollapseFinish) {
-                  runOnJS(onCollapseFinish)();
-                }
-              }
-            );
+      opacity.set(withTiming(0, { duration: 200 }));
+      collapseMarginBottom.set(withTiming(0, MOTION.base));
+      containerHeight.set(
+        withTiming(
+          0,
+          MOTION.base,
+          (finished) => {
+          if (finished && onCollapseFinish) {
+            runOnJS(onCollapseFinish)();
           }
-        }
+        },
+        )
       );
     }
   }, [children]);
@@ -154,7 +161,8 @@ export default function Collapsable({
   const animateArrow = useAnimatedStyle(() => ({
     transform: [
       {
-        rotate: withSpring(collapsed ? "180deg" : "0deg", { duration: 2500 }),
+        // Quick, non-bouncy turn (was a 2.5 s spring).
+        rotate: withTiming(collapsed ? "180deg" : "0deg", MOTION.fast),
       },
     ],
     color: interpolateColor(
@@ -164,25 +172,16 @@ export default function Collapsable({
     ),
   }));
 
-  const animateCollapse = useAnimatedStyle(() => {
-    const marginValue = collapsed
-      ? withSpring(10, { damping: 20, stiffness: 100 })
-      : withSpring(0);
-    return {
-      height: withSpring(innerCollapseHeight.value, {
-        damping: 20,
-        stiffness: 100,
-      }),
-      opacity: withTiming(collapsed ? 1 : 0),
-      marginVertical: marginValue,
-    };
-  });
+  // Styles read animated values directly: wrapping them in another withTiming
+  // restarted an animation every frame and made the motion stutter.
+  const animateCollapse = useAnimatedStyle(() => ({
+    height: innerCollapseHeight.value,
+    opacity: expandProgress.value,
+    marginVertical: 10 * expandProgress.value,
+  }));
 
   const animateInnerCollapseStyle = useAnimatedStyle(() => ({
-    paddingBottom: withSpring(innerCollapsePaddingBottom.value, {
-      damping: 20,
-      stiffness: 100,
-    }),
+    paddingBottom: innerCollapsePaddingBottom.value,
   }));
 
   const animatedContainerStyle = useAnimatedStyle(() => ({
@@ -193,14 +192,8 @@ export default function Collapsable({
       [-65, -20, 0, 20, 65],
       ["#F05353", "#fff", "#fff", "#fff", "#53F07D"]
     ),
-    height: withSpring(containerHeight.value + innerCollapseHeight.value, {
-      damping: 20,
-      stiffness: 100,
-    }),
-    marginBottom: withSpring(collapseMarginBottom.value, {
-      damping: 20,
-      stiffness: 100,
-    }),
+    height: containerHeight.value + innerCollapseHeight.value,
+    marginBottom: collapseMarginBottom.value,
   }));
 
   const animatedContainerPreviewStyle = useAnimatedStyle(() => ({
@@ -304,7 +297,7 @@ export default function Collapsable({
             title: "Completed",
             icon: <Feather name="check" size={16} color={"green"} />,
             type: "default",
-            status: "enabled",
+            status: markable ? "enabled" : "disabled",
             onPress: () => {
               handleContextMenuClose();
               handleCompleteContextMenu();
@@ -314,7 +307,7 @@ export default function Collapsable({
             title: "Failed",
             icon: <Feather name="x" size={16} color={"red"} />,
             type: "default",
-            status: "enabled",
+            status: markable ? "enabled" : "disabled",
             onPress: () => {
               handleContextMenuClose();
               handleFailContextMenu();
@@ -402,8 +395,13 @@ export default function Collapsable({
         <Animated.View style={[animateCollapse, { overflow: "hidden" }]}>
           <Animated.View
             onLayout={(e) => {
+              // Tasks added/removed while open: animate to the new height
+              // (now that styles no longer smooth instant changes).
               if (collapsed) {
-                innerCollapseHeight.value = e.nativeEvent.layout.height;
+                innerCollapseHeight.value = withTiming(
+                  e.nativeEvent.layout.height,
+                  MOTION.base
+                );
               }
             }}
             ref={collapseContentRef}

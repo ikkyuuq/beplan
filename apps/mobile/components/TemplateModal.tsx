@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Dimensions,
   Modal,
 } from "react-native";
 import { Alert } from "@/utils/alert";
@@ -300,7 +299,7 @@ export default function TemplateModal({
                       </View>
 
                       {/* Duration Badge */}
-                      {data.duration && (
+                      {!!data.duration && (
                         <View style={styles.durationBadge}>
                           <Ionicons
                             name="time-outline"
@@ -409,7 +408,9 @@ export default function TemplateModal({
                           </Text>
 
                           {/* Show More/Less Button */}
-                          {data.description &&
+                          {/* !! so an empty string renders nothing: a bare ""
+                              inside a <View> is an "Unexpected text node" error. */}
+                          {!!data.description &&
                             data.description.length > 150 && (
                               <TouchableOpacity
                                 style={styles.showMoreButton}
@@ -510,7 +511,7 @@ export default function TemplateModal({
                                   data.owner ||
                                   "BePlan User"}
                               </Text>
-                              {data.creator?.occupation && (
+                              {!!data.creator?.occupation && (
                                 <Text style={styles.creatorOccupation}>
                                   {data.creator.occupation}
                                 </Text>
@@ -529,7 +530,7 @@ export default function TemplateModal({
                           </View>
 
                           {/* Creator Bio */}
-                          {data.creator?.about && (
+                          {!!data.creator?.about && (
                             <>
                               <Text style={styles.aboutTitle}>About</Text>
                               <View style={styles.aboutContainer}>
@@ -618,8 +619,6 @@ export default function TemplateModal({
 }
 
 // ====================== Styles ======================
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-
 const styles = StyleSheet.create({
   // Modal Layout
   overlay: {
@@ -629,8 +628,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContainer: {
-    width: SCREEN_WIDTH * 0.9,
-    height: SCREEN_HEIGHT * 0.8,
+    // Relative to the full-screen overlay (was the screen size measured once at
+    // app start, wrong after resizing or in split view); capped for tablets.
+    width: "90%",
+    maxWidth: 560,
+    height: "80%",
     backgroundColor: "transparent",
     borderRadius: 24,
     overflow: "hidden",
@@ -649,7 +651,7 @@ const styles = StyleSheet.create({
 
   // Hero Section
   heroContainer: {
-    height: SCREEN_HEIGHT * 0.35,
+    height: "44%", // of the modal (= 35% of the screen, as before)
     position: "relative",
     width: "100%",
   },

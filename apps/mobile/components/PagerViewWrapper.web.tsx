@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import type { PagerHandle } from './PagerViewWrapper';
 import { ScrollView, ViewStyle, StyleProp, View } from 'react-native';
 
 interface PagerViewProps {
@@ -8,16 +9,26 @@ interface PagerViewProps {
   children?: React.ReactNode;
 }
 
-export default function PagerViewWrapper({
+const PagerViewWrapper = forwardRef<PagerHandle, PagerViewProps>(function PagerViewWrapper({
   style,
   initialPage = 0,
   onPageSelected,
   children,
-}: PagerViewProps) {
+}, ref) {
   const scrollViewRef = useRef<ScrollView>(null);
   const pages = React.Children.toArray(children);
   const [containerWidth, setContainerWidth] = React.useState<number>(0);
   const didScrollToInitialPage = useRef(false);
+
+  // Same API as the native PagerView. A programmatic scroll doesn't fire
+  // onMomentumScrollEnd on web, so report the new page directly.
+  useImperativeHandle(ref, () => ({
+    setPage(index: number) {
+      const page = Math.max(0, Math.min(index, pages.length - 1));
+      scrollViewRef.current?.scrollTo({ x: page * containerWidth, animated: true });
+      onPageSelected?.({ nativeEvent: { position: page } });
+    },
+  }), [containerWidth, pages.length, onPageSelected]);
 
   // Native PagerView opens on `initialPage`; a ScrollView always starts at
   // page 0. Jump there once the width is known, or the schedule's week strip
@@ -57,4 +68,6 @@ export default function PagerViewWrapper({
       ))}
     </ScrollView>
   );
-}
+});
+
+export default PagerViewWrapper;

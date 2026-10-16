@@ -6,6 +6,7 @@ export const routes = {
     "/(auth)/sign-up",
     "/(auth)/reset-password",
     "/(auth)/set-password",
+    "/(auth)/sso-callback",
   ]) as ReadonlyArray<string>,
 
   // ====================== Private Routes (Require Authentication) ======================

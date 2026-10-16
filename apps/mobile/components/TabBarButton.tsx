@@ -2,8 +2,10 @@ import { Feather } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text } from "react-native";
 import Animated, {
   useSharedValue,
-  withSpring,
+  withTiming,
 } from "react-native-reanimated";
+import { MOTION } from "@/constants/motion";
+import { DENSE_TEXT_MAX_SCALE } from "@/constants/layout";
 import { useEffect } from "react";
 
 type TabBarButtonProps = {
@@ -39,7 +41,7 @@ export default function TabBarButton({
   const scale = useSharedValue(0);
 
   useEffect(() => {
-    scale.value = withSpring(isFocused ? 1 : 0);
+    scale.value = withTiming(isFocused ? 1 : 0, MOTION.fast);
   }, [scale, isFocused]);
 
   const Icon = icons[route.name as keyof typeof icons] ?? icons.schedule;
@@ -54,7 +56,11 @@ export default function TabBarButton({
       style={styles.tabBarButton}
     >
       <Icon size={22} color={isFocused ? "#fff" : "#5D6275"} />
-      <Text style={[styles.label, { color: isFocused ? "#fff" : "#5D6275" }]}>
+      <Text
+        style={[styles.label, { color: isFocused ? "#fff" : "#5D6275" }]}
+        maxFontSizeMultiplier={DENSE_TEXT_MAX_SCALE}
+        numberOfLines={1}
+      >
         {labels[route.name as keyof typeof labels] ?? route.name}
       </Text>
     </Pressable>

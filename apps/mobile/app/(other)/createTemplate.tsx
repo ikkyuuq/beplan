@@ -20,6 +20,7 @@ import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
 import CategoryPicker from "@/components/CategoryPicker";
 import CalendarPicker from "@/components/CalendarPicker";
+import { useScreenTopPadding } from "@/constants/layout";
 import { useUser } from "@clerk/clerk-expo";
 import Animated, {
   useSharedValue,
@@ -35,6 +36,7 @@ type Goal = {
 
 // ====================== Main Component ======================
 export default function CreateTemplate() {
+  const topPadding = useScreenTopPadding(8);
   // ====================== State Management ======================
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -473,7 +475,7 @@ export default function CreateTemplate() {
       style={styles.container}
     >
       {/* Back Button Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: topPadding }]}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#fff" />
           <Text style={styles.backText}>Back</Text>
@@ -788,7 +790,6 @@ const styles = StyleSheet.create({
   // Header
   header: {
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === "ios" ? 50 : 16,
     paddingBottom: 10,
     backgroundColor: "#16171F",
     borderBottomWidth: 1,

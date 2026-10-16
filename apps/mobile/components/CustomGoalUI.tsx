@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,9 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
 } from "react-native";
 import { Alert } from "@/utils/alert";
+import { useScreenTopPadding } from "@/constants/layout";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { format, isValid, parseISO } from "date-fns";
@@ -62,6 +62,8 @@ type CustomGoalUIProps = {
   setTaskModalVisible: (visible: boolean) => void;
   handleSubmit: () => void;
   handleUpdate: () => void;
+  /** Shown for new goals and drafts (not for started goals). */
+  handleSaveDraft?: () => void;
 
   // Debug Functions
   testLogData: () => void;
@@ -128,11 +130,20 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
   setTaskModalVisible,
   handleSubmit,
   handleUpdate,
+  handleSaveDraft,
 }) => {
+  // The header floats over the content: pad it below the notch, and start the
+  // content under the header's real height (was a fixed 100 px).
+  const headerTop = useScreenTopPadding(12);
+  const [headerHeight, setHeaderHeight] = useState(headerTop + 52);
+
   return (
     <>
       {/* Header with Back Button */}
-      <Animated.View style={[styles.header, headerAnimatedStyle]}>
+      <Animated.View
+        style={[styles.header, { paddingTop: headerTop }, headerAnimatedStyle]}
+        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+      >
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color="white" />
           <Text style={styles.backText}>Back</Text>
@@ -141,7 +152,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: headerHeight + 16 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Title Section */}
@@ -350,11 +361,24 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                   color="#FFF"
                 />
                 <Text style={styles.createButtonText}>
-                  {isEditingGoal ? "Update Goal" : "Create Goal"}
+                  {isEditingGoal ? "Update Goal" : "Start Goal"}
                 </Text>
               </>
             )}
           </TouchableOpacity>
+
+          {/* Plan now, start later: drafts stay fully editable. */}
+          {!!handleSaveDraft && (
+            <TouchableOpacity
+              style={styles.draftButton}
+              onPress={handleSaveDraft}
+              disabled={isLoading}
+              accessibilityRole="button"
+            >
+              <Ionicons name="document-text-outline" size={20} color="#4E5A94" />
+              <Text style={styles.draftButtonText}>Save as draft</Text>
+            </TouchableOpacity>
+          )}
         </Animated.View>
       </ScrollView>
 
@@ -558,7 +582,7 @@ const TaskItem = ({
           <Text style={styles.taskType}>{getTaskLabel(task.type)}</Text>
           <Text style={styles.taskTitle}>{task.title}</Text>
         </View>
-        {task.description && (
+        {!!task.description && (
           <Text style={styles.taskDescription} numberOfLines={2}>
             {task.description}
           </Text>
@@ -586,6 +610,8 @@ const TaskItem = ({
         <TouchableOpacity
           style={styles.taskAction}
           onPress={() => handleEditTask(index)}
+          accessibilityRole="button"
+          accessibilityLabel={`Edit ${task.title}`}
         >
           <Ionicons name="pencil" size={20} color="#4F46E5" />
         </TouchableOpacity>
@@ -593,11 +619,16 @@ const TaskItem = ({
           style={styles.taskAction}
           onPress={() => !goalStarted && handleDeleteTask(index)}
           disabled={goalStarted}
+          accessibilityRole="button"
+          accessibilityLabel={`Delete ${task.title}`}
+          accessibilityState={{ disabled: goalStarted }}
         >
+          {/* Neutral grey when disabled (started goals can't remove tasks);
+              a faded red still read as an active delete button. */}
           <Ionicons
             name="trash-outline"
             size={20}
-            color={goalStarted ? "rgba(255, 59, 48, 0.4)" : "#FF3B30"}
+            color={goalStarted ? "#6B6F80" : "#FF3B30"}
           />
         </TouchableOpacity>
       </View>
@@ -625,7 +656,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 100,
     paddingBottom: 40,
     paddingHorizontal: 20,
   },
@@ -636,7 +666,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingTop: Platform.OS === "ios" ? 60 : 30,
     paddingBottom: 20,
     paddingHorizontal: 20,
     flexDirection: "row",
@@ -869,6 +898,22 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: "#fff",
     fontSize: 18,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  draftButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#4E5A94",
+    padding: 14,
+    borderRadius: 12,
+    marginVertical: 4,
+  },
+  draftButtonText: {
+    color: "#4E5A94",
+    fontSize: 16,
     fontWeight: "600",
     marginLeft: 8,
   },

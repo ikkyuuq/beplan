@@ -5,8 +5,8 @@ import {
   Pressable,
   StyleSheet,
   Image,
-  Platform,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useUser } from "@clerk/clerk-expo";
@@ -22,6 +22,9 @@ export default function Header({ children, containerStyle }: HeaderProps) {
   // ====================== Hooks & Navigation ======================
   const router = useRouter();
   const { user } = useUser();
+  // Real top safe area (notch / Dynamic Island / status bar) per device,
+  // instead of a fixed 60 px on iOS.
+  const insets = useSafeAreaInsets();
 
   const handleNavigateToSettings = () => {
     router.push("/userSettings");
@@ -40,7 +43,7 @@ export default function Header({ children, containerStyle }: HeaderProps) {
 
   // ====================== Render UI ======================
   return (
-    <View style={[styles.header, containerStyle]}>
+    <View style={[styles.header, { paddingTop: insets.top + 12 }, containerStyle]}>
       <View style={styles.headerContent}>
         <Feather
           name="menu"
@@ -68,12 +71,13 @@ export default function Header({ children, containerStyle }: HeaderProps) {
 const styles = StyleSheet.create({
   // Header Styles
   header: {
-    height: 330,
+    // A minimum, not a fixed height: content (e.g. the schedule's week strip)
+    // and larger accessibility text can make it taller without overlapping.
+    minHeight: 330,
     backgroundColor: "#16171F",
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     padding: 24,
-    paddingTop: Platform.OS === "ios" ? 60 : 20,
     gap: 18,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
