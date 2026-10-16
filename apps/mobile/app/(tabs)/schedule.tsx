@@ -2,7 +2,6 @@ import {
   View,
   Text,
   Pressable,
-  LayoutChangeEvent,
   ScrollView,
   ActivityIndicator,
 } from "react-native";
@@ -13,17 +12,17 @@ import {
   eachWeekOfInterval,
   subDays,
   format,
+  isBefore,
   isSameDay,
+  isTomorrow,
+  isYesterday,
+  startOfDay,
   startOfWeek,
 } from "date-fns";
-import PagerView from "@/components/PagerViewWrapper";
-import { useEffect, useState } from "react";
-import Animated, {
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+import PagerView, { type PagerHandle } from "@/components/PagerViewWrapper";
+import { useRef, useState } from "react";
+import Animated from "react-native-reanimated";
+import { Feather } from "@expo/vector-icons";
 import CollapseItem from "@/components/CollapseItem";
 import Collapsable from "@/components/Collapsable";
 import Header from "@/components/Header";
@@ -51,9 +50,7 @@ type Goal = {
   tasks: Task[];
 };
 export default function Schedule() {
-  const [currentMonth, setCurrentMonth] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [latestIndex, setLatestIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<Goal[]>([]);
@@ -63,7 +60,6 @@ export default function Schedule() {
   const apiFetch = useApiFetch();
   const router = useRouter();
 
-  const dayNames = ["S", "M", "T", "W", "T", "F", "S"];
   const today = new Date();
   const startDate = startOfWeek(subDays(today, 60), { weekStartsOn: 0 });
   const endDate = addDays(
@@ -86,53 +82,44 @@ export default function Schedule() {
     return acc;
   }, []);
 
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-
-  const onDateLayout = (e: LayoutChangeEvent) => {
-    setDimensions({
-      width: e.nativeEvent.layout.width,
-      height: e.nativeEvent.layout.height,
-    });
-  };
-
-  const todayIndex = dayNames.findIndex((_, index) => index === today.getDay());
-  const datePosX = useSharedValue((dimensions.width / 7) * todayIndex);
-  const initialPage = dates.findIndex((week) =>
+  // ====================== Week strip ======================
+  // Page index of the week that contains today (the pager opens there).
+  const todayPage = dates.findIndex((week) =>
     week.some((day) => isSameDay(day, today)),
   );
+  const [pageIndex, setPageIndex] = useState(todayPage);
+  const pagerRef = useRef<PagerHandle>(null);
 
-  useEffect(() => {
-    const dayIndex = selectedDate.getDay();
-    datePosX.value = withSpring((dimensions.width / 7) * dayIndex, {
-      mass: 1,
-      damping: 20,
-      stiffness: 200,
-    });
-    setLatestIndex(dayIndex);
-  }, [selectedDate, dimensions.width]);
+  // Month/year of the visible week, taken from its middle day so a week that
+  // spans two months shows the month most of it belongs to.
+  const visibleMonth = format(dates[pageIndex]?.[3] ?? today, "MMMM yyyy");
 
-  const scale = useSharedValue(1);
+  const isTodaySelected = isSameDay(selectedDate, today);
+  const selectedLabel = isTodaySelected
+    ? "Today"
+    : isTomorrow(selectedDate)
+      ? "Tomorrow"
+      : isYesterday(selectedDate)
+        ? "Yesterday"
+        : null;
+  const showTodayButton = !isTodaySelected || pageIndex !== todayPage;
 
-  useEffect(() => {
-    const newIndex = selectedDate.getDay();
-    if (newIndex !== latestIndex) {
-      scale.value = 0;
-      setTimeout(() => {
-        scale.value = withSpring(1, {
-          mass: 1,
-          damping: 20,
-          stiffness: 200,
-        });
-      }, 200);
-    }
-  }, [selectedDate, latestIndex]);
+  // Browsing weeks (swipe or arrows) only changes what's visible. The selected
+  // day changes only when the user taps a day, so their pick stays highlighted
+  // and its goals stay listed while they look around.
+  const handleWeekChange = (index: number) => {
+    if (dates[index]) setPageIndex(index);
+  };
 
-  const animateDateSelected = useAnimatedStyle(() => {
-    const s = interpolate(scale.value, [0, 1], [0.8, 1]);
-    return {
-      transform: [{ translateX: datePosX.value }, { scaleY: s }],
-    };
-  });
+  const goToWeek = (delta: number) => {
+    const target = Math.max(0, Math.min(pageIndex + delta, dates.length - 1));
+    if (target !== pageIndex) pagerRef.current?.setPage(target);
+  };
+
+  const goToToday = () => {
+    if (pageIndex !== todayPage) pagerRef.current?.setPage(todayPage);
+    setSelectedDate(today);
+  };
 
   const fetchGoals = React.useCallback(
     async (selectedDate: Date, userId: string, signal: AbortSignal) => {
@@ -354,109 +341,161 @@ export default function Schedule() {
           <Text style={{ color: "#fff", fontSize: 20, fontStyle: "italic" }}>
             Start today, conquer tomorrow
           </Text>
-          <Text
-            style={{
-              color: "#fff",
-              fontSize: 36,
-              fontWeight: "bold",
-              marginBottom: 20,
-            }}
-          >
-            {currentMonth || format(today, "MMMM")}
-          </Text>
-        </View>
-
-        <View onLayout={onDateLayout}>
-          <Animated.View
-            style={[
-              animateDateSelected,
-              {
-                width: dimensions.width / 7,
-                height: 48,
-                borderRadius: 100,
-                position: "absolute",
-                backgroundColor: "#4E5A94",
-                bottom: 32,
-              },
-            ]}
-          />
-
+          {/* Month of the visible week, with previous/next week buttons */}
           <View
             style={{
               flexDirection: "row",
-              justifyContent: "space-around",
               alignItems: "center",
-              marginBottom: 10,
+              justifyContent: "space-between",
+              alignSelf: "stretch",
+              marginBottom: 12,
             }}
           >
-            {dayNames.map((day, i) => (
-              <Text
-                key={i}
-                style={{ color: "white", width: 48, textAlign: "center" }}
-              >
-                {day}
-              </Text>
-            ))}
+            <Pressable
+              onPress={() => goToWeek(-1)}
+              disabled={pageIndex === 0}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Previous week"
+            >
+              <Feather
+                name="chevron-left"
+                size={28}
+                color={pageIndex === 0 ? "#555" : "#fff"}
+              />
+            </Pressable>
+            <Text style={{ color: "#fff", fontSize: 28, fontWeight: "bold" }}>
+              {visibleMonth}
+            </Text>
+            <Pressable
+              onPress={() => goToWeek(1)}
+              disabled={pageIndex === dates.length - 1}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Next week"
+            >
+              <Feather
+                name="chevron-right"
+                size={28}
+                color={pageIndex === dates.length - 1 ? "#555" : "#fff"}
+              />
+            </Pressable>
           </View>
+        </View>
 
-          <PagerView
-            style={{ height: 80 }}
-            initialPage={initialPage}
-            onPageSelected={(e: any) => {
-              const weekIndex = e.nativeEvent.position;
-              const visibleWeek = dates[weekIndex];
-              setCurrentMonth(format(visibleWeek[0], "MMMM"));
-              setSelectedDate(visibleWeek[latestIndex]);
-            }}
-          >
-            {dates.map((week, i) => (
-              <View key={i} style={{ flex: 1 }}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  {week.map((day, i) => (
-                    <View key={i} style={{ alignItems: "center", gap: 10 }}>
-                      <Pressable
-                        onPress={() => setSelectedDate(day)}
-                        style={{
-                          width: 48,
-                          height: 48,
-                          borderRadius: 100,
-                          justifyContent: "space-around",
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: isSameDay(day, selectedDate)
-                              ? "#fff"
-                              : isSameDay(day, today)
-                                ? "#8B98D5"
-                                : "#B7B7B7",
-                            fontWeight:
-                              isSameDay(day, selectedDate) ||
-                              isSameDay(day, today)
-                                ? "bold"
-                                : "normal",
-                            textDecorationLine:
-                              isSameDay(day, today) &&
-                              !isSameDay(day, selectedDate)
-                                ? "underline"
-                                : "none",
-                          }}
-                        >
-                          {day.getDate()}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ))}
-          </PagerView>
+        {/* Week strip: weekday + date per cell. Selected = filled pill,
+            today = bold with a dot, past days dimmed. */}
+        <PagerView
+          ref={pagerRef}
+          style={{ height: 76 }}
+          initialPage={todayPage}
+          onPageSelected={(e: any) => handleWeekChange(e.nativeEvent.position)}
+        >
+          {dates.map((week, i) => (
+            <View
+              key={i}
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                justifyContent: "space-around",
+              }}
+            >
+              {week.map((day) => {
+                const isSelected = isSameDay(day, selectedDate);
+                const isTodayCell = isSameDay(day, today);
+                const isPast = isBefore(day, startOfDay(today));
+                return (
+                  <Pressable
+                    key={day.toISOString()}
+                    onPress={() => setSelectedDate(day)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`${isTodayCell ? "Today, " : ""}${format(day, "EEEE, MMMM d")}`}
+                    style={{
+                      width: 44,
+                      paddingVertical: 8,
+                      borderRadius: 14,
+                      alignItems: "center",
+                      gap: 4,
+                      backgroundColor: isSelected ? "#4E5A94" : "transparent",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: isSelected ? "#fff" : isPast ? "#6F6F7A" : "#B7B7B7",
+                      }}
+                    >
+                      {format(day, "EEEEE")}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 17,
+                        fontWeight: isSelected || isTodayCell ? "700" : "500",
+                        color: isSelected
+                          ? "#fff"
+                          : isTodayCell
+                            ? "#8B98D5"
+                            : isPast
+                              ? "#6F6F7A"
+                              : "#E6E6E6",
+                      }}
+                    >
+                      {day.getDate()}
+                    </Text>
+                    <View
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: 3,
+                        backgroundColor: isTodayCell
+                          ? isSelected
+                            ? "#fff"
+                            : "#8B98D5"
+                          : "transparent",
+                      }}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))}
+        </PagerView>
+
+        {/* Which day is shown, and a way back to today */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 12,
+            paddingHorizontal: 4,
+            minHeight: 32,
+          }}
+        >
+          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
+            {selectedLabel ? `${selectedLabel} · ` : ""}
+            {format(selectedDate, "EEEE, MMM d")}
+          </Text>
+          {showTodayButton && (
+            <Pressable
+              onPress={goToToday}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Go to today"
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: "#8B98D5",
+              }}
+            >
+              <Text style={{ color: "#8B98D5", fontSize: 13, fontWeight: "600" }}>
+                Today
+              </Text>
+            </Pressable>
+          )}
         </View>
       </Header>
 
