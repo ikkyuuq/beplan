@@ -11,6 +11,8 @@ export const routes = {
 
   // ====================== Private Routes (Require Authentication) ======================
   private: Object.freeze([
+    // Expo Router briefly reports just the group while the tabs mount.
+    "/(tabs)",
     "/(tabs)/schedule",
     "/(tabs)/create",
     "/(tabs)/analysis",

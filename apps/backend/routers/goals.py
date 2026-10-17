@@ -1,5 +1,5 @@
 import logging
-from datetime import date
+from datetime import date, timedelta
 from typing import List, Optional
 
 from auth import get_current_user_id
@@ -345,6 +345,48 @@ async def get_all_goals(
             user_id,
         )
         return [GoalSummary(**dict(row)) for row in rows]
+
+
+class PendingDay(BaseModel):
+    date: date
+    pending_tasks: int
+
+
+# Declared before /{assigned_goal_id} for the same reason as /all.
+@router.get("/pending_counts", response_model=List[PendingDay])
+async def get_pending_counts(
+    days: int = Query(default=7, ge=1, le=31),
+    user_id: str = Depends(get_current_user_id),
+    client_today: date = Depends(get_client_today),
+):
+    """Unmarked tasks per day from today on, for the mobile reminder.
+
+    Only days with pending tasks are returned. Future days can't be marked
+    early, so their counts only change when goals are created or edited.
+    """
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT ati.interval_date AS date, COUNT(*) AS pending_tasks
+            FROM public.assigned_goal ag
+            JOIN public.assigned_task at
+                ON at.assigned_goal_id = ag.id
+                AND at.status = 'pending'::status
+            JOIN public.assigned_task_interval ati
+                ON ati.assigned_task_id = at.id
+            WHERE ag.user_id = $1
+            AND ag.status IN ('pending','success')
+            AND ati.interval_date BETWEEN $2 AND $3
+            AND ati.interval_date BETWEEN ag.start_date AND ag.due_date
+            GROUP BY ati.interval_date
+            ORDER BY ati.interval_date
+            """,
+            user_id,
+            client_today,
+            client_today + timedelta(days=days - 1),
+        )
+        return [PendingDay(**dict(row)) for row in rows]
 
 
 @router.get("/{assigned_goal_id}")
