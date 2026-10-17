@@ -8,6 +8,9 @@ import {
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { Alert } from "@/utils/alert";
 import { useApiFetch } from "@/hooks/useApiFetch";
 import {
@@ -20,8 +23,6 @@ import {
   syncTaskReminders,
 } from "@/utils/taskReminder";
 
-const STEP_MINUTES = 15;
-
 function formatTime(hour: number, minute: number) {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
@@ -30,6 +31,8 @@ function formatTime(hour: number, minute: number) {
 export default function ReminderSettings() {
   const apiFetch = useApiFetch();
   const [settings, setSettings] = useState<Settings>(DEFAULT_REMINDER_SETTINGS);
+  // Android shows the picker as a dialog, opened from the time button.
+  const [showAndroidPicker, setShowAndroidPicker] = useState(false);
 
   useEffect(() => {
     void loadReminderSettings().then(setSettings);
@@ -56,14 +59,16 @@ export default function ReminderSettings() {
     await apply({ ...settings, enabled });
   };
 
-  const shiftTime = (delta: number) => {
-    const total =
-      (settings.hour * 60 + settings.minute + delta + 24 * 60) % (24 * 60);
-    void apply({
-      ...settings,
-      hour: Math.floor(total / 60),
-      minute: total % 60,
-    });
+  const pickerValue = new Date();
+  pickerValue.setHours(settings.hour, settings.minute, 0, 0);
+
+  const onPickTime = (event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === "android") setShowAndroidPicker(false);
+    if (event.type !== "set" || !date) return;
+    if (date.getHours() === settings.hour && date.getMinutes() === settings.minute) {
+      return;
+    }
+    void apply({ ...settings, hour: date.getHours(), minute: date.getMinutes() });
   };
 
   return (
@@ -87,25 +92,32 @@ export default function ReminderSettings() {
           {settings.enabled && (
             <View style={styles.row}>
               <Text style={styles.label}>Time</Text>
-              <View style={styles.stepper}>
+              {Platform.OS === "ios" ? (
+                <DateTimePicker
+                  value={pickerValue}
+                  mode="time"
+                  display="compact"
+                  onChange={onPickTime}
+                />
+              ) : (
                 <TouchableOpacity
-                  style={styles.stepButton}
-                  onPress={() => shiftTime(-STEP_MINUTES)}
-                  accessibilityLabel="Earlier"
+                  style={styles.timeButton}
+                  onPress={() => setShowAndroidPicker(true)}
+                  accessibilityLabel="Change reminder time"
                 >
-                  <Feather name="minus" size={18} color="#4E5A94" />
+                  <Text style={styles.time}>
+                    {formatTime(settings.hour, settings.minute)}
+                  </Text>
                 </TouchableOpacity>
-                <Text style={styles.time}>
-                  {formatTime(settings.hour, settings.minute)}
-                </Text>
-                <TouchableOpacity
-                  style={styles.stepButton}
-                  onPress={() => shiftTime(STEP_MINUTES)}
-                  accessibilityLabel="Later"
-                >
-                  <Feather name="plus" size={18} color="#4E5A94" />
-                </TouchableOpacity>
-              </View>
+              )}
+              {showAndroidPicker && (
+                <DateTimePicker
+                  value={pickerValue}
+                  mode="time"
+                  display="clock"
+                  onChange={onPickTime}
+                />
+              )}
             </View>
           )}
 
@@ -161,18 +173,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#444",
   },
-  stepper: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  stepButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  timeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
     backgroundColor: "#EEF0F8",
-    alignItems: "center",
-    justifyContent: "center",
   },
   time: {
     fontSize: 18,
