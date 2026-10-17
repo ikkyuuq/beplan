@@ -44,12 +44,11 @@ const DAYS = 7;
 let notificationsModule: typeof NotificationsModule | null | undefined;
 
 // Native modules expo-notifications requires as soon as it's imported.
+// Channels and topics are Android-only; iOS has no such modules.
 const REQUIRED_NATIVE_MODULES = [
   "ExpoBackgroundNotificationTasksModule",
   "ExpoBadgeModule",
   "ExpoNotificationCategoriesModule",
-  "ExpoNotificationChannelGroupManager",
-  "ExpoNotificationChannelManager",
   "ExpoNotificationPermissionsModule",
   "ExpoNotificationPresenter",
   "ExpoNotificationScheduler",
@@ -57,7 +56,13 @@ const REQUIRED_NATIVE_MODULES = [
   "ExpoNotificationsHandlerModule",
   "ExpoPushTokenManager",
   "NotificationsServerRegistrationModule",
-  ...(Platform.OS === "android" ? ["ExpoTopicSubscriptionModule"] : []),
+  ...(Platform.OS === "android"
+    ? [
+        "ExpoNotificationChannelGroupManager",
+        "ExpoNotificationChannelManager",
+        "ExpoTopicSubscriptionModule",
+      ]
+    : []),
 ];
 
 /**
