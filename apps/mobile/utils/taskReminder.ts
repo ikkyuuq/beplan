@@ -1,9 +1,17 @@
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
-import { Platform } from "react-native";
+import { LogBox, Platform } from "react-native";
 import { parseISO, setHours, setMinutes } from "date-fns";
 import { API_BASE_URL } from "@/constants/api";
 import type { ApiFetch } from "@/hooks/useApiFetch";
+
+// Importing expo-notifications in Expo Go on Android warns that *push*
+// notifications are unavailable there. Reminders are local notifications,
+// which still work, so keep the warning out of the in-app overlay (it still
+// prints in the terminal). Ignore patterns also hide already-logged entries.
+LogBox.ignoreLogs([
+  "[expo-notifications] Push notifications (remote notifications) are unavailable in Expo Go",
+]);
 
 /**
  * Evening reminder for tasks that are still unmarked (iOS/Android only).
