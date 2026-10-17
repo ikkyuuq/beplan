@@ -77,7 +77,8 @@ function getNotifications(): typeof NotificationsModule | null {
           );
     if (missing.length > 0) {
       if (Platform.OS !== "web") {
-        console.warn(
+        // A log, not a warning: this is expected in Expo Go for Android.
+        console.log(
           `Task reminders are off: this app build lacks ${missing.join(", ")}.`
         );
       }
