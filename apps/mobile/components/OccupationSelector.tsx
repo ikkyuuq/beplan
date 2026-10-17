@@ -9,6 +9,8 @@ import {
   Modal,
   SafeAreaView,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
@@ -86,8 +88,8 @@ export default function OccupationSelector({
   };
 
   const handleConfirm = () => {
-    if (showCustomInput && customOccupation) {
-      onValueChange(customOccupation);
+    if (showCustomInput && customOccupation.trim()) {
+      onValueChange(customOccupation.trim());
     } else if (selectedOccupation) {
       onValueChange(selectedOccupation);
     }
@@ -143,6 +145,12 @@ export default function OccupationSelector({
         onRequestClose={() => setModalVisible(false)}
       >
         <SafeAreaView style={styles.modalContainer}>
+          {/* Keeps Confirm above the keyboard while typing a custom
+              occupation; otherwise it's hidden and the text is lost. */}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.keyboardAvoider}
+          >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Occupation</Text>
@@ -171,6 +179,10 @@ export default function OccupationSelector({
                   onChangeText={setCustomOccupation}
                   placeholder="Enter your occupation"
                   placeholderTextColor="#999"
+                  maxLength={100}
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={handleConfirm}
                 />
               </View>
             )}
@@ -186,12 +198,13 @@ export default function OccupationSelector({
               <TouchableOpacity
                 style={styles.confirmButton}
                 onPress={handleConfirm}
-                disabled={showCustomInput && !customOccupation}
+                disabled={showCustomInput && !customOccupation.trim()}
               >
                 <Text style={styles.confirmButtonText}>Confirm</Text>
               </TouchableOpacity>
             </View>
           </View>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
 
@@ -245,6 +258,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  keyboardAvoider: {
+    width: "100%",
+    alignItems: "center",
   },
   modalContent: {
     width: "90%",

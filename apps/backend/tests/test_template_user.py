@@ -175,22 +175,41 @@ def test_user_update_persists_image_and_profile_fields(monkeypatch):
     )
 
 
-def test_update_username_saves_db_and_clerk_metadata(monkeypatch):
+def test_update_profile_saves_given_fields_to_db_and_clerk(monkeypatch):
     connection = FakeConnection()
     patch_pool(monkeypatch, user, connection)
     merge = AsyncMock()
     monkeypatch.setattr(user, "merge_unsafe_metadata", merge)
 
     result = asyncio.run(
-        user.update_username(user.UsernameUpdate(username=" ada_99 "), user_id="user-1")
+        user.update_profile(
+            user.ProfileUpdate(username=" ada_99 ", description="Hi"),
+            user_id="user-1",
+        )
     )
 
-    assert result == {"username": "ada_99"}
-    assert connection.execute.await_args.args[1:] == ("user-1", "ada_99")
-    merge.assert_awaited_once_with("user-1", {"appUsername": "ada_99"})
+    assert result == {"username": "ada_99", "description": "Hi"}
+    sql = " ".join(connection.execute.await_args.args[0].split())
+    assert "(id, username, about) VALUES ($1, $2, $3)" in sql
+    assert "occupation" not in sql
+    assert connection.execute.await_args.args[1:] == ("user-1", "ada_99", "Hi")
+    merge.assert_awaited_once_with(
+        "user-1", {"appUsername": "ada_99", "description": "Hi"}
+    )
 
 
-def test_update_username_rejects_invalid_names(monkeypatch):
+def test_update_profile_allows_clearing_a_field(monkeypatch):
+    connection = FakeConnection()
+    patch_pool(monkeypatch, user, connection)
+    merge = AsyncMock()
+    monkeypatch.setattr(user, "merge_unsafe_metadata", merge)
+
+    asyncio.run(user.update_profile(user.ProfileUpdate(occupation=""), user_id="user-1"))
+
+    merge.assert_awaited_once_with("user-1", {"occupation": ""})
+
+
+def test_update_profile_rejects_invalid_input(monkeypatch):
     import pytest
     from fastapi import HTTPException
 
@@ -199,9 +218,15 @@ def test_update_username_rejects_invalid_names(monkeypatch):
     merge = AsyncMock()
     monkeypatch.setattr(user, "merge_unsafe_metadata", merge)
 
-    for bad in ["ab", "has space", "x" * 21, "émile"]:
+    bad_requests = [
+        user.ProfileUpdate(),
+        *(user.ProfileUpdate(username=bad) for bad in ["ab", "has space", "x" * 21, "émile"]),
+        user.ProfileUpdate(description="x" * 301),
+        user.ProfileUpdate(occupation="x" * 101),
+    ]
+    for request in bad_requests:
         with pytest.raises(HTTPException) as error:
-            asyncio.run(user.update_username(user.UsernameUpdate(username=bad), user_id="user-1"))
+            asyncio.run(user.update_profile(request, user_id="user-1"))
         assert error.value.status_code == 422
     connection.execute.assert_not_awaited()
     merge.assert_not_awaited()
