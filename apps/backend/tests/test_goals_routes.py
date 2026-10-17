@@ -255,3 +255,30 @@ def test_update_task_status_allows_today_and_past_tasks(monkeypatch):
     )
 
     assert result["assigned_task_id"] == [1, 2]
+
+
+def test_pending_counts_route_is_declared_before_goal_id_route():
+    paths = [route.path for route in goals.router.routes]
+    assert paths.index("/pending_counts") < paths.index("/{assigned_goal_id}")
+
+
+def test_get_pending_counts_covers_days_from_client_today(monkeypatch):
+    connection = FakeConnection()
+    connection.fetch.return_value = [
+        {"date": date(2026, 10, 17), "pending_tasks": 2},
+        {"date": date(2026, 10, 19), "pending_tasks": 1},
+    ]
+    patch_pool(monkeypatch, connection)
+
+    result = asyncio.run(
+        goals.get_pending_counts(
+            days=7, user_id="user-1", client_today=date(2026, 10, 17)
+        )
+    )
+
+    assert [(d.date, d.pending_tasks) for d in result] == [
+        (date(2026, 10, 17), 2),
+        (date(2026, 10, 19), 1),
+    ]
+    args = connection.fetch.await_args.args
+    assert args[1:] == ("user-1", date(2026, 10, 17), date(2026, 10, 23))
