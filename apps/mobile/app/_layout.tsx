@@ -3,6 +3,7 @@ import { Stack } from "expo-router/stack";
 import { tokenCache } from "@/cache";
 import { ReactNode, useEffect, useState } from "react";
 import { useProtectedRoute } from "@/middleware/useProtectedRoute";
+import { useTaskReminderSync } from "@/hooks/useTaskReminderSync";
 import * as Font from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { View, Text, ActivityIndicator } from "react-native";
@@ -79,5 +80,6 @@ export default function RootLayout() {
 // ====================== Protected Routes Wrapper ======================
 function ProtectedRoutes({ children }: { children: ReactNode }) {
   useProtectedRoute();
+  useTaskReminderSync();
   return children;
 }

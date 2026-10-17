@@ -35,6 +35,7 @@ import { useFocusEffect } from "expo-router";
 import React from "react";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
+import { syncTaskReminders } from "@/utils/taskReminder";
 
 type Task = {
   id: number;
@@ -195,6 +196,8 @@ export default function Schedule() {
       const body = await response.json().catch(() => null);
       throw new Error(body?.detail || `Status update failed (HTTP ${response.status})`);
     }
+    // Today's count changed, so the evening reminder may need updating.
+    void syncTaskReminders(apiFetch);
   };
 
   // The swipe animation has already hidden the card when the request runs, so
@@ -333,12 +336,20 @@ export default function Schedule() {
 
       // Remove the deleted goal from the state
       setData((prev) => prev.filter((goal) => goal.id !== goalId));
+      void syncTaskReminders(apiFetch);
       Alert.alert("Success", "Goal has been deleted successfully.");
     } catch (error) {
       console.error("Failed to delete goal:", error);
       Alert.alert("Error", "Failed to delete the goal. Please try again.");
     }
   };
+
+  // Goals may have been created or edited on another screen.
+  useFocusEffect(
+    React.useCallback(() => {
+      void syncTaskReminders(apiFetch);
+    }, [apiFetch])
+  );
 
   useFocusEffect(
     React.useCallback(() => {

@@ -27,6 +27,7 @@ import OccupationSelector from "@/components/OccupationSelector";
 import * as ImagePicker from "expo-image-picker";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
+import ReminderSettings from "@/components/ReminderSettings";
 
 // ====================== Main Component ======================
 export default function UserSettings() {
@@ -739,6 +740,11 @@ export default function UserSettings() {
               <Text style={styles.noDataText}>No active sessions</Text>
             )}
           </Animated.View>
+        </Animated.View>
+
+        {/* Reminders Section */}
+        <Animated.View entering={FadeInDown.delay(600).duration(500)}>
+          <ReminderSettings />
         </Animated.View>
 
         {/* Account Actions Section */}
