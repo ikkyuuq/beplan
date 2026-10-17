@@ -18,7 +18,7 @@ import Animated, {
   FadeInDown,
 } from "react-native-reanimated";
 import { LineChart, PieChart } from "react-native-chart-kit";
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@clerk/expo";
 import Header from "@/components/Header";
 import { useTabBarSpace } from "@/constants/layout";
 import { API_BASE_URL } from "@/constants/api";

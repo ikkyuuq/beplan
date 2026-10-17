@@ -21,7 +21,7 @@ import { useApiFetch } from "@/hooks/useApiFetch";
 import CategoryPicker from "@/components/CategoryPicker";
 import CalendarPicker from "@/components/CalendarPicker";
 import { useScreenTopPadding } from "@/constants/layout";
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@clerk/expo";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,

@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth } from "@clerk/expo";
 import { format } from "date-fns";
 import { useCallback } from "react";
 
@@ -17,7 +17,15 @@ export function useApiFetch(): ApiFetch {
 
   return useCallback(
     async (input: string, init: RequestInit = {}) => {
-      const token = await getToken();
+      // Since Clerk Core 3, getToken() throws when offline (it used to return
+      // null). Send the request without a token; the fetch itself then fails
+      // (offline) or the backend answers 401, both handled by the caller.
+      let token: string | null = null;
+      try {
+        token = await getToken();
+      } catch (error) {
+        console.warn("Couldn't get a session token:", error);
+      }
       const headers = new Headers(init.headers);
       if (token) {
         headers.set("Authorization", `Bearer ${token}`);

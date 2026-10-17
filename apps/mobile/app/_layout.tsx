@@ -1,4 +1,4 @@
-import { ClerkProvider, ClerkLoaded } from "@clerk/clerk-expo";
+import { ClerkProvider, ClerkLoaded } from "@clerk/expo";
 import { Stack } from "expo-router/stack";
 import { tokenCache } from "@/cache";
 import { ReactNode, useEffect, useState } from "react";

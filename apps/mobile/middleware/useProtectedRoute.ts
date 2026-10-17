@@ -1,6 +1,6 @@
 import { useSegments, useRouter } from "expo-router";
 import { useEffect } from "react";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth } from "@clerk/expo";
 import { routes } from "@/routesConfig";
 
 // ====================== Authentication Route Protection Hook ======================

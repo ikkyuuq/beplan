@@ -29,7 +29,7 @@ import { Feather } from "@expo/vector-icons";
 import CollapseItem from "@/components/CollapseItem";
 import Collapsable from "@/components/Collapsable";
 import Header from "@/components/Header";
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@clerk/expo";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
 import React from "react";

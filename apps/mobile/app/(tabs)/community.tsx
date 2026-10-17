@@ -16,7 +16,7 @@ import { useState, useEffect, useCallback } from "react";
 import TemplateCard from "@/components/TemplateCard";
 import TemplateModal from "@/components/TemplateModal";
 import Header from "@/components/Header";
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@clerk/expo";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
 

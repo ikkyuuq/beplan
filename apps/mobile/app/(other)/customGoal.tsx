@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { KeyboardAvoidingView, Platform } from "react-native";
 import { Alert } from "@/utils/alert";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@clerk/expo";
 import {
   useSharedValue,
   useAnimatedStyle,
