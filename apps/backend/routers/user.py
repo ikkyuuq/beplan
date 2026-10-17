@@ -1,6 +1,7 @@
+import re
 from typing import Optional
 
-from auth import get_current_user_id
+from auth import get_current_user_id, merge_unsafe_metadata
 from database import get_db_pool
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -15,6 +16,38 @@ class User(BaseModel):
     username: Optional[str] = None
     occupation: Optional[str] = None
     about: Optional[str] = None
+
+
+class UsernameUpdate(BaseModel):
+    username: str
+
+
+USERNAME_PATTERN = re.compile(r"[A-Za-z0-9_]{3,20}")
+
+
+@router.put("/username")
+async def update_username(
+    req: UsernameUpdate, user_id: str = Depends(get_current_user_id)
+):
+    """Set the app username in the DB and in Clerk ``unsafeMetadata.appUsername``."""
+    username = req.username.strip()
+    if not USERNAME_PATTERN.fullmatch(username):
+        raise HTTPException(
+            status_code=422,
+            detail="Username must be 3-20 characters long and contain only letters, numbers, and underscores.",
+        )
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO public.user (id, username) VALUES ($1, $2)
+            ON CONFLICT (id) DO UPDATE SET username = EXCLUDED.username
+            """,
+            user_id,
+            username,
+        )
+    await merge_unsafe_metadata(user_id, {"appUsername": username})
+    return {"username": username}
 
 
 @router.post("/upload_image")

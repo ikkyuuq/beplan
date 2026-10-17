@@ -116,3 +116,21 @@ async def require_admin(user_id: str = Depends(get_current_user_id)) -> str:
     if not await is_admin(user_id):
         raise HTTPException(status_code=403, detail="Admin role required")
     return user_id
+
+
+async def merge_unsafe_metadata(user_id: str, data: dict) -> None:
+    """Merge ``data`` into the user's Clerk ``unsafe_metadata``.
+
+    Done server-side because ``user.update()`` from the app can be refused
+    with "additional verification" (Clerk reverification), e.g. on web.
+    """
+    if not CLERK_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Clerk is not configured")
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.patch(
+            f"{CLERK_API_URL}/users/{user_id}/metadata",
+            headers={"Authorization": f"Bearer {CLERK_SECRET_KEY}"},
+            json={"unsafe_metadata": data},
+        )
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail="Unable to update the Clerk profile")
