@@ -1,6 +1,7 @@
 import type * as NotificationsModule from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 import { LogBox, Platform } from "react-native";
+import { requireOptionalNativeModule } from "expo";
 import { parseISO, setHours, setMinutes } from "date-fns";
 import { API_BASE_URL } from "@/constants/api";
 import type { ApiFetch } from "@/hooks/useApiFetch";
@@ -42,23 +43,47 @@ const DAYS = 7;
 
 let notificationsModule: typeof NotificationsModule | null | undefined;
 
+// Native modules expo-notifications requires as soon as it's imported.
+const REQUIRED_NATIVE_MODULES = [
+  "ExpoBackgroundNotificationTasksModule",
+  "ExpoBadgeModule",
+  "ExpoNotificationCategoriesModule",
+  "ExpoNotificationChannelGroupManager",
+  "ExpoNotificationChannelManager",
+  "ExpoNotificationPermissionsModule",
+  "ExpoNotificationPresenter",
+  "ExpoNotificationScheduler",
+  "ExpoNotificationsEmitter",
+  "ExpoNotificationsHandlerModule",
+  "ExpoPushTokenManager",
+  "NotificationsServerRegistrationModule",
+  ...(Platform.OS === "android" ? ["ExpoTopicSubscriptionModule"] : []),
+];
+
 /**
- * expo-notifications, loaded on first use. Loading it can throw when the
- * native side is missing (e.g. an Expo Go for Android older than the JS
- * package needs ExpoTopicSubscriptionModule), and a static import would then
- * crash the whole app at startup. In that case reminders are just unavailable.
+ * expo-notifications, loaded on first use, or null when this app binary
+ * lacks its native side (e.g. Expo Go for Android older than the JS package,
+ * which has no ExpoTopicSubscriptionModule). Check before requiring: a
+ * failed module load is reported as a fatal error in dev even inside a
+ * try/catch, and a static import would crash the app at startup.
  */
 function getNotifications(): typeof NotificationsModule | null {
   if (notificationsModule === undefined) {
-    if (Platform.OS === "web") {
+    const missing =
+      Platform.OS === "web"
+        ? ["(web)"]
+        : REQUIRED_NATIVE_MODULES.filter(
+            (name) => !requireOptionalNativeModule(name)
+          );
+    if (missing.length > 0) {
+      if (Platform.OS !== "web") {
+        console.warn(
+          `Task reminders are off: this app build lacks ${missing.join(", ")}.`
+        );
+      }
       notificationsModule = null;
     } else {
-      try {
-        notificationsModule = require("expo-notifications");
-      } catch (error) {
-        console.warn("Notifications are unavailable on this device:", error);
-        notificationsModule = null;
-      }
+      notificationsModule = require("expo-notifications");
     }
   }
   return notificationsModule ?? null;
