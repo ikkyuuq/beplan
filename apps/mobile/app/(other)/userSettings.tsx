@@ -57,6 +57,21 @@ export default function UserSettings() {
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // ====================== Helper Functions ======================
+  function getDefaultUsername() {
+    if (!user) return "";
+    return `user-${user.id.slice(-6)}`;
+  }
+
+  function getCurrentUsername() {
+    if (!user) return "";
+
+    const appUsername = user.unsafeMetadata?.appUsername;
+    return typeof appUsername === "string" && appUsername.trim()
+      ? appUsername
+      : user.username || getDefaultUsername();
+  }
+
   // ====================== Animation Values ======================
   const headerOpacity = useSharedValue(0);
   const profileOpacity = useSharedValue(0);
@@ -118,7 +133,7 @@ export default function UserSettings() {
     if (isLoaded && user) {
       const loadUserData = async () => {
         try {
-          setUsername(user.username || getDefaultUsername());
+          setUsername(getCurrentUsername());
           setProfileImage(
             typeof user?.unsafeMetadata === "object" &&
               user?.unsafeMetadata !== null &&
@@ -155,7 +170,10 @@ export default function UserSettings() {
 
       loadUserData();
     }
-  }, [isLoaded, user]);
+    // Load once per signed-in user. Clerk hands back a new `user` object on
+    // session refreshes; reloading then would wipe an edit not saved yet.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, user?.id]);
 
   // ====================== User Initialization ======================
   useEffect(() => {
@@ -167,7 +185,7 @@ export default function UserSettings() {
             const userData = {
               imageUrl: user?.imageUrl || "",
               user_id: userId,
-              username: user.username || getDefaultUsername(),
+              username: getCurrentUsername(),
               occupation: (user.unsafeMetadata?.occupation as string) || "",
               about: (user.unsafeMetadata?.description as string) || "",
             };
@@ -222,12 +240,6 @@ export default function UserSettings() {
 
     initializeUser();
   }, [isLoaded, user, isInitialized]);
-
-  // ====================== Helper Functions ======================
-  const getDefaultUsername = () => {
-    if (!user) return "";
-    return `user-${user.id.slice(-6)}`;
-  };
 
   const getAccountIcon = (provider: string) => {
     switch (provider.toLowerCase()) {
@@ -310,33 +322,50 @@ export default function UserSettings() {
         aboutMe: description || null,
       };
 
+      // The backend saves profile fields to the DB and to Clerk's
+      // unsafeMetadata. user.update() from the app can be refused with
+      // "additional verification" (Clerk reverification), notably on web.
+      const saveProfile = async (fields: Record<string, string>) => {
+        const resp = await apiFetch(`${API_BASE_URL}/api/v1/user/profile`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(fields),
+        });
+
+        if (!resp.ok) {
+          const body = await resp.json().catch(() => null);
+          throw new Error(
+            typeof body?.detail === "string"
+              ? body.detail
+              : `Failed to update ${type}. Please try again later.`
+          );
+        }
+
+        // Pull the new unsafeMetadata into the local user.
+        await user.reload();
+      };
+
       switch (type) {
         case "username":
-          if (username !== getDefaultUsername()) {
-            await user.update({
-              username: username,
-            });
+          if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+            throw new Error(
+              "Username must be 3-20 characters long and contain only letters, numbers, and underscores."
+            );
           }
+
+          await saveProfile({ username });
           setIsChangingUsername(false);
           break;
 
         case "description":
-          await user.update({
-            unsafeMetadata: {
-              ...user.unsafeMetadata,
-              description: description,
-            },
-          });
+          await saveProfile({ description });
           setIsEditingDescription(false);
           break;
 
         case "occupation":
-          await user.update({
-            unsafeMetadata: {
-              ...user.unsafeMetadata,
-              occupation: occupation,
-            },
-          });
+          await saveProfile({ occupation });
           setIsEditingOccupation(false);
           break;
 
