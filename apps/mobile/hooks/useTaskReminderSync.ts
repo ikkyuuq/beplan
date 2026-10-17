@@ -19,12 +19,12 @@ export function useTaskReminderSync() {
   const apiFetch = useApiFetch();
 
   useEffect(() => {
-    if (!remindersSupported) return;
+    if (!remindersSupported()) return;
     configureNotifications();
   }, []);
 
   useEffect(() => {
-    if (!remindersSupported) return;
+    if (!remindersSupported()) return;
     if (!isSignedIn) {
       void cancelTaskReminders();
       return;

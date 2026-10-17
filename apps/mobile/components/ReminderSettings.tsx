@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Platform,
   StyleSheet,
   Switch,
   Text,
@@ -72,7 +73,7 @@ export default function ReminderSettings() {
         <Text style={styles.title}>Reminders</Text>
       </View>
 
-      {remindersSupported ? (
+      {remindersSupported() ? (
         <>
           <View style={styles.row}>
             <Text style={styles.label}>Remind me about unmarked tasks</Text>
@@ -114,7 +115,9 @@ export default function ReminderSettings() {
         </>
       ) : (
         <Text style={styles.note}>
-          Task reminders are available in the iOS and Android app.
+          {Platform.OS === "web"
+            ? "Task reminders are available in the iOS and Android app."
+            : "Notifications aren't available in this version of the app."}
         </Text>
       )}
     </View>

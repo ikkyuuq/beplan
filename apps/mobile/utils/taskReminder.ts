@@ -1,4 +1,4 @@
-import * as Notifications from "expo-notifications";
+import type * as NotificationsModule from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 import { LogBox, Platform } from "react-native";
 import { parseISO, setHours, setMinutes } from "date-fns";
@@ -40,10 +40,36 @@ const ID_PREFIX = "task-reminder-";
 const CHANNEL_ID = "task-reminders";
 const DAYS = 7;
 
-export const remindersSupported = Platform.OS !== "web";
+let notificationsModule: typeof NotificationsModule | null | undefined;
+
+/**
+ * expo-notifications, loaded on first use. Loading it can throw when the
+ * native side is missing (e.g. an Expo Go for Android older than the JS
+ * package needs ExpoTopicSubscriptionModule), and a static import would then
+ * crash the whole app at startup. In that case reminders are just unavailable.
+ */
+function getNotifications(): typeof NotificationsModule | null {
+  if (notificationsModule === undefined) {
+    if (Platform.OS === "web") {
+      notificationsModule = null;
+    } else {
+      try {
+        notificationsModule = require("expo-notifications");
+      } catch (error) {
+        console.warn("Notifications are unavailable on this device:", error);
+        notificationsModule = null;
+      }
+    }
+  }
+  return notificationsModule ?? null;
+}
+
+export function remindersSupported(): boolean {
+  return getNotifications() !== null;
+}
 
 export async function loadReminderSettings(): Promise<ReminderSettings> {
-  if (!remindersSupported) return DEFAULT_REMINDER_SETTINGS;
+  if (Platform.OS === "web") return DEFAULT_REMINDER_SETTINGS;
   try {
     const raw = await SecureStore.getItemAsync(SETTINGS_KEY);
     return raw
@@ -61,7 +87,8 @@ export async function saveReminderSettings(settings: ReminderSettings) {
 
 /** Show reminders as a banner even when the app is open. Call once. */
 export function configureNotifications() {
-  if (!remindersSupported) return;
+  const Notifications = getNotifications();
+  if (!Notifications) return;
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowBanner: true,
@@ -80,6 +107,8 @@ export function configureNotifications() {
 
 /** Asks for permission if it hasn't been decided yet. */
 export async function requestReminderPermission(): Promise<boolean> {
+  const Notifications = getNotifications();
+  if (!Notifications) return false;
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) return true;
   if (!current.canAskAgain) return false;
@@ -88,7 +117,8 @@ export async function requestReminderPermission(): Promise<boolean> {
 }
 
 export async function cancelTaskReminders() {
-  if (!remindersSupported) return;
+  const Notifications = getNotifications();
+  if (!Notifications) return;
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   await Promise.all(
     scheduled
@@ -98,6 +128,8 @@ export async function cancelTaskReminders() {
 }
 
 async function doSync(apiFetch: ApiFetch) {
+  const Notifications = getNotifications();
+  if (!Notifications) return;
   const settings = await loadReminderSettings();
   const permission = await Notifications.getPermissionsAsync();
   if (!settings.enabled || !permission.granted) {
@@ -143,7 +175,7 @@ let queue: Promise<void> = Promise.resolve();
  * at a time so overlapping calls can't cancel each other's notifications.
  */
 export function syncTaskReminders(apiFetch: ApiFetch): Promise<void> {
-  if (!remindersSupported) return Promise.resolve();
+  if (!remindersSupported()) return Promise.resolve();
   queue = queue
     .then(() => doSync(apiFetch))
     .catch((error) => console.warn("Couldn't sync task reminders:", error));
