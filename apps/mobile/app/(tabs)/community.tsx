@@ -196,7 +196,18 @@ export default function Community() {
     setIsModalVisible(true);
   };
 
+  const flipFavorite = (id: number) =>
+    setTemplates((prev) =>
+      prev.map((template) =>
+        template.id === id
+          ? { ...template, isFavorite: !template.isFavorite }
+          : template
+      )
+    );
+
   const toggleFavorite = async (id: number) => {
+    // Show the new heart right away; undo it if the server says no.
+    flipFavorite(id);
     try {
       if (!user?.id) {
         throw new Error("User ID is missing. Please log in.");
@@ -220,18 +231,9 @@ export default function Community() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-
-      setTemplates((prev) =>
-        prev.map((template) =>
-          template.id === id
-            ? { ...template, isFavorite: !template.isFavorite }
-            : template
-        )
-      );
-
-      console.log("Favorite toggled successfully:", data);
+      console.log("Favorite toggled successfully:", await response.json());
     } catch (error) {
+      flipFavorite(id);
       console.error("Failed to toggle favorite:", error);
       Alert.alert(t("common.error"), t("community.favoriteFailed"));
     }
@@ -244,8 +246,6 @@ export default function Community() {
   // ====================== Filtering Logic ======================
   const filteredTemplates = templates.filter((template) => {
     if (template.type !== "community") return false;
-    // Used templates drop out of the list, unless the user favorited them.
-    if (template.status !== "unused" && !template.isFavorite) return false;
     if (selectedFilter === "FAVORITES" && !template.isFavorite) return false;
 
     if (
