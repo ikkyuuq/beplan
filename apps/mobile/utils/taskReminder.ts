@@ -5,6 +5,7 @@ import { requireOptionalNativeModule } from "expo";
 import { parseISO, setHours, setMinutes } from "date-fns";
 import { API_BASE_URL } from "@/constants/api";
 import type { ApiFetch } from "@/hooks/useApiFetch";
+import i18n from "@/i18n";
 
 // Importing expo-notifications in Expo Go on Android warns that *push*
 // notifications are unavailable there. Reminders are local notifications,
@@ -183,12 +184,11 @@ async function doSync(apiFetch: ApiFetch) {
       settings.minute
     );
     if (at <= now || day.pending_tasks <= 0) continue;
-    const n = day.pending_tasks;
     await Notifications.scheduleNotificationAsync({
       identifier: `${ID_PREFIX}${day.date}`,
       content: {
-        title: "Don't forget your tasks",
-        body: `You have ${n} ${n === 1 ? "task" : "tasks"} left to mark today.`,
+        title: i18n.t("reminders.notificationTitle"),
+        body: i18n.t("reminders.notificationBody", { count: day.pending_tasks }),
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,

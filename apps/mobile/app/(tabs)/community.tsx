@@ -19,6 +19,8 @@ import Header from "@/components/Header";
 import { useUser } from "@clerk/expo";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
+import { useTranslation } from "@/i18n";
+import { categoryLabel } from "@/i18n/format";
 
 type Task = {
   title: string;
@@ -76,25 +78,29 @@ export default function Community() {
   const [error, setError] = useState<string | null>(null);
   const { user, isLoaded } = useUser();
   const apiFetch = useApiFetch();
+  const { t } = useTranslation();
 
   // ====================== Category Configuration ======================
+  // The backend's five categories (it normalizes old spellings to these).
   const categories = [
-    { id: "ALL", label: "ALL", icon: "apps-outline" },
+    { id: "ALL", label: categoryLabel("all").toUpperCase(), icon: "apps-outline" },
     { id: "FAVORITES", label: "", icon: "heart" },
-    { id: "fitness", label: "FITNESS", icon: "barbell-outline" },
-    { id: "health", label: "HEALTH", icon: "fitness-outline" },
-    { id: "education", label: "EDUCATION", icon: "book-outline" },
-    { id: "work", label: "WORK", icon: "briefcase-outline" },
-    { id: "travel", label: "TRAVEL", icon: "airplane-outline" },
-    { id: "personal_development", label: "PERSONAL", icon: "person-outline" },
-    { id: "other", label: "OTHER", icon: "ellipsis-horizontal-outline" },
+    ...(
+      [
+        ["workout", "barbell-outline"],
+        ["health", "fitness-outline"],
+        ["education", "book-outline"],
+        ["productivity", "checkbox-outline"],
+        ["finance", "cash-outline"],
+      ] as const
+    ).map(([id, icon]) => ({ id, label: categoryLabel(id).toUpperCase(), icon })),
   ];
 
   // ====================== Fetch Data from API ======================
   const fetchTemplates = useCallback(async () => {
     try {
       if (!user?.id) {
-        setError("User authentication required");
+        setError(t("community.authRequired"));
         setIsLoading(false);
         return;
       }
@@ -116,7 +122,7 @@ export default function Community() {
       );
     } catch (error) {
       console.error("Failed to fetch templates:", error);
-      setError("Failed to fetch templates. Please try again.");
+      setError(t("community.loadFailed"));
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -227,7 +233,7 @@ export default function Community() {
       console.log("Favorite toggled successfully:", data);
     } catch (error) {
       console.error("Failed to toggle favorite:", error);
-      Alert.alert("Error", "Failed to toggle favorite. Please try again.");
+      Alert.alert(t("common.error"), t("community.favoriteFailed"));
     }
   };
 
@@ -277,7 +283,7 @@ export default function Community() {
       <Header>
         {/* Title */}
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>Community</Text>
+          <Text style={styles.title}>{t("community.title")}</Text>
         </View>
 
         {/* Search Bar */}
@@ -290,7 +296,7 @@ export default function Community() {
           />
           <TextInput
             style={styles.searchInput}
-            placeholder="Looking for something?"
+            placeholder={t("community.searchPlaceholder")}
             placeholderTextColor="#bbb"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -333,7 +339,7 @@ export default function Community() {
         {isLoading && !refreshing ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#4E5A94" />
-            <Text style={styles.loadingText}>Loading templates...</Text>
+            <Text style={styles.loadingText}>{t("community.loading")}</Text>
           </View>
         ) : (
           <FlatList
@@ -372,9 +378,9 @@ export default function Community() {
                 ) : (
                   <>
                     <Ionicons name="search-outline" size={50} color="#ccc" />
-                    <Text style={styles.emptyListText}>No templates found</Text>
+                    <Text style={styles.emptyListText}>{t("community.noTemplates")}</Text>
                     <Text style={styles.emptyListSubtext}>
-                      Try adjusting your search or filters
+                      {t("community.noTemplatesHint")}
                     </Text>
                   </>
                 )}

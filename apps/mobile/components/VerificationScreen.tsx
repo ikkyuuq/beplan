@@ -9,6 +9,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
+import { useTranslation } from "@/i18n";
 import { useRouter } from "expo-router";
 import Animated, {
   useSharedValue,
@@ -32,8 +33,8 @@ interface VerificationScreenProps {
 }
 
 export default function VerificationScreen({
-  title = "Verification Code",
-  description = "Please enter the 6-digit verification code we sent via Email.",
+  title,
+  description,
   code,
   setCode,
   onVerifyPress,
@@ -93,6 +94,7 @@ export default function VerificationScreen({
   }));
 
   const router = useRouter();
+  const { t } = useTranslation();
   const AnimatedText = Animated.Text as any;
   const AnimatedView = Animated.View as any;
 
@@ -105,22 +107,22 @@ export default function VerificationScreen({
 
       {/* Title & Description */}
       <AnimatedText style={[styles.title, titleAnimatedStyle]}>
-        {title}
+        {title ?? t("auth.verifyTitle")}
       </AnimatedText>
       <AnimatedText style={[styles.description, descriptionAnimatedStyle]}>
-        {description}
+        {description ?? t("auth.verifyDescription")}
       </AnimatedText>
 
       {/* Email Display */}
       <AnimatedView style={styles.emailContainer}>
-        <Text style={styles.emailLabel}>Verification code sent to:</Text>
+        <Text style={styles.emailLabel}>{t("auth.codeSentTo")}</Text>
         <Text style={styles.emailValue}>{emailAddress}</Text>
       </AnimatedView>
 
       {/* Input Field */}
       <AnimatedView style={[{ width: "100%" }, formAnimatedStyle]}>
         <InputField
-          placeholder="Enter verification code"
+          placeholder={t("auth.codePlaceholder")}
           value={code}
           onChangeText={(text) => {
             setCode(text);
@@ -137,7 +139,7 @@ export default function VerificationScreen({
 
       {/* Verify Button */}
       <Animated.View style={[{ width: "100%" }, buttonAnimatedStyle]}>
-        <SignButton onPress={onVerifyPress} buttonText="Verify" />
+        <SignButton onPress={onVerifyPress} buttonText={t("auth.verify")} />
       </Animated.View>
 
       {/* Resend Link */}
@@ -152,10 +154,10 @@ export default function VerificationScreen({
           {isResending ? (
             <View style={styles.resendingContainer}>
               <ActivityIndicator size="small" color="#4E5A94" />
-              <Text style={styles.resendingText}>Sending...</Text>
+              <Text style={styles.resendingText}>{t("auth.sending")}</Text>
             </View>
           ) : (
-            <Text style={styles.resendText}>Resend Verification Code</Text>
+            <Text style={styles.resendText}>{t("auth.resendCode")}</Text>
           )}
         </TouchableOpacity>
       </Animated.View>

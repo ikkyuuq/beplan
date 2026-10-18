@@ -2,6 +2,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { View, Text, LayoutChangeEvent } from "react-native";
 import { MOTION } from "@/constants/motion";
+import { useTranslation } from "@/i18n";
 import Animated, {
   useAnimatedStyle,
   withTiming,
@@ -36,6 +37,7 @@ export default function CollapseItem({
   onCustomize,
   markable = true,
 }: CollapseItemProps) {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
   const [contextMenuVisible, setContextMenuVisible] = useState(false);
@@ -209,7 +211,7 @@ export default function CollapseItem({
         }
         items={[
           {
-            title: "Completed",
+            title: t("task.completed"),
             icon: <Feather name="check" size={16} color={"green"} />,
             type: "default",
             status: markable ? "enabled" : "disabled",
@@ -219,7 +221,7 @@ export default function CollapseItem({
             },
           },
           {
-            title: "Failed",
+            title: t("task.failed"),
             icon: <Feather name="x" size={16} color={"red"} />,
             type: "default",
             status: markable ? "enabled" : "disabled",
@@ -229,7 +231,7 @@ export default function CollapseItem({
             },
           },
           {
-            title: "Reschedule",
+            title: t("task.reschedule"),
             icon: <Feather name="calendar" size={16} color={"black"} />,
             type: "default",
             status: "enabled",

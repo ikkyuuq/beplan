@@ -12,7 +12,7 @@ import { Alert as NativeAlert, AlertButton, AlertOptions, Platform } from "react
  *   Cancel runs the cancel button's onPress (if any)
  */
 const isCancel = (button: AlertButton) =>
-  button.style === "cancel" || /^(cancel|no)$/i.test(button.text ?? "");
+  button.style === "cancel" || /^(cancel|no|ยกเลิก|ไม่)$/i.test(button.text ?? "");
 
 function webAlert(title: string, message?: string, buttons?: AlertButton[]) {
   const text = message ? `${title}\n\n${message}` : title;

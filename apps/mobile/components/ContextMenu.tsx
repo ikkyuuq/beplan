@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import CalendarPicker from "./CalendarPicker";
+import { useTranslation } from "@/i18n";
 
 type ContextItemProps = {
   title: string;
@@ -43,6 +44,7 @@ export default function ContextMenu({
   onClose,
   setRescheduleVisible,
 }: ContextMenuProps) {
+  const { t } = useTranslation();
   const { height: screenHeight } = Dimensions.get("window");
   const [menuHeight, setMenuHeight] = useState(0);
   const contextMenuRef = useRef<View>(null);
@@ -77,7 +79,7 @@ export default function ContextMenu({
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <CalendarPicker
-        title="Reschedule Task"
+        title={t("task.rescheduleTask")}
         visible={rescheduleVisible || false}
         singleSelect={true}
         onClose={() => setRescheduleVisible?.(false)}

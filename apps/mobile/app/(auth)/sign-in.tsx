@@ -14,6 +14,7 @@ import { routes } from "@/routesConfig";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import SignButton from "@/components/SignButton";
+import { useTranslation } from "@/i18n";
 import InputField from "@/components/InputField";
 import { Platform } from 'react-native';
 import Animated, {
@@ -114,6 +115,7 @@ export default function SignInScreen() {
   useWarmUpBrowser();
   const { signIn, isLoaded, setActive } = useSignIn();
   const router = useRouter();
+  const { t } = useTranslation();
   // useSSO replaces the deprecated useOAuth (same flow, maintained by Clerk).
   const { startSSOFlow } = useSSO();
 
@@ -133,23 +135,23 @@ export default function SignInScreen() {
     setErrorMessage("");
 
     if (!identifier.trim() && !password.trim()) {
-      setErrorMessage("Email/Username and password cannot be empty.");
+      setErrorMessage(t("auth.bothEmpty"));
       return false;
     }
 
     if (!identifier.trim()) {
-      setErrorMessage("Email/Username cannot be empty.");
+      setErrorMessage(t("auth.identifierEmpty"));
       return false;
     }
 
     if (!password.trim()) {
-      setErrorMessage("Password cannot be empty.");
+      setErrorMessage(t("auth.passwordEmpty"));
       return false;
     }
 
     // If input contains @ symbol, validate as email
     if (identifier.includes("@") && !isEmail(identifier)) {
-      setErrorMessage("Please enter a valid email address.");
+      setErrorMessage(t("auth.invalidEmail"));
       return false;
     }
 
@@ -176,11 +178,9 @@ export default function SignInScreen() {
       } else if ((signInAttempt.status as string) === "needs_client_trust") {
         // Clerk Core 3: Device Trust (if enabled in Clerk) asks the user to
         // confirm a new device before the session is created.
-        setErrorMessage(
-          "Please confirm this new device (check your email), then sign in again."
-        );
+        setErrorMessage(t("auth.confirmDevice"));
       } else {
-        setErrorMessage("Sign-in is incomplete. Please try again.");
+        setErrorMessage(t("auth.signInIncomplete"));
       }
     } catch (err: any) {
       console.error("Sign-in error:", err);
@@ -188,7 +188,7 @@ export default function SignInScreen() {
       if (err.errors && err.errors.length > 0) {
         setErrorMessage(err.errors[0].message);
       } else {
-        setErrorMessage("Sign-in failed. Please try again.");
+        setErrorMessage(t("auth.signInFailed"));
       }
     } finally {
       setIsSigningIn(false);
@@ -227,11 +227,11 @@ export default function SignInScreen() {
         authSessionResult?.type === "dismiss"
       ) {
         // The user closed the browser/popup: not an error.
-        setErrorMessage(`${provider} sign-in was cancelled.`);
+        setErrorMessage(t("auth.socialCancelled", { provider }));
       } else {
         // Signed in with the provider but Clerk needs more (e.g. extra fields).
         console.warn(`${provider} sign-in incomplete`, authSessionResult);
-        setErrorMessage(`${provider} sign-in couldn't be completed. Please try again.`);
+        setErrorMessage(t("auth.socialIncomplete", { provider }));
       }
     } catch (err: any) {
       // Show Clerk's own reason (e.g. a provider not enabled in the Clerk
@@ -241,8 +241,8 @@ export default function SignInScreen() {
         err?.errors?.[0]?.longMessage ||
         err?.errors?.[0]?.message ||
         err?.message ||
-        "Unknown error";
-      setErrorMessage(`${provider} sign-in failed: ${reason}`);
+        t("auth.unknownError");
+      setErrorMessage(t("auth.socialFailed", { provider, reason }));
     } finally {
       setIsSigningIn(false);
     }
@@ -261,7 +261,7 @@ export default function SignInScreen() {
       </Animated.View>
 
       <Animated.Text style={[styles.title, titleAnimatedStyle]}>
-        Welcome back!
+        {t("auth.welcomeBack")}
       </Animated.Text>
 
       {/* Input Fields */}
@@ -269,7 +269,7 @@ export default function SignInScreen() {
         <Animated.View entering={FadeInDown.delay(450).duration(300)}>
           <InputField
             iconName="person-outline"
-            placeholder="Email or Username"
+            placeholder={t("auth.identifierPlaceholder")}
             value={identifier}
             onChangeText={(text) => {
               setIdentifier(text);
@@ -286,7 +286,7 @@ export default function SignInScreen() {
         <Animated.View entering={FadeInDown.delay(550).duration(300)}>
           <InputField
             iconName="lock-closed-outline"
-            placeholder="Enter your password"
+            placeholder={t("auth.passwordPlaceholder")}
             value={password}
             onChangeText={(text) => {
               setPassword(text);
@@ -310,14 +310,14 @@ export default function SignInScreen() {
           )}
 
           <TouchableOpacity onPress={() => router.push(routes.resetPassword)}>
-            <Text style={styles.forgotPassword}>Recovery Password</Text>
+            <Text style={styles.forgotPassword}>{t("auth.recoverPassword")}</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
 
       {/* Sign In Button */}
       <Animated.View style={[buttonAnimatedStyle, { width: "100%" }]}>
-        <SignButton onPress={onSignInPress} buttonText="Sign In" />
+        <SignButton onPress={onSignInPress} buttonText={t("auth.signIn")} />
       </Animated.View>
 
       {/* Separator */}
@@ -330,7 +330,7 @@ export default function SignInScreen() {
           entering={BounceIn.delay(300).duration(600)}
           style={styles.separatorText}
         >
-          Or continue with
+          {t("auth.orContinueWith")}
         </Animated.Text>
         <Animated.View
           entering={BounceIn.duration(600)}
@@ -363,9 +363,9 @@ export default function SignInScreen() {
         entering={FadeInUp.delay(850).duration(300)}
         style={styles.registerContainer}
       >
-        <Text style={styles.registerText}>Don't have an account? </Text>
+        <Text style={styles.registerText}>{t("auth.noAccount")}</Text>
         <TouchableOpacity onPress={() => router.push(routes.signUp)}>
-          <Text style={styles.registerLink}>Register now</Text>
+          <Text style={styles.registerLink}>{t("auth.registerNow")}</Text>
         </TouchableOpacity>
       </Animated.View>
 

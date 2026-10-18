@@ -8,6 +8,7 @@ import { routes } from "@/routesConfig";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
 import VerificationScreen from "@/components/VerificationScreen";
+import { useTranslation } from "@/i18n";
 import { useScreenTopPadding } from "@/constants/layout";
 import Animated, {
   useSharedValue,
@@ -77,6 +78,7 @@ export default function ResetPasswordScreen() {
   // ====================== Hooks & State ======================
   const { isLoaded, signIn } = useSignIn();
   const router = useRouter();
+  const { t } = useTranslation();
   const [emailAddress, setEmailAddress] = useState("");
   const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState("");
@@ -90,7 +92,7 @@ export default function ResetPasswordScreen() {
     if (!isLoaded) return;
 
     if (!emailAddress.trim()) {
-      setErrorMessage("Email address cannot be empty.");
+      setErrorMessage(t("auth.emailEmpty"));
       return;
     }
 
@@ -104,7 +106,7 @@ export default function ResetPasswordScreen() {
       console.error(err);
       setErrorMessage(
         err.errors?.[0]?.message ||
-          "Failed to send reset link. Please try again."
+          t("auth.resetLinkFailed")
       );
     }
   };
@@ -113,12 +115,12 @@ export default function ResetPasswordScreen() {
     if (!isLoaded) return;
 
     if (!code.trim()) {
-      setErrorMessage("Please enter the verification code.");
+      setErrorMessage(t("auth.enterCode"));
       return;
     }
 
     if (!/^\d{6}$/.test(code)) {
-      setErrorMessage("Please enter a valid 6-digit code.");
+      setErrorMessage(t("auth.invalidCode"));
       return;
     }
 
@@ -138,10 +140,10 @@ export default function ResetPasswordScreen() {
           "Unexpected response:",
           JSON.stringify(verifyAttempt, null, 2)
         );
-        setErrorMessage("Unexpected error occurred. Please try again.");
+        setErrorMessage(t("auth.unexpectedError"));
       }
     } catch (err: any) {
-      setErrorMessage("Verification failed. Please try again.");
+      setErrorMessage(t("auth.verificationFailed"));
     }
   };
 
@@ -159,17 +161,17 @@ export default function ResetPasswordScreen() {
 
       console.log("Resend Code");
       Alert.alert(
-        "Verification Code",
-        "We have resent the verification code to your email.",
-        [{ text: "OK" }]
+        t("auth.verifyTitle"),
+        t("auth.codeResentShort"),
+        [{ text: t("common.ok") }]
       );
 
       return Promise.resolve();
     } catch (err) {
       console.error("Failed to resend code:", err);
       Alert.alert(
-        "Error",
-        "Failed to resend verification code. Please try again."
+        t("common.error"),
+        t("auth.resendFailed")
       );
       return Promise.reject(err);
     } finally {
@@ -181,8 +183,8 @@ export default function ResetPasswordScreen() {
   if (pendingVerification) {
     return (
       <VerificationScreen
-        title="Verification Code"
-        description="Please enter the 6-digit verification code sent to your email."
+        title={t("auth.verifyTitle")}
+        description={t("auth.verifyDescription")}
         code={code}
         setCode={setCode}
         onVerifyPress={onVerifyPress}
@@ -205,17 +207,16 @@ export default function ResetPasswordScreen() {
 
       {/* Title & Description */}
       <Animated.Text style={[styles.title, titleAnimatedStyle]}>
-        Forgot your password?
+        {t("auth.forgotTitle")}
       </Animated.Text>
 
       <Animated.Text style={[styles.description, descriptionAnimatedStyle]}>
-        Don't worry. Just fill in your email and we'll send you a link to reset
-        your password.
+        {t("auth.forgotDescription")}
       </Animated.Text>
 
       {/* Email Input */}
       <Animated.View style={[formAnimatedStyle, { width: "100%" }]}>
-        <Text style={styles.label}>Recovery Email Address</Text>
+        <Text style={styles.label}>{t("auth.recoveryEmail")}</Text>
         <InputField
           iconName="mail-outline"
           placeholder="example@example.com"
@@ -239,7 +240,7 @@ export default function ResetPasswordScreen() {
 
       {/* Send Reset Link Button */}
       <Animated.View style={[buttonAnimatedStyle, { width: "100%" }]}>
-        <SignButton onPress={onResetPress} buttonText="Send Reset Link" />
+        <SignButton onPress={onResetPress} buttonText={t("auth.sendResetLink")} />
       </Animated.View>
     </View>
   );
