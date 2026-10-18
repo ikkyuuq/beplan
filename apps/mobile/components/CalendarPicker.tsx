@@ -15,6 +15,8 @@ type CalendarPickerProps = {
   visible: boolean;
   onClose: () => void;
   onConfirm: (dates: string[]) => void;
+  /** Called once the picker has fully closed (safe to open another modal). */
+  onHidden?: () => void;
   title: string;
   initialDates?: string[];
   highlightColor?: string;
@@ -33,6 +35,7 @@ export default function CalendarPicker({
   visible,
   onClose,
   onConfirm,
+  onHidden,
   title,
   initialDates = [],
   highlightColor = "#4CAF50",
@@ -235,6 +238,7 @@ export default function CalendarPicker({
         isVisible={visible}
         customBackdrop={<View style={styles.backdrop} />}
         onModalWillShow={resetDisplayedMonth}
+        onModalHide={onHidden}
       >
         <Animated.View style={[styles.modalContent, modalAnimatedStyle]}>
           {/* Calendar Section */}

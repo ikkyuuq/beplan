@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -38,6 +38,10 @@ type Goal = {
 };
 
 // ====================== Main Component ======================
+// Time for an alert to finish closing before a modal opens (alerts have no
+// "closed" callback).
+const MODAL_AFTER_DISMISS_DELAY_MS = 400;
+
 export default function CreateTemplate() {
   const topPadding = useScreenTopPadding(8);
   // ====================== State Management ======================
@@ -50,6 +54,9 @@ export default function CreateTemplate() {
   const [isScrollEnabled, setIsScrollEnabled] = useState(true);
   const [isLoadingGoals, setIsLoadingGoals] = useState(false);
   const router = useRouter();
+  // Opened directly (web refresh or link) there's no screen to go back to.
+  const goBack = () =>
+    router.canGoBack() ? router.back() : router.replace("/create");
   const { user, isLoaded, isSignedIn } = useUser();
   const apiFetch = useApiFetch();
   const { t } = useTranslation();
@@ -62,6 +69,7 @@ export default function CreateTemplate() {
   >(new Map());
   const [currentGoalId, setCurrentGoalId] = useState<string | null>(null);
   const [isStartDatePickerVisible, setStartDatePickerVisible] = useState(false);
+  const openDuePickerOnHide = useRef(false);
   const [isDueDatePickerVisible, setDueDatePickerVisible] = useState(false);
   const [currentStartDate, setCurrentStartDate] = useState<string>("");
   const [currentDueDate, setCurrentDueDate] = useState<string>("");
@@ -276,7 +284,11 @@ export default function CreateTemplate() {
               setCurrentGoalId(goalId);
               setCurrentStartDate("");
               setCurrentDueDate("");
-              setStartDatePickerVisible(true);
+              // iOS drops a modal opened while the alert is still closing.
+              setTimeout(
+                () => setStartDatePickerVisible(true),
+                MODAL_AFTER_DISMISS_DELAY_MS,
+              );
             },
           },
           {
@@ -301,7 +313,9 @@ export default function CreateTemplate() {
     setCurrentStartDate(selectedDate);
 
     setStartDatePickerVisible(false);
-    setTimeout(() => setDueDatePickerVisible(true), 300);
+    // Opened from the start picker's onHidden: iOS drops a modal opened
+    // while another is still closing.
+    openDuePickerOnHide.current = true;
   };
 
   const handleDueDateSelect = (dates: string[]) => {
@@ -409,7 +423,7 @@ export default function CreateTemplate() {
           text: t("common.ok"),
           onPress: () => {
             resetForm();
-            router.back();
+            goBack();
           },
         },
       ]);
@@ -462,7 +476,7 @@ export default function CreateTemplate() {
     >
       {/* Back Button Header */}
       <View style={[styles.header, { paddingTop: topPadding }]}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Pressable style={styles.backButton} onPress={goBack}>
           <Ionicons name="chevron-back" size={24} color="#fff" />
           <Text style={styles.backText}>{t("common.back")}</Text>
         </Pressable>
@@ -728,6 +742,11 @@ export default function CreateTemplate() {
         visible={isStartDatePickerVisible}
         onClose={() => setStartDatePickerVisible(false)}
         onConfirm={handleStartDateSelect}
+        onHidden={() => {
+          if (!openDuePickerOnHide.current) return;
+          openDuePickerOnHide.current = false;
+          setDueDatePickerVisible(true);
+        }}
         title={t("createTemplate.selectStartDate")}
         initialDates={currentStartDate ? [currentStartDate] : []}
         highlightColor="#4F46E5"
