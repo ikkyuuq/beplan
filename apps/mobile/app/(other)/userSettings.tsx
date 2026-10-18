@@ -27,9 +27,13 @@ import OccupationSelector from "@/components/OccupationSelector";
 import * as ImagePicker from "expo-image-picker";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
+import { appendImage } from "@/utils/imageUpload";
 import ReminderSettings from "@/components/ReminderSettings";
 import LanguageSettings from "@/components/LanguageSettings";
 import { useTranslation } from "@/i18n";
+
+// Changing the profile picture is paused until image uploads (S3) are set up.
+const PROFILE_IMAGE_EDITING_ENABLED = false;
 
 // ====================== Main Component ======================
 export default function UserSettings() {
@@ -377,12 +381,10 @@ export default function UserSettings() {
             formattedImageData = uploadedImage;
           } else {
             let formData = new FormData();
-
-            formData.append("file", {
+            await appendImage(formData, "file", {
               uri: uploadedImage.uri || newProfileImage,
-              name: uploadedImage.fileName,
-              type: uploadedImage.mimeType,
-            } as any);
+              fileName: uploadedImage.fileName,
+            });
 
             const uploadResp = await apiFetch(
               `${API_BASE_URL}/api/v1/user/upload_image`,
@@ -555,7 +557,7 @@ export default function UserSettings() {
                         <Text style={styles.cancelButtonText}>{t("common.cancel")}</Text>
                       </TouchableOpacity>
                     </View>
-                  ) : (
+                  ) : PROFILE_IMAGE_EDITING_ENABLED ? (
                     <TouchableOpacity
                       style={styles.editProfileImageButton}
                       onPress={pickImage}
@@ -565,7 +567,7 @@ export default function UserSettings() {
                         {t("settings.editPicture")}
                       </Text>
                     </TouchableOpacity>
-                  )}
+                  ) : null}
                 </>
               )}
             </View>
