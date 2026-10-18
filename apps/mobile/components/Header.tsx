@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Image,
   Text,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -16,6 +17,10 @@ import { useUser } from "@clerk/expo";
 // and pads its content back down, so content scrolls under the curved corners
 // instead of being cut off in a straight line at the header's bottom edge.
 export const HEADER_RADIUS = 30;
+
+// The header fills at least this share of the screen height; extra space is
+// spread around the content below the top row.
+const HEADER_SCREEN_SHARE = 0.33;
 
 // ====================== Type Definitions ======================
 type HeaderProps = {
@@ -34,6 +39,7 @@ export default function Header({ title, children, containerStyle }: HeaderProps)
   // Real top safe area (notch / Dynamic Island / status bar) per device,
   // instead of a fixed 60 px on iOS.
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
 
   const handleNavigateToSettings = () => {
     router.push("/userSettings");
@@ -52,7 +58,16 @@ export default function Header({ title, children, containerStyle }: HeaderProps)
 
   // ====================== Render UI ======================
   return (
-    <View style={[styles.header, { paddingTop: insets.top + 8 }, containerStyle]}>
+    <View
+      style={[
+        styles.header,
+        {
+          paddingTop: insets.top + 8,
+          minHeight: Math.round(windowHeight * HEADER_SCREEN_SHARE),
+        },
+        containerStyle,
+      ]}
+    >
       <View style={styles.headerContent}>
         <Feather
           name="menu"
@@ -80,7 +95,7 @@ export default function Header({ title, children, containerStyle }: HeaderProps)
           />
         </Pressable>
       </View>
-      {children}
+      <View style={styles.body}>{children}</View>
     </View>
   );
 }
@@ -89,8 +104,8 @@ export default function Header({ title, children, containerStyle }: HeaderProps)
 const styles = StyleSheet.create({
   // Header Styles
   header: {
-    // Sized by its content (no minHeight), so it only takes the space the
-    // screen's title / search / week strip actually need.
+    // minHeight is set inline (HEADER_SCREEN_SHARE of the window); content
+    // that needs more (e.g. large accessibility text) still makes it taller.
     backgroundColor: "#16171F",
     borderBottomLeftRadius: HEADER_RADIUS,
     borderBottomRightRadius: HEADER_RADIUS,
@@ -111,6 +126,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: 12,
+  },
+  body: {
+    flexGrow: 1,
+    justifyContent: "center",
     gap: 12,
   },
   titleSlot: {
