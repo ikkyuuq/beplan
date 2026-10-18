@@ -107,7 +107,7 @@ export default function Community() {
 
       setError(null);
       const response = await apiFetch(
-        `${API_BASE_URL}/api/v1/template?user_id=${encodeURIComponent(user.id)}`,
+        `${API_BASE_URL}/api/v1/template/?user_id=${encodeURIComponent(user.id)}`,
       );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -203,7 +203,7 @@ export default function Community() {
       }
 
       const response = await apiFetch(
-        `${API_BASE_URL}/api/v1/template/toggle_favorite/`,
+        `${API_BASE_URL}/api/v1/template/toggle_favorite`,
         {
           method: "PUT",
           headers: {
@@ -243,9 +243,9 @@ export default function Community() {
 
   // ====================== Filtering Logic ======================
   const filteredTemplates = templates.filter((template) => {
-    if (template.type !== "community" || template.status !== "unused") {
-      return false;
-    }
+    if (template.type !== "community") return false;
+    // Used templates drop out of the list, unless the user favorited them.
+    if (template.status !== "unused" && !template.isFavorite) return false;
     if (selectedFilter === "FAVORITES" && !template.isFavorite) return false;
 
     if (

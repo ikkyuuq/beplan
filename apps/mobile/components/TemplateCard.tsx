@@ -92,19 +92,18 @@ export default function TemplateCard({
   };
 
   const getCategoryIcon = (): keyof typeof Ionicons.glyphMap => {
+    // Same icons as the community filter chips (the backend's five categories).
     switch (template.category.toLowerCase()) {
-      case "fitness":
+      case "workout":
         return "barbell-outline";
       case "health":
         return "fitness-outline";
       case "education":
         return "book-outline";
-      case "work":
-        return "briefcase-outline";
-      case "travel":
-        return "airplane-outline";
-      case "personal_development":
-        return "person-outline";
+      case "productivity":
+        return "checkbox-outline";
+      case "finance":
+        return "cash-outline";
       default:
         return "pricetag-outline";
     }
@@ -119,6 +118,7 @@ export default function TemplateCard({
         onPress={onSelect}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        style={styles.pressable}
       >
         <View style={styles.card}>
           {/* Image */}
@@ -219,6 +219,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     height: 180,
+  },
+  // The card's "100%" heights resolve against this, so it must fill the container.
+  pressable: {
+    height: "100%",
   },
   card: {
     overflow: "hidden",
