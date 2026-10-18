@@ -123,7 +123,13 @@ export default function TemplateCard({
         <View style={styles.card}>
           {/* Image */}
           <View style={styles.imageContainer}>
-            <Image source={{ uri: template.image_url }} style={styles.image} />
+            {!!template.image_url ? (
+              <Image source={{ uri: template.image_url }} style={styles.image} />
+            ) : (
+              <View style={[styles.image, styles.imagePlaceholder]}>
+                <Ionicons name="image-outline" size={40} color="#8B98D5" />
+              </View>
+            )}
             <LinearGradient
               colors={["transparent", "rgba(0,0,0,0.7)"]}
               style={styles.gradient}
@@ -226,6 +232,11 @@ const styles = StyleSheet.create({
     height: "100%",
     position: "relative",
     width: "100%",
+  },
+  imagePlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E8ECF8",
   },
   image: {
     width: "100%",

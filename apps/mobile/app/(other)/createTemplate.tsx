@@ -18,6 +18,7 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
+import { appendImage } from "@/utils/imageUpload";
 import CategoryPicker from "@/components/CategoryPicker";
 import CalendarPicker from "@/components/CalendarPicker";
 import { useScreenTopPadding } from "@/constants/layout";
@@ -87,7 +88,7 @@ export default function CreateTemplate() {
   // ====================== Effects ======================
   useEffect(() => {
     const basicFieldsValid =
-      title.trim() !== "" && image !== "" && selectedGoalIds.length > 0;
+      title.trim() !== "" && selectedGoalIds.length > 0;
 
     let allDatesValid = true;
 
@@ -184,25 +185,7 @@ export default function CreateTemplate() {
         const uploadedImage = result.assets[0];
 
         const formData = new FormData();
-
-        const fileType = uploadedImage.uri.substring(
-          uploadedImage.uri.lastIndexOf(".") + 1,
-        );
-        const mimeType =
-          fileType === "jpg" || fileType === "jpeg"
-            ? "image/jpeg"
-            : fileType === "png"
-              ? "image/png"
-              : "image/jpg";
-
-        formData.append("file", {
-          uri:
-            Platform.OS === "ios"
-              ? uploadedImage.uri.replace("file://", "")
-              : uploadedImage.uri,
-          name: uploadedImage.fileName || `photo.${fileType}`,
-          type: uploadedImage.mimeType || mimeType,
-        } as any);
+        await appendImage(formData, "file", uploadedImage);
 
         try {
           // Set a reasonable timeout
@@ -216,9 +199,6 @@ export default function CreateTemplate() {
           // Create the fetch promise
           const fetchPromise = apiFetch(`${API_BASE_URL}/api/v1/user/upload_image`, {
             method: "POST",
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
             body: formData,
           });
 
@@ -366,7 +346,7 @@ export default function CreateTemplate() {
       return;
     }
 
-    if (!image.startsWith("http")) {
+    if (image && !image.startsWith("http")) {
       Alert.alert(
         t("common.error"),
         t("createTemplate.imageUploadFailed"),
@@ -572,7 +552,7 @@ export default function CreateTemplate() {
           {/* Image Upload */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>
-              {t("createTemplate.coverImage")} <Text style={styles.required}>*</Text>
+              {t("createTemplate.coverImage")}
             </Text>
             <Pressable
               style={styles.imagePicker}

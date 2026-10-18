@@ -192,11 +192,17 @@ export default function SliderCard({
           <View style={styles.cardContainer}>
             {/* Image Container */}
             <View style={styles.imageContainer}>
-              <Image
-                source={{ uri: image }}
-                style={styles.image}
-                resizeMode="cover"
-              />
+              {!!image ? (
+                <Image
+                  source={{ uri: image }}
+                  style={styles.image}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[styles.image, styles.imagePlaceholder]}>
+                  <Ionicons name="image-outline" size={48} color="#8B98D5" />
+                </View>
+              )}
               <LinearGradient
                 colors={["transparent", "transparent", "black"]}
                 style={styles.gradient}
@@ -310,6 +316,11 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
+  },
+  imagePlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E8ECF8",
   },
   gradient: {
     position: "absolute",
