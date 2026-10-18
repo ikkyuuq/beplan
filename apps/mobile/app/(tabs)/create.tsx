@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Keyboard,
   Modal,
   Pressable,
 } from "react-native";
@@ -65,6 +66,32 @@ type Template = {
   isFavorite: boolean;
   isListed: boolean;
 };
+
+const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  workout: "barbell-outline",
+  health: "heart-outline",
+  education: "school-outline",
+  productivity: "flash-outline",
+  finance: "wallet-outline",
+};
+
+// Every word of the query must appear somewhere in the template: title,
+// description, category, or one of its goal/task titles.
+function matchesQuery(template: Template, words: string[]) {
+  const haystack = [
+    template.title,
+    template.description,
+    template.category,
+    ...(template.goals ?? []).flatMap((goal) => [
+      goal.title,
+      ...(goal.tasks ?? []).map((task) => task.title),
+    ]),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return words.every((word) => haystack.includes(word));
+}
 
 // ====================== Main Component ======================
 export default function CreateScreen() {
@@ -156,7 +183,16 @@ export default function CreateScreen() {
   const [communityData, setCommunityData] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [query, setQuery] = useState("");
   const router = useRouter();
+
+  const trimmedQuery = query.trim();
+  const isSearching = trimmedQuery.length > 0;
+  const searchResults = useMemo(() => {
+    const words = trimmedQuery.toLowerCase().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return [];
+    return templateData.filter((template) => matchesQuery(template, words));
+  }, [templateData, trimmedQuery]);
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -237,6 +273,16 @@ export default function CreateScreen() {
     setTimeout(() => {
       router.push("/(other)/aiProcess");
     }, 250);
+  };
+
+  // The search text already describes the goal, so skip the options popup.
+  const handlePlanWithAssistant = () => {
+    if (!isSearching) return;
+    Keyboard.dismiss();
+    router.push({
+      pathname: "/(other)/aiProcess",
+      params: { textToProcess: trimmedQuery },
+    });
   };
 
   const handleTestGoal = () => {
@@ -333,12 +379,31 @@ export default function CreateScreen() {
             style={styles.searchInput}
             placeholder="Describe your goal..."
             placeholderTextColor="#999"
+            value={query}
+            onChangeText={setQuery}
+            returnKeyType="go"
+            onSubmitEditing={handlePlanWithAssistant}
+            autoCorrect={false}
           />
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => {}}
-            style={{ padding: 8 }}
-          />
+          {isSearching ? (
+            <>
+              <TouchableOpacity
+                onPress={() => setQuery("")}
+                style={styles.clearButton}
+                accessibilityLabel="Clear search"
+              >
+                <Ionicons name="close-circle" size={18} color="#AAA" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handlePlanWithAssistant}
+                style={styles.searchSubmitButton}
+                accessibilityLabel="Plan this goal with the AI assistant"
+              >
+                <Ionicons name="arrow-forward" size={18} color="#FFF" />
+              </TouchableOpacity>
+            </>
+          ) : null}
         </Animated.View>
 
         {/* Create Goal Button */}
@@ -368,54 +433,126 @@ export default function CreateScreen() {
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarSpace }]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
-        {/* Template Section */}
-        <Animated.View
-          style={[styles.sectionContainer, templateSectionAnimatedStyle]}
-        >
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleContainer}>
-              <Ionicons name="document-text" size={22} color="#333" />
-              <Text style={styles.sectionTitle}>Featured Templates</Text>
-            </View>
+        {isSearching ? (
+          <View style={styles.searchResults}>
             <TouchableOpacity
-              style={styles.viewAllButton}
-              onPress={() => setIsViewAllTemplatesVisible(true)}
+              activeOpacity={0.85}
+              onPress={handlePlanWithAssistant}
+              style={styles.aiSuggestion}
             >
-              <Text style={styles.viewAllText}>View All</Text>
+              <View style={[styles.optionIcon, { backgroundColor: "#EEEAFE" }]}>
+                <Ionicons name="sparkles" size={20} color="#5B43D6" />
+              </View>
+              <View style={styles.optionContent}>
+                <Text style={styles.aiSuggestionLabel}>Plan it with AI</Text>
+                <Text style={styles.aiSuggestionQuery} numberOfLines={2}>
+                  "{trimmedQuery}"
+                </Text>
+              </View>
+              <Feather name="arrow-up-right" size={20} color="#5B43D6" />
             </TouchableOpacity>
-          </View>
-          <Slider
-            data={templateData as any}
-            onCardPress={(template) =>
-              handleTemplateSelect(template as unknown as Template)
-            }
-          />
-        </Animated.View>
 
-        {/* Most Popular Community Template */}
-        <Animated.View
-          style={[styles.sectionContainer, communitySectionAnimatedStyle]}
-        >
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleContainer}>
-              <Ionicons name="people" size={22} color="#333" />
-              <Text style={styles.sectionTitle}>Community Favorites</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.viewAllButton}
-              onPress={() => setIsViewAllCommunityVisible(true)}
-            >
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
+            <Text style={styles.resultsHeading}>
+              {searchResults.length > 0
+                ? `Templates (${searchResults.length})`
+                : "No templates match"}
+            </Text>
+            {searchResults.length === 0 ? (
+              <Text style={styles.resultsEmpty}>
+                Try other words, or let the AI assistant build a plan from
+                your description.
+              </Text>
+            ) : (
+              searchResults.map((template) => (
+                <TouchableOpacity
+                  key={template.id}
+                  activeOpacity={0.8}
+                  onPress={() => handleTemplateSelect(template)}
+                  style={styles.resultRow}
+                >
+                  <View style={styles.resultIcon}>
+                    <Ionicons
+                      name={
+                        CATEGORY_ICONS[template.category?.toLowerCase()] ??
+                        "document-text-outline"
+                      }
+                      size={20}
+                      color="#4F46E5"
+                    />
+                  </View>
+                  <View style={styles.optionContent}>
+                    <Text style={styles.resultTitle} numberOfLines={1}>
+                      {template.title}
+                    </Text>
+                    <Text style={styles.resultMeta} numberOfLines={1}>
+                      {[
+                        template.category,
+                        `${template.goals?.length ?? 0} goals`,
+                        template.type === "community" ? "Community" : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Text>
+                  </View>
+                  <Feather name="chevron-right" size={20} color="#98A2B3" />
+                </TouchableOpacity>
+              ))
+            )}
           </View>
-          <Slider
-            data={communityData as any}
-            onCardPress={(template) =>
-              handleTemplateSelect(template as unknown as Template)
-            }
-          />
-        </Animated.View>
+        ) : (
+          <>
+            {/* Template Section */}
+            <Animated.View
+              style={[styles.sectionContainer, templateSectionAnimatedStyle]}
+            >
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleContainer}>
+                  <Ionicons name="document-text" size={22} color="#333" />
+                  <Text style={styles.sectionTitle}>Featured Templates</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.viewAllButton}
+                  onPress={() => setIsViewAllTemplatesVisible(true)}
+                >
+                  <Text style={styles.viewAllText}>View All</Text>
+                </TouchableOpacity>
+              </View>
+              <Slider
+                data={templateData as any}
+                onCardPress={(template) =>
+                  handleTemplateSelect(template as unknown as Template)
+                }
+              />
+            </Animated.View>
+
+            {/* Most Popular Community Template */}
+            <Animated.View
+              style={[styles.sectionContainer, communitySectionAnimatedStyle]}
+            >
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleContainer}>
+                  <Ionicons name="people" size={22} color="#333" />
+                  <Text style={styles.sectionTitle}>Community Favorites</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.viewAllButton}
+                  onPress={() => setIsViewAllCommunityVisible(true)}
+                >
+                  <Text style={styles.viewAllText}>View All</Text>
+                </TouchableOpacity>
+              </View>
+              <Slider
+                data={communityData as any}
+                onCardPress={(template) =>
+                  handleTemplateSelect(template as unknown as Template)
+                }
+              />
+            </Animated.View>
+          </>
+        )}
       </ScrollView>
 
       {/* Template Modal */}
@@ -721,6 +858,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 8,
+    // Fixed height so the bar doesn't grow when the buttons appear.
+    minHeight: 48,
   },
   searchIcon: {
     marginRight: 10,
@@ -728,6 +867,84 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     color: "#000000",
+  },
+  clearButton: {
+    padding: 6,
+  },
+  searchSubmitButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#5B43D6",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 4,
+  },
+
+  // Search results
+  searchResults: {
+    paddingHorizontal: 20,
+  },
+  aiSuggestion: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FAF9FF",
+    borderColor: "#E3DDFB",
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 15,
+    marginBottom: 22,
+  },
+  aiSuggestionLabel: {
+    color: "#5B43D6",
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 3,
+  },
+  aiSuggestionQuery: {
+    color: "#333",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  resultsHeading: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 10,
+  },
+  resultsEmpty: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: "#667085",
+  },
+  resultRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#EAECF0",
+  },
+  resultIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#EEF0FF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  resultTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 3,
+  },
+  resultMeta: {
+    fontSize: 12,
+    color: "#667085",
   },
 
   // Custom Goal Button

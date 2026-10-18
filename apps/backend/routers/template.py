@@ -22,6 +22,24 @@ router = APIRouter()
 
 BASE_URL = "https://beplan.com/templates/"
 
+OFFICIAL_CREATOR = "BePlan"
+CATEGORY_ALIASES = {"personal budgeting": "finance"}
+
+
+def is_official_creator(created_by: Optional[str]) -> bool:
+    # Old rows spell it "Beplan", or with a stray Thai mark in front ("ฺBeplan").
+    letters = "".join(ch for ch in (created_by or "") if ch.isascii() and ch.isalpha())
+    return letters.lower() == OFFICIAL_CREATOR.lower()
+
+
+def normalize_category(category: Optional[str]) -> str:
+    key = (category or "").strip().lower()
+    return CATEGORY_ALIASES.get(key, key)
+
+
+def template_duration(tmpl) -> int:
+    return ((tmpl["due_date"] - tmpl["start_date"]) + timedelta(1)).days
+
 class AssignedTask(BaseModel):
     id: int
     title: str
@@ -133,6 +151,7 @@ class TemplateResponse(BaseModel):
     status: TemplateStatus
     duration: int
     is_favorite: bool
+    favorite_count: int = 0
 
 class ShareTemplateRequest(BaseModel):
     template_id: int
@@ -165,10 +184,6 @@ async def fetch_template(
                 templates = await conn.fetch("SELECT * FROM public.template")
             if not templates:
                 return []
-
-            duration = (
-                (templates[0]["due_date"] - templates[0]["start_date"]) + timedelta(1)
-            ).days
 
             template_ids = [tmpl["id"] for tmpl in templates]
 
@@ -242,11 +257,23 @@ async def fetch_template(
                     row["template_id"] for row in favorites
                 }
 
+            favorite_counts = await conn.fetch(
+                """
+                SELECT template_id, COUNT(*) AS n FROM public.favorite_template
+                WHERE template_id = ANY($1) GROUP BY template_id
+                """,
+                template_ids,
+            )
+            favorite_count_by_id = {row["template_id"]: row["n"] for row in favorite_counts}
+
             templates_resp = []
             for tmpl in templates:
-                user_info = users_dict.get(tmpl["created_by"], {})
+                user_info = (
+                    {} if is_official_creator(tmpl["created_by"])
+                    else users_dict.get(tmpl["created_by"], {})
+                )
                 created_by = CreateBy(
-                    user_id=user_info.get("id", "BePlan"),
+                    user_id=user_info.get("id", OFFICIAL_CREATOR),
                     username=user_info.get("username"),
                     image=user_info.get("image"),
                     occupation=user_info.get("occupation"),
@@ -283,7 +310,7 @@ async def fetch_template(
                         description=tmpl.get("description"),
                         image_url=tmpl.get("image_url", "https://example.com/default-image.jpg"),  # ใช้ค่าเริ่มต้น
                         created_by=created_by,
-                        category=tmpl["category"],
+                        category=normalize_category(tmpl["category"]),
                         type=tmpl["type"],
                         goals=goal_templates,
                         status=(
@@ -291,8 +318,9 @@ async def fetch_template(
                             if tmpl["id"] in assigned_ids
                             else TemplateStatus.UNUSED
                         ),
-                        duration=duration,
+                        duration=template_duration(tmpl),
                         is_favorite=tmpl["id"] in favorite_template_ids,
+                        favorite_count=favorite_count_by_id.get(tmpl["id"], 0),
                     )
                 )
 
@@ -369,7 +397,7 @@ async def create_template(
                     req.description,
                     req.image_url,
                     req.created_by,
-                    req.category,
+                    normalize_category(req.category),
                     req.type,
                     global_start_date,
                     global_due_date,
@@ -566,7 +594,7 @@ async def create_template_from_user_goals(
                     req.description,
                     req.image_url,
                     req.created_by,
-                    req.category,
+                    normalize_category(req.category),
                     req.type,
                     global_start_date,
                     global_due_date,

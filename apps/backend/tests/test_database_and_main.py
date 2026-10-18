@@ -1,6 +1,8 @@
 import asyncio
+import socket
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend import database
@@ -64,3 +66,26 @@ def test_lifespan_initializes_and_closes_database_pool():
         asyncio.run(exercise_lifespan())
 
     close_db.assert_awaited_once_with()
+
+
+def test_init_db_retries_network_errors(monkeypatch):
+    pool = object()
+    create_pool = AsyncMock(side_effect=[socket.gaierror(-2, "Name or service not known"), pool])
+    monkeypatch.setattr(database.asyncpg, "create_pool", create_pool)
+    monkeypatch.setattr(database.asyncio, "sleep", AsyncMock())
+
+    asyncio.run(database.init_db())
+
+    assert database.db_pool is pool
+    assert create_pool.await_count == 2
+
+
+def test_init_db_gives_up_after_last_attempt(monkeypatch):
+    create_pool = AsyncMock(side_effect=OSError("unreachable"))
+    monkeypatch.setattr(database.asyncpg, "create_pool", create_pool)
+    monkeypatch.setattr(database.asyncio, "sleep", AsyncMock())
+
+    with pytest.raises(OSError):
+        asyncio.run(database.init_db(attempts=3))
+
+    assert create_pool.await_count == 3
