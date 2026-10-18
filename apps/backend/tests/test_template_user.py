@@ -107,6 +107,7 @@ def test_fetch_template_joins_template_creator_goals_and_favorites(monkeypatch):
             }
         ],
         [{"template_id": 1}],
+        [{"template_id": 1, "n": 4}],
     ]
     patch_pool(monkeypatch, template, connection)
 
@@ -117,9 +118,53 @@ def test_fetch_template_joins_template_creator_goals_and_favorites(monkeypatch):
     assert results[0].created_by.username == "Ada"
     assert results[0].status == template.TemplateStatus.ASSIGNED
     assert results[0].is_favorite is True
+    assert results[0].favorite_count == 4
     assert results[0].duration == 3
     assert results[0].goals[0].title == "Exercise"
     assert results[0].goals[0].tasks[0].title == "Walk"
+
+
+def test_fetch_template_per_template_duration_category_and_official_creator(monkeypatch):
+    def tmpl(id, created_by, category, days):
+        return {
+            "id": id,
+            "title": f"Plan {id}",
+            "description": None,
+            "image_url": "",
+            "created_by": created_by,
+            "category": category,
+            "type": "template",
+            "start_date": date(2026, 10, 1),
+            "due_date": date(2026, 10, days),
+        }
+
+    connection = FakeConnection()
+    connection.fetch.side_effect = [
+        [tmpl(1, "Beplan", "Workout", 7), tmpl(2, "ฺBeplan", "Personal Budgeting", 30)],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+    ]
+    patch_pool(monkeypatch, template, connection)
+
+    results = asyncio.run(template.fetch_template(user_id="user-1"))
+
+    assert [r.duration for r in results] == [7, 30]
+    assert [r.category for r in results] == ["workout", "finance"]
+    assert [r.created_by.user_id for r in results] == ["BePlan", "BePlan"]
+    assert [r.favorite_count for r in results] == [0, 0]
+
+
+def test_is_official_creator():
+    for name in ["BePlan", "Beplan", "ฺBeplan", " beplan "]:
+        assert template.is_official_creator(name)
+    for name in [None, "", "user_2uHz", "BePlanner"]:
+        assert not template.is_official_creator(name)
 
 
 def test_user_initialize_persists_profile_fields(monkeypatch):
