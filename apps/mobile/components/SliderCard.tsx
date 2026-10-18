@@ -17,6 +17,8 @@ import Animated, {
   withSpring,
   useSharedValue,
 } from "react-native-reanimated";
+import { useTranslation } from "@/i18n";
+import { categoryLabel, formatDuration } from "@/i18n/format";
 
 // ====================== Type Definitions ======================
 type Task = {
@@ -62,6 +64,7 @@ export default function SliderCard({
   onPress,
   onToggleFavorite,
 }: SliderCardProps) {
+  const { t } = useTranslation();
   // ====================== Constants ======================
   const screen = Dimensions.get("screen");
 
@@ -118,19 +121,6 @@ export default function SliderCard({
   }));
 
   // ====================== Helper Functions ======================
-  const formatDuration = (days?: number): string => {
-    if (!days) return "";
-
-    if (days >= 365) {
-      return "1 Year";
-    } else if (days >= 30) {
-      const months = Math.floor(days / 30);
-      return `${months} ${months === 1 ? "Month" : "Months"}`;
-    } else {
-      return `${days} ${days === 1 ? "Day" : "Days"}`;
-    }
-  };
-
   const getCategoryIcon = (
     category: string
   ): keyof typeof Ionicons.glyphMap => {
@@ -202,11 +192,17 @@ export default function SliderCard({
           <View style={styles.cardContainer}>
             {/* Image Container */}
             <View style={styles.imageContainer}>
-              <Image
-                source={{ uri: image }}
-                style={styles.image}
-                resizeMode="cover"
-              />
+              {!!image ? (
+                <Image
+                  source={{ uri: image }}
+                  style={styles.image}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[styles.image, styles.imagePlaceholder]}>
+                  <Ionicons name="image-outline" size={48} color="#8B98D5" />
+                </View>
+              )}
               <LinearGradient
                 colors={["transparent", "transparent", "black"]}
                 style={styles.gradient}
@@ -255,8 +251,7 @@ export default function SliderCard({
                       style={styles.categoryIcon}
                     />
                     <Text style={styles.categoryText}>
-                      {category.charAt(0).toUpperCase() +
-                        category.slice(1).replace("_", " ")}
+                      {categoryLabel(category)}
                     </Text>
                   </View>
 
@@ -275,8 +270,7 @@ export default function SliderCard({
                     <View style={styles.goalsBadge}>
                       <Ionicons name="flag-outline" size={12} color="#fff" />
                       <Text style={styles.goalsText}>
-                        {goals_id.length}{" "}
-                        {goals_id.length === 1 ? "Goal" : "Goals"}
+                        {t("template.goals", { count: goals_id.length })}
                       </Text>
                     </View>
                   )}
@@ -322,6 +316,11 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
+  },
+  imagePlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E8ECF8",
   },
   gradient: {
     position: "absolute",

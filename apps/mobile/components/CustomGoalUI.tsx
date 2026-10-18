@@ -14,12 +14,13 @@ import { useScreenTopPadding } from "@/constants/layout";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { format, isValid, parseISO } from "date-fns";
+import i18n, { dateLocale, useTranslation } from "@/i18n";
 
 // Show a stored yyyy-MM-dd date as weekday, month and day, e.g. "Fri, Oct 16".
 // parseISO reads date-only strings as local dates, so no timezone shift.
 const formatPickedDate = (value: string) => {
   const parsed = parseISO(value);
-  return isValid(parsed) ? format(parsed, "EEE, MMM d") : value;
+  return isValid(parsed) ? format(parsed, "EEE, MMM d", { locale: dateLocale() }) : value;
 };
 
 type Task = {
@@ -80,15 +81,8 @@ const getTaskColor = (type: string) => {
   return taskColors[type] || "#888";
 };
 
-const getTaskLabel = (type: string) => {
-  const taskTypeLabels: Record<string, string> = {
-    normal: "Normal",
-    daily: "Daily",
-    weekly: "Weekly",
-    monthly: "Monthly",
-  };
-  return taskTypeLabels[type] || type;
-};
+const getTaskLabel = (type: string) =>
+  i18n.t(`goalForm.taskTypes.${type}` as "goalForm.taskTypes.normal", { defaultValue: type });
 
 // Status Color Helper
 const getStatusColor = (status: string) => {
@@ -134,6 +128,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
 }) => {
   // The header floats over the content: pad it below the notch, and start the
   // content under the header's real height (was a fixed 100 px).
+  const { t } = useTranslation();
   const headerTop = useScreenTopPadding(12);
   const [headerHeight, setHeaderHeight] = useState(headerTop + 52);
 
@@ -146,7 +141,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
       >
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color="white" />
-          <Text style={styles.backText}>Back</Text>
+          <Text style={styles.backText}>{t("common.back")}</Text>
         </TouchableOpacity>
       </Animated.View>
 
@@ -158,9 +153,9 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
         {/* Title Section */}
         <Animated.View entering={FadeInDown.delay(200).duration(500)}>
           <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
-            <Text style={styles.title}>Create Custom Goal</Text>
+            <Text style={styles.title}>{t("goalForm.title")}</Text>
             <Text style={styles.subtitle}>
-              Design your path to success, one step at a time
+              {t("goalForm.subtitle")}
             </Text>
           </Animated.View>
         </Animated.View>
@@ -171,12 +166,12 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
             {/* Goal Title Input */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>
-                Goal Title <Text style={styles.required}>*</Text>
+                {t("goalForm.goalTitle")} <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
                 value={goalTitle}
                 onChangeText={setGoalTitle}
-                placeholder="What do you want to achieve?"
+                placeholder={t("goalForm.goalTitlePlaceholder")}
                 placeholderTextColor="#AAA"
                 style={styles.input}
                 multiline={true}
@@ -188,7 +183,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
             <View style={styles.dateContainer}>
               <View style={styles.dateBox}>
                 <Text style={styles.inputLabel}>
-                  Start Date <Text style={styles.required}>*</Text>
+                  {t("goalForm.startDate")} <Text style={styles.required}>*</Text>
                 </Text>
                 <View style={{ position: "relative" }}>
                   <Pressable
@@ -203,7 +198,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                     disabled={goalStarted}
                   >
                     <Text style={{ color: startDate ? "#fff" : "#AAA" }}>
-                      {startDate ? formatPickedDate(startDate) : "Select Date"}
+                      {startDate ? formatPickedDate(startDate) : t("goalForm.selectDate")}
                     </Text>
                     <Feather name="calendar" size={20} color="#fff" />
                   </Pressable>
@@ -212,7 +207,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
               </View>
               <View style={styles.dateBox}>
                 <Text style={styles.inputLabel}>
-                  End Date <Text style={styles.required}>*</Text>
+                  {t("goalForm.endDate")} <Text style={styles.required}>*</Text>
                 </Text>
                 <View style={{ position: "relative" }}>
                   <Pressable
@@ -227,7 +222,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                     disabled={goalStarted}
                   >
                     <Text style={{ color: dueDate ? "#fff" : "#AAA" }}>
-                      {dueDate ? formatPickedDate(dueDate) : "Select Date"}
+                      {dueDate ? formatPickedDate(dueDate) : t("goalForm.selectDate")}
                     </Text>
                     <Feather name="calendar" size={20} color="#fff" />
                   </Pressable>
@@ -246,8 +241,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                   style={styles.warningIcon}
                 />
                 <Text style={styles.warningText}>
-                  This goal has already started. Date changes are not allowed to
-                  maintain goal integrity.
+                  {t("goalForm.datesLocked")}
                 </Text>
               </View>
             )}
@@ -258,9 +252,9 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
         <Animated.View entering={FadeInDown.delay(600).duration(500)}>
           <Animated.View style={[styles.taskSection, taskListAnimatedStyle]}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Tasks</Text>
+              <Text style={styles.sectionTitle}>{t("goalForm.tasks")}</Text>
               <Text style={styles.sectionDescription}>
-                Break down your goal into manageable tasks
+                {t("goalForm.tasksDescription")}
               </Text>
             </View>
 
@@ -279,8 +273,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                   style={styles.warningIcon}
                 />
                 <Text style={styles.warningText}>
-                  Limited editing mode: You can only edit task titles and
-                  descriptions. Tasks cannot be deleted once a goal has started.
+                  {t("goalForm.limitedEditing")}
                 </Text>
               </View>
             )}
@@ -307,8 +300,8 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
               onPress={() => {
                 if (goalStarted) {
                   Alert.alert(
-                    "Cannot Add Tasks",
-                    "This goal has already started. New tasks cannot be added."
+                    t("goalForm.cannotAddTitle"),
+                    t("goalForm.cannotAddMessage")
                   );
                   return;
                 }
@@ -317,8 +310,8 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                   setTaskModalVisible(true);
                 } else {
                   Alert.alert(
-                    "Set Dates First",
-                    "Please set start and end dates before adding tasks."
+                    t("goalForm.setDatesTitle"),
+                    t("goalForm.setDatesMessage")
                   );
                 }
               }}
@@ -335,7 +328,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                   !(startDate && dueDate) && styles.disabledButtonText,
                 ]}
               >
-                Add Task
+                {t("goalForm.addTask")}
               </Text>
             </TouchableOpacity>
           </Animated.View>
@@ -361,7 +354,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
                   color="#FFF"
                 />
                 <Text style={styles.createButtonText}>
-                  {isEditingGoal ? "Update Goal" : "Start Goal"}
+                  {isEditingGoal ? t("goalForm.updateGoal") : t("goalForm.startGoal")}
                 </Text>
               </>
             )}
@@ -376,7 +369,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
               accessibilityRole="button"
             >
               <Ionicons name="document-text-outline" size={20} color="#4E5A94" />
-              <Text style={styles.draftButtonText}>Save as draft</Text>
+              <Text style={styles.draftButtonText}>{t("goalForm.saveDraft")}</Text>
             </TouchableOpacity>
           )}
         </Animated.View>
@@ -386,7 +379,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
       {isLoading && (
         <View style={styles.overlay}>
           <ActivityIndicator size="large" color="#4F46E5" />
-          <Text style={styles.loadingText}>Creating your goal...</Text>
+          <Text style={styles.loadingText}>{t("goalForm.creating")}</Text>
         </View>
       )}
     </>
@@ -397,6 +390,7 @@ const CustomGoalUI: React.FC<CustomGoalUIProps> = ({
 
 // Task Progress Summary
 const TaskProgressSummary = ({ taskList }: { taskList: Task[] }) => {
+  const { t } = useTranslation();
   const pendingCount = taskList.filter((t) => t.status === "pending").length;
   const completedCount = taskList.filter(
     (t) => t.status === "completed"
@@ -411,9 +405,9 @@ const TaskProgressSummary = ({ taskList }: { taskList: Task[] }) => {
     <View>
       <View style={styles.progressSummary}>
         <View style={styles.progressHeader}>
-          <Text style={styles.progressTitle}>Progress Summary</Text>
+          <Text style={styles.progressTitle}>{t("goalForm.progressSummary")}</Text>
           <Text style={styles.progressTotal}>
-            {taskList.length} total tasks
+            {t("goalForm.totalTasks", { count: taskList.length })}
           </Text>
         </View>
 
@@ -466,7 +460,7 @@ const TaskProgressSummary = ({ taskList }: { taskList: Task[] }) => {
                   { backgroundColor: getStatusColor("pending") },
                 ]}
               />
-              <Text style={styles.legendText}>Pending ({pendingCount})</Text>
+              <Text style={styles.legendText}>{t("goalForm.pendingCount", { count: pendingCount })}</Text>
             </View>
             <View style={styles.legendItem}>
               <View
@@ -476,7 +470,7 @@ const TaskProgressSummary = ({ taskList }: { taskList: Task[] }) => {
                 ]}
               />
               <Text style={styles.legendText}>
-                Completed ({completedCount})
+                {t("goalForm.completedCount", { count: completedCount })}
               </Text>
             </View>
             <View style={styles.legendItem}>
@@ -486,7 +480,7 @@ const TaskProgressSummary = ({ taskList }: { taskList: Task[] }) => {
                   { backgroundColor: getStatusColor("failed") },
                 ]}
               />
-              <Text style={styles.legendText}>Failed ({failedCount})</Text>
+              <Text style={styles.legendText}>{t("goalForm.failedCount", { count: failedCount })}</Text>
             </View>
           </View>
         </View>
@@ -507,6 +501,7 @@ const TaskList = ({
   handleDeleteTask: (index: number) => void;
   goalStarted: boolean;
 }) => {
+  const { t } = useTranslation();
   return (
     <View style={styles.taskListContainer}>
       {/* Group tasks by status */}
@@ -525,10 +520,10 @@ const TaskList = ({
               />
               <Text style={styles.statusTitle}>
                 {status === "pending"
-                  ? "Pending Tasks"
+                  ? t("goalForm.pendingTasks")
                   : status === "completed"
-                  ? "Completed Tasks"
-                  : "Failed Tasks"}
+                  ? t("goalForm.completedTasks")
+                  : t("goalForm.failedTasks")}
               </Text>
               <View style={styles.statusCount}>
                 <Text style={styles.statusCountText}>
@@ -569,6 +564,7 @@ const TaskItem = ({
   handleDeleteTask: (index: number) => void;
   goalStarted: boolean;
 }) => {
+  const { t } = useTranslation();
   return (
     <View style={styles.taskItem}>
       <View
@@ -590,19 +586,16 @@ const TaskItem = ({
         <View style={styles.taskStats}>
           {task.type === "normal" && task.selectedDates && (
             <Text style={styles.taskDates}>
-              {task.selectedDates.length} date
-              {task.selectedDates.length !== 1 ? "s" : ""}
+              {t("goalForm.dates", { count: task.selectedDates.length })}
             </Text>
           )}
           {task.type === "weekly" && task.selectedDaysOfWeek && (
             <Text style={styles.taskDates}>
-              {task.selectedDaysOfWeek.length} day
-              {task.selectedDaysOfWeek.length !== 1 ? "s" : ""}
-              /week
+              {t("goalForm.daysPerWeek", { count: task.selectedDaysOfWeek.length })}
             </Text>
           )}
           {task.type === "monthly" && (
-            <Text style={styles.taskDates}>Monthly task</Text>
+            <Text style={styles.taskDates}>{t("goalForm.monthlyTask")}</Text>
           )}
         </View>
       </View>
@@ -611,7 +604,7 @@ const TaskItem = ({
           style={styles.taskAction}
           onPress={() => handleEditTask(index)}
           accessibilityRole="button"
-          accessibilityLabel={`Edit ${task.title}`}
+          accessibilityLabel={t("goalForm.editTask", { title: task.title })}
         >
           <Ionicons name="pencil" size={20} color="#4F46E5" />
         </TouchableOpacity>
@@ -620,7 +613,7 @@ const TaskItem = ({
           onPress={() => !goalStarted && handleDeleteTask(index)}
           disabled={goalStarted}
           accessibilityRole="button"
-          accessibilityLabel={`Delete ${task.title}`}
+          accessibilityLabel={t("goalForm.deleteTask", { title: task.title })}
           accessibilityState={{ disabled: goalStarted }}
         >
           {/* Neutral grey when disabled (started goals can't remove tasks);
@@ -638,12 +631,13 @@ const TaskItem = ({
 
 // Empty Task List
 const EmptyTaskList = () => {
+  const { t } = useTranslation();
   return (
     <View style={styles.emptyTaskList}>
       <Ionicons name="list" size={40} color="#CCC" />
-      <Text style={styles.emptyTaskText}>No tasks added yet</Text>
+      <Text style={styles.emptyTaskText}>{t("goalForm.noTasks")}</Text>
       <Text style={styles.emptyTaskSubtext}>
-        Add tasks to break down your goal
+        {t("goalForm.noTasksHint")}
       </Text>
     </View>
   );

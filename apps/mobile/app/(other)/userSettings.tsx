@@ -27,7 +27,13 @@ import OccupationSelector from "@/components/OccupationSelector";
 import * as ImagePicker from "expo-image-picker";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
+import { appendImage } from "@/utils/imageUpload";
 import ReminderSettings from "@/components/ReminderSettings";
+import LanguageSettings from "@/components/LanguageSettings";
+import { useTranslation } from "@/i18n";
+
+// Changing the profile picture is paused until image uploads (S3) are set up.
+const PROFILE_IMAGE_EDITING_ENABLED = false;
 
 // ====================== Main Component ======================
 export default function UserSettings() {
@@ -36,6 +42,9 @@ export default function UserSettings() {
   const { signOut } = useClerk();
   const { user, isLoaded } = useUser();
   const apiFetch = useApiFetch();
+  const { t, i18n } = useTranslation();
+  const fieldName = (type: string) =>
+    t(`settings.fields.${type}` as "settings.fields.username", { defaultValue: type });
 
   // ====================== State Management ======================
   const [isChangingUsername, setIsChangingUsername] = useState(false);
@@ -265,7 +274,7 @@ export default function UserSettings() {
 
   const formatLastActiveTime = (lastActiveAt: string) => {
     const date = new Date(lastActiveAt);
-    return date.toLocaleString();
+    return date.toLocaleString(i18n.language === "th" ? "th-TH" : "en-US");
   };
 
   // ====================== Image Picker ======================
@@ -275,10 +284,7 @@ export default function UserSettings() {
         await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (status !== "granted") {
-        Alert.alert(
-          "Permission Required",
-          "We need access to your photos to upload a profile image."
-        );
+        Alert.alert(t("settings.photoPermissionTitle"), t("settings.photoPermissionMessage"));
         return;
       }
 
@@ -296,7 +302,7 @@ export default function UserSettings() {
       }
     } catch (error) {
       console.error("Image picker error:", error);
-      Alert.alert("Error", "Failed to open image picker. Please try again.");
+      Alert.alert(t("common.error"), t("settings.imagePickerFailed"));
     }
   };
 
@@ -339,7 +345,7 @@ export default function UserSettings() {
           throw new Error(
             typeof body?.detail === "string"
               ? body.detail
-              : `Failed to update ${type}. Please try again later.`
+              : t("settings.updateFailed", { field: fieldName(type) })
           );
         }
 
@@ -350,9 +356,7 @@ export default function UserSettings() {
       switch (type) {
         case "username":
           if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
-            throw new Error(
-              "Username must be 3-20 characters long and contain only letters, numbers, and underscores."
-            );
+            throw new Error(t("settings.usernameRule"));
           }
 
           await saveProfile({ username });
@@ -377,12 +381,10 @@ export default function UserSettings() {
             formattedImageData = uploadedImage;
           } else {
             let formData = new FormData();
-
-            formData.append("file", {
+            await appendImage(formData, "file", {
               uri: uploadedImage.uri || newProfileImage,
-              name: uploadedImage.fileName,
-              type: uploadedImage.mimeType,
-            } as any);
+              fileName: uploadedImage.fileName,
+            });
 
             const uploadResp = await apiFetch(
               `${API_BASE_URL}/api/v1/user/upload_image`,
@@ -393,9 +395,7 @@ export default function UserSettings() {
             );
 
             if (!uploadResp.ok) {
-              throw new Error(
-                "Failed to upload image. Please try again later."
-              );
+              throw new Error(t("settings.uploadFailed"));
             }
             const data = await uploadResp.json();
 
@@ -417,9 +417,7 @@ export default function UserSettings() {
             );
 
             if (!updateUserResp.ok) {
-              throw new Error(
-                "Failed to update user profile. Please try again later."
-              );
+              throw new Error(t("settings.profileUpdateFailed"));
             }
 
             await user.update({
@@ -454,15 +452,12 @@ export default function UserSettings() {
 
       console.log("User Profile Update:", JSON.stringify(updateLog, null, 2));
 
-      Alert.alert(
-        "Success",
-        `${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully!`
-      );
+      Alert.alert(t("common.success"), t("settings.updated", { field: fieldName(type) }));
     } catch (error: any) {
       console.error(`${type} update error:`, error);
       Alert.alert(
-        "Error",
-        error.message || `Failed to update ${type}. Please try again.`
+        t("common.error"),
+        error.message || t("settings.updateFailed", { field: fieldName(type) })
       );
     } finally {
       setIsSaving(false);
@@ -481,7 +476,7 @@ export default function UserSettings() {
       router.replace(routes.signIn);
     } catch (error) {
       console.error("Sign out error:", error);
-      Alert.alert("Error", "Failed to sign out. Please try again.");
+      Alert.alert(t("common.error"), t("settings.signOutFailed"));
     }
   };
 
@@ -490,7 +485,7 @@ export default function UserSettings() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4E5A94" />
-        <Text style={styles.loadingText}>Loading user settings...</Text>
+        <Text style={styles.loadingText}>{t("settings.loading")}</Text>
       </View>
     );
   }
@@ -503,7 +498,7 @@ export default function UserSettings() {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Feather name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>User Settings</Text>
+        <Text style={styles.headerTitle}>{t("settings.title")}</Text>
         <View style={{ width: 24 }} />
       </Animated.View>
 
@@ -517,7 +512,7 @@ export default function UserSettings() {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleContainer}>
                 <Feather name="user" size={20} color="#4E5A94" />
-                <Text style={styles.sectionTitle}>Profile Information</Text>
+                <Text style={styles.sectionTitle}>{t("settings.profile")}</Text>
               </View>
             </View>
 
@@ -548,7 +543,7 @@ export default function UserSettings() {
                         onPress={() => handleSave("profileImage")}
                         disabled={isLoadingImage}
                       >
-                        <Text style={styles.profileImageActionText}>Save</Text>
+                        <Text style={styles.profileImageActionText}>{t("common.save")}</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -559,34 +554,34 @@ export default function UserSettings() {
                         onPress={handleCancelProfileImage}
                         disabled={isLoadingImage}
                       >
-                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                        <Text style={styles.cancelButtonText}>{t("common.cancel")}</Text>
                       </TouchableOpacity>
                     </View>
-                  ) : (
+                  ) : PROFILE_IMAGE_EDITING_ENABLED ? (
                     <TouchableOpacity
                       style={styles.editProfileImageButton}
                       onPress={pickImage}
                     >
                       <Feather name="edit-2" size={14} color="#4E5A94" />
                       <Text style={styles.editProfileImageText}>
-                        Edit Profile Picture
+                        {t("settings.editPicture")}
                       </Text>
                     </TouchableOpacity>
-                  )}
+                  ) : null}
                 </>
               )}
             </View>
 
             <View style={styles.profileDetailsContainer}>
               <View style={styles.profileInfoRow}>
-                <Text style={styles.profileInfoLabel}>Username</Text>
+                <Text style={styles.profileInfoLabel}>{t("settings.username")}</Text>
                 {isChangingUsername ? (
                   <View style={styles.usernameEditContainer}>
                     <TextInput
                       style={[styles.input, { flex: 1 }]}
                       value={username}
                       onChangeText={setUsername}
-                      placeholder="Choose a username"
+                      placeholder={t("settings.usernamePlaceholder")}
                     />
                     <TouchableOpacity
                       style={styles.saveButton}
@@ -596,7 +591,7 @@ export default function UserSettings() {
                       {isSaving ? (
                         <ActivityIndicator size="small" color="#fff" />
                       ) : (
-                        <Text style={styles.saveButtonText}>Save</Text>
+                        <Text style={styles.saveButtonText}>{t("common.save")}</Text>
                       )}
                     </TouchableOpacity>
                   </View>
@@ -614,13 +609,13 @@ export default function UserSettings() {
               </View>
 
               <View style={styles.profileInfoRow}>
-                <Text style={styles.profileInfoLabel}>Email</Text>
+                <Text style={styles.profileInfoLabel}>{t("settings.email")}</Text>
                 <Text style={styles.profileInfoValue}>{primaryEmail}</Text>
               </View>
 
               {/* Occupation Field */}
               <View style={styles.profileInfoRow}>
-                <Text style={styles.profileInfoLabel}>Occupation</Text>
+                <Text style={styles.profileInfoLabel}>{t("settings.occupation")}</Text>
                 {isEditingOccupation ? (
                   <View style={{ flex: 1 }}>
                     <OccupationSelector
@@ -634,7 +629,11 @@ export default function UserSettings() {
                 ) : (
                   <View style={styles.usernameContainer}>
                     <Text style={styles.profileInfoValue}>
-                      {occupation || "Not specified"}
+                      {occupation
+                        ? t(`occupation.options.${occupation}` as "occupation.options.None", {
+                            defaultValue: occupation,
+                          })
+                        : t("settings.notSpecified")}
                     </Text>
                     <TouchableOpacity
                       style={styles.editButton}
@@ -649,7 +648,7 @@ export default function UserSettings() {
               {/* Description Field */}
               <View style={styles.descriptionRow}>
                 <View style={styles.descriptionHeader}>
-                  <Text style={styles.descriptionLabel}>About Me</Text>
+                  <Text style={styles.descriptionLabel}>{t("settings.aboutMe")}</Text>
                   {!isEditingDescription && (
                     <TouchableOpacity
                       style={styles.editButton}
@@ -666,7 +665,7 @@ export default function UserSettings() {
                       style={styles.descriptionInput}
                       value={description}
                       onChangeText={setDescription}
-                      placeholder="Tell community members about yourself..."
+                      placeholder={t("settings.aboutMePlaceholder")}
                       multiline
                       numberOfLines={4}
                       maxLength={300}
@@ -683,7 +682,7 @@ export default function UserSettings() {
                         {isSaving ? (
                           <ActivityIndicator size="small" color="#fff" />
                         ) : (
-                          <Text style={styles.saveButtonText}>Save</Text>
+                          <Text style={styles.saveButtonText}>{t("common.save")}</Text>
                         )}
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -691,13 +690,13 @@ export default function UserSettings() {
                         onPress={() => setIsEditingDescription(false)}
                         disabled={isSaving}
                       >
-                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                        <Text style={styles.cancelButtonText}>{t("common.cancel")}</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
                 ) : (
                   <Text style={styles.descriptionText}>
-                    {description || "Tell community members about yourself..."}
+                    {description || t("settings.aboutMePlaceholder")}
                   </Text>
                 )}
               </View>
@@ -711,14 +710,12 @@ export default function UserSettings() {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleContainer}>
                 <Feather name="shield" size={20} color="#4E5A94" />
-                <Text style={styles.sectionTitle}>
-                  Security & Authentication
-                </Text>
+                <Text style={styles.sectionTitle}>{t("settings.security")}</Text>
               </View>
             </View>
 
             {/* Connected Accounts */}
-            <Text style={styles.subsectionTitle}>Connected Accounts</Text>
+            <Text style={styles.subsectionTitle}>{t("settings.connectedAccounts")}</Text>
 
             {externalAccounts.length > 0 ? (
               externalAccounts.map((account, index) => (
@@ -733,16 +730,12 @@ export default function UserSettings() {
                 </View>
               ))
             ) : (
-              <Text style={styles.noDataText}>No connected accounts</Text>
+              <Text style={styles.noDataText}>{t("settings.noConnectedAccounts")}</Text>
             )}
 
             {/* Active Sessions */}
-            <Text style={styles.subsectionTitle}>Active Sessions</Text>
-            <Text style={styles.noteText}>
-              Note: For security reasons, sessions can only be managed via the
-              Clerk Dashboard. Your current session can be ended using the Sign
-              Out button below.
-            </Text>
+            <Text style={styles.subsectionTitle}>{t("settings.activeSessions")}</Text>
+            <Text style={styles.noteText}>{t("settings.sessionsNote")}</Text>
 
             {activeSessions.length > 0 ? (
               activeSessions.map((session, index) => (
@@ -752,23 +745,29 @@ export default function UserSettings() {
                     <View style={styles.sessionDetails}>
                       <Text style={styles.sessionName}>
                         {session.latestActivity?.userAgent?.split(" ")[0] ||
-                          "Unknown Device"}
+                          t("settings.unknownDevice")}
                         {session.isCurrent && (
-                          <Text style={styles.currentDevice}> (Current)</Text>
+                          <Text style={styles.currentDevice}>{t("settings.currentDevice")}</Text>
                         )}
                       </Text>
                       <Text style={styles.sessionTime}>
-                        Last active:{" "}
-                        {formatLastActiveTime(session.lastActiveAt)}
+                        {t("settings.lastActive", {
+                          time: formatLastActiveTime(session.lastActiveAt),
+                        })}
                       </Text>
                     </View>
                   </View>
                 </View>
               ))
             ) : (
-              <Text style={styles.noDataText}>No active sessions</Text>
+              <Text style={styles.noDataText}>{t("settings.noActiveSessions")}</Text>
             )}
           </Animated.View>
+        </Animated.View>
+
+        {/* Language Section */}
+        <Animated.View entering={FadeInDown.delay(550).duration(500)}>
+          <LanguageSettings />
         </Animated.View>
 
         {/* Reminders Section */}
@@ -782,7 +781,7 @@ export default function UserSettings() {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleContainer}>
                 <Feather name="settings" size={20} color="#4E5A94" />
-                <Text style={styles.sectionTitle}>Account Actions</Text>
+                <Text style={styles.sectionTitle}>{t("settings.accountActions")}</Text>
               </View>
             </View>
 
@@ -791,7 +790,7 @@ export default function UserSettings() {
               onPress={handleSignOut}
             >
               <Feather name="log-out" size={20} color="#fff" />
-              <Text style={styles.signOutText}>Sign Out</Text>
+              <Text style={styles.signOutText}>{t("settings.signOut")}</Text>
             </TouchableOpacity>
           </Animated.View>
         </Animated.View>

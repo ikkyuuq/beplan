@@ -5,6 +5,7 @@ import { requireOptionalNativeModule } from "expo";
 import { parseISO, setHours, setMinutes } from "date-fns";
 import { API_BASE_URL } from "@/constants/api";
 import type { ApiFetch } from "@/hooks/useApiFetch";
+import i18n from "@/i18n";
 
 // Importing expo-notifications in Expo Go on Android warns that *push*
 // notifications are unavailable there. Reminders are local notifications,
@@ -41,38 +42,42 @@ const ID_PREFIX = "task-reminder-";
 const CHANNEL_ID = "task-reminders";
 const DAYS = 7;
 
-let notificationsModule: typeof NotificationsModule | null | undefined;
+// The parts of expo-notifications reminders use.
+type Notifications = Pick<
+  typeof NotificationsModule,
+  | "setNotificationHandler"
+  | "setNotificationChannelAsync"
+  | "AndroidImportance"
+  | "getPermissionsAsync"
+  | "requestPermissionsAsync"
+  | "getAllScheduledNotificationsAsync"
+  | "cancelScheduledNotificationAsync"
+  | "scheduleNotificationAsync"
+  | "SchedulableTriggerInputTypes"
+>;
 
-// Native modules expo-notifications requires as soon as it's imported.
-// Channels and topics are Android-only; iOS has no such modules.
+let notificationsModule: Notifications | null | undefined;
+
+// Native modules behind the files loaded below. Channels are Android-only.
 const REQUIRED_NATIVE_MODULES = [
-  "ExpoBackgroundNotificationTasksModule",
-  "ExpoBadgeModule",
-  "ExpoNotificationCategoriesModule",
   "ExpoNotificationPermissionsModule",
-  "ExpoNotificationPresenter",
   "ExpoNotificationScheduler",
-  "ExpoNotificationsEmitter",
   "ExpoNotificationsHandlerModule",
-  "ExpoPushTokenManager",
-  "NotificationsServerRegistrationModule",
-  ...(Platform.OS === "android"
-    ? [
-        "ExpoNotificationChannelGroupManager",
-        "ExpoNotificationChannelManager",
-        "ExpoTopicSubscriptionModule",
-      ]
-    : []),
+  ...(Platform.OS === "android" ? ["ExpoNotificationChannelManager"] : []),
 ];
 
 /**
  * expo-notifications, loaded on first use, or null when this app binary
- * lacks its native side (e.g. Expo Go for Android older than the JS package,
- * which has no ExpoTopicSubscriptionModule). Check before requiring: a
- * failed module load is reported as a fatal error in dev even inside a
- * try/catch, and a static import would crash the app at startup.
+ * lacks the native side (web). Check before requiring: a failed module load
+ * is reported as a fatal error in dev even inside a try/catch.
+ *
+ * Loads expo-notifications' build files one by one instead of the package
+ * entry: the entry also loads push-topic support, whose native module
+ * (ExpoTopicSubscriptionModule) Expo Go for Android doesn't ship, and that
+ * would turn local reminders off there too. These paths aren't public API;
+ * recheck them when upgrading expo-notifications.
  */
-function getNotifications(): typeof NotificationsModule | null {
+function getNotifications(): Notifications | null {
   if (notificationsModule === undefined) {
     const missing =
       Platform.OS === "web"
@@ -82,14 +87,22 @@ function getNotifications(): typeof NotificationsModule | null {
           );
     if (missing.length > 0) {
       if (Platform.OS !== "web") {
-        // A log, not a warning: this is expected in Expo Go for Android.
         console.log(
           `Task reminders are off: this app build lacks ${missing.join(", ")}.`
         );
       }
       notificationsModule = null;
     } else {
-      notificationsModule = require("expo-notifications");
+      notificationsModule = {
+        ...require("expo-notifications/build/NotificationsHandler"),
+        ...require("expo-notifications/build/setNotificationChannelAsync"),
+        ...require("expo-notifications/build/NotificationChannelManager.types"),
+        ...require("expo-notifications/build/NotificationPermissions"),
+        ...require("expo-notifications/build/getAllScheduledNotificationsAsync"),
+        ...require("expo-notifications/build/cancelScheduledNotificationAsync"),
+        ...require("expo-notifications/build/scheduleNotificationAsync"),
+        ...require("expo-notifications/build/Notifications.types"),
+      } as Notifications;
     }
   }
   return notificationsModule ?? null;
@@ -183,12 +196,11 @@ async function doSync(apiFetch: ApiFetch) {
       settings.minute
     );
     if (at <= now || day.pending_tasks <= 0) continue;
-    const n = day.pending_tasks;
     await Notifications.scheduleNotificationAsync({
       identifier: `${ID_PREFIX}${day.date}`,
       content: {
-        title: "Don't forget your tasks",
-        body: `You have ${n} ${n === 1 ? "task" : "tasks"} left to mark today.`,
+        title: i18n.t("reminders.notificationTitle"),
+        body: i18n.t("reminders.notificationBody", { count: day.pending_tasks }),
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,

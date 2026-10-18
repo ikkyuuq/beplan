@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,328 +6,358 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
-  TouchableOpacity,
+  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withDelay,
-  Easing,
-  FadeInDown,
-} from "react-native-reanimated";
-import { LineChart, PieChart } from "react-native-chart-kit";
-import { useUser } from "@clerk/expo";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import { useFocusEffect } from "expo-router";
 import Header from "@/components/Header";
 import { useTabBarSpace } from "@/constants/layout";
+import { MOTION } from "@/constants/motion";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
+import { useTranslation } from "@/i18n";
 
 // ====================== Type Definitions ======================
-type AnalyticsData = {
-  goals: {
-    total: number;
-    completed: number;
-    success: {
-      count: number;
-      list: any[];
-    };
-    failed: {
-      count: number;
-      list: any[];
-    };
-    pending: number;
-    success_rate: number;
-    weekly_progress_overview: Record<string, number>;
-    last_7_days: Record<string, number>;
-    last_14_days: Record<string, number>;
-    this_month: Record<string, number>;
-    last_month: Record<string, number>;
-  };
-  tasks: {
-    total: number;
-    completed: number;
-    success: {
-      count: number;
-      list: any[];
-    };
-    failed: {
-      count: number;
-      list: any[];
-    };
-    pending: number;
-    success_rate: number;
-    weekly_distribution: Record<string, number>;
-  };
-  templates: {
-    total: number;
-    category_usage: Record<string, number>;
-  };
+type Period = "7d" | "14d" | "month";
+
+type StatusCounts = {
+  success: number;
+  failed: number;
+  pending: number;
 };
+
+type AnalyticsData = {
+  period: Period;
+  start: string;
+  end: string;
+  summary: {
+    success: number;
+    failed: number;
+    pending_today: number;
+    // null when no task in the period is finished yet.
+    success_rate: number | null;
+    previous_success_rate: number | null;
+  };
+  streak: number;
+  daily: (StatusCounts & { date: string })[];
+  goals: (StatusCounts & {
+    id: number;
+    title: string;
+    success_rate: number | null;
+  })[];
+};
+
+const PERIODS: { value: Period; labelKey: "analysis.period7d" | "analysis.period14d" | "analysis.periodMonth" }[] = [
+  { value: "7d", labelKey: "analysis.period7d" },
+  { value: "14d", labelKey: "analysis.period14d" },
+  { value: "month", labelKey: "analysis.periodMonth" },
+];
+
+const COLORS = {
+  primary: "#4E5A94",
+  success: "#4CAF50",
+  failed: "#F44336",
+  pending: "#E3E5EE",
+};
+
+const DAILY_CHART_HEIGHT = 120;
+
+// API dates are calendar dates ("2026-10-18"); build them from local parts so
+// the weekday doesn't shift in UTC-offset time zones.
+function parseCalendarDate(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatRate(rate: number | null): string {
+  return rate === null ? "–" : `${Math.round(rate)}%`;
+}
 
 // ====================== Main Component ======================
 export default function Analysis() {
-  // Room for the floating tab bar on any device (was a fixed guess).
   const tabBarSpace = useTabBarSpace();
-  // ====================== Animation Values ======================
-  const headerOpacity = useSharedValue(0);
-  const cardsOpacity1 = useSharedValue(0);
-  const cardsOpacity2 = useSharedValue(0);
-  const cardsOpacity3 = useSharedValue(0);
-  const chartOpacity = useSharedValue(0);
-
-  // ====================== Hooks & State ======================
-  const { user, isLoaded } = useUser();
   const apiFetch = useApiFetch();
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(
-    null
-  );
+  const { t } = useTranslation();
+  const weekdays = t("common.weekdaysShort").split(",");
+
+  const [period, setPeriod] = useState<Period>("7d");
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Only the latest request may update the screen (fast period switching).
+  const requestId = useRef(0);
 
   // ====================== Data Fetching ======================
-  const fetchAnalyticsData = useCallback(async () => {
-    if (!isLoaded || !user) return;
-
-    try {
+  const fetchAnalyticsData = useCallback(
+    async (selected: Period) => {
+      const id = ++requestId.current;
       setIsLoading(true);
       setError(null);
-
-      const response = await apiFetch(
-        `${API_BASE_URL}/api/v1/analysis/?user_id=${user.id}`
-      );
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      try {
+        const response = await apiFetch(
+          `${API_BASE_URL}/api/v1/analysis/?period=${selected}`
+        );
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        const data: AnalyticsData = await response.json();
+        if (id === requestId.current) setAnalyticsData(data);
+      } catch (err) {
+        console.error("Failed to fetch analytics data:", err);
+        if (id === requestId.current) setError(t("analysis.loadFailed"));
+      } finally {
+        if (id === requestId.current) {
+          setIsLoading(false);
+          setRefreshing(false);
+        }
       }
+    },
+    [apiFetch, t]
+  );
 
-      const data = await response.json();
-      setAnalyticsData(data);
-    } catch (err) {
-      console.error("Failed to fetch analytics data:", err);
-      setError("Failed to load analytics data. Please try again later.");
-      setAnalyticsData(null);
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
-    }
-  }, [isLoaded, user]);
-
-  // ====================== Initial Load & Refresh ======================
-  useEffect(() => {
-    if (isLoaded && user) {
-      // Defer the stateful fetch to the microtask queue so the effect only
-      // schedules the external request, rather than updating state directly.
-      void Promise.resolve().then(fetchAnalyticsData);
-    }
-  }, [fetchAnalyticsData, isLoaded, user]);
+  // Reload on focus too, so tasks marked on Home show up here.
+  useFocusEffect(
+    useCallback(() => {
+      void fetchAnalyticsData(period);
+    }, [fetchAnalyticsData, period])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchAnalyticsData();
+    void fetchAnalyticsData(period);
   };
 
-  // ====================== Animation Setup ======================
-  useEffect(() => {
-    // Header animation
-    headerOpacity.value = withTiming(1, {
-      duration: 600,
-      easing: Easing.out(Easing.cubic),
-    });
+  // ====================== Derived Values ======================
+  const summary = analyticsData?.summary;
+  const finished = summary ? summary.success + summary.failed : 0;
 
-    // Cards animation
-    cardsOpacity1.value = withDelay(300, withTiming(1, { duration: 500 }));
-    cardsOpacity2.value = withDelay(500, withTiming(1, { duration: 500 }));
-    cardsOpacity3.value = withDelay(700, withTiming(1, { duration: 500 }));
+  const deltaText = (() => {
+    if (summary?.success_rate == null || summary.previous_success_rate == null) {
+      return null;
+    }
+    const delta = Math.round(summary.success_rate - summary.previous_success_rate);
+    if (delta > 0) return { text: t("analysis.deltaUp", { delta }), color: COLORS.success };
+    if (delta < 0) return { text: t("analysis.deltaDown", { delta: -delta }), color: COLORS.failed };
+    return { text: t("analysis.deltaSame"), color: "#777" };
+  })();
 
-    // Chart animation
-    chartOpacity.value = withDelay(900, withTiming(1, { duration: 600 }));
-  }, []);
+  const dailyMax = Math.max(
+    1,
+    ...(analyticsData?.daily ?? []).map((d) => d.success + d.failed + d.pending)
+  );
+  const hasDailyTasks = (analyticsData?.daily ?? []).some(
+    (d) => d.success + d.failed + d.pending > 0
+  );
 
-  // ====================== Animated Styles ======================
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value,
-  }));
-
-  const cardsAnimatedStyle1 = useAnimatedStyle(() => ({
-    opacity: cardsOpacity1.value,
-    transform: [
-      {
-        translateY: withTiming(cardsOpacity1.value * 1 === 1 ? 0 : 20, {
-          duration: 500,
-        }),
-      },
-    ],
-  }));
-
-  const cardsAnimatedStyle2 = useAnimatedStyle(() => ({
-    opacity: cardsOpacity2.value,
-    transform: [
-      {
-        translateY: withTiming(cardsOpacity2.value * 1 === 1 ? 0 : 20, {
-          duration: 500,
-        }),
-      },
-    ],
-  }));
-
-  const cardsAnimatedStyle3 = useAnimatedStyle(() => ({
-    opacity: cardsOpacity3.value,
-    transform: [
-      {
-        translateY: withTiming(cardsOpacity3.value * 1 === 1 ? 0 : 20, {
-          duration: 500,
-        }),
-      },
-    ],
-  }));
-
-  const chartAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: chartOpacity.value,
-  }));
-
-  // ====================== Chart Data Processing ======================
-  const chartConfig = {
-    backgroundGradient: {
-      colors: ["#ffffff", "#ffffff"],
-      positions: [0, 1],
-    },
-    backgroundColor: "#fff",
-    backgroundGradientFrom: "#fff",
-    backgroundGradientTo: "#fff",
-    color: (opacity = 1) => `rgba(78, 90, 148, ${opacity})`,
-    strokeWidth: 2,
-    barPercentage: 0.5,
-    useShadowColorFromDataset: false,
-    decimalPlaces: 0,
+  const dayLabel = (value: string, index: number) => {
+    const day = parseCalendarDate(value);
+    if (analyticsData?.period === "7d") return weekdays[day.getDay()];
+    if (analyticsData?.period === "14d") return String(day.getDate());
+    // Month: label the 1st and every 5th day so ~31 bars stay readable.
+    const date = day.getDate();
+    return index === 0 || date % 5 === 0 ? String(date) : "";
   };
 
-  // ====================== Data Processing Functions ======================
-  // weekly progress data for line chart
-  const prepareWeeklyProgressData = () => {
-    if (!analyticsData) return { labels: [], data: [] };
+  // ====================== Render Helpers ======================
+  const renderBody = () => {
+    if (!analyticsData) {
+      if (error) {
+        return (
+          <View style={styles.centerState}>
+            <Ionicons name="alert-circle-outline" size={50} color={COLORS.failed} />
+            <Text style={styles.errorText}>{error}</Text>
+            <Pressable
+              style={styles.retryButton}
+              onPress={() => fetchAnalyticsData(period)}
+            >
+              <Text style={styles.retryButtonText}>{t("analysis.retry")}</Text>
+            </Pressable>
+          </View>
+        );
+      }
+      return (
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>{t("analysis.loading")}</Text>
+        </View>
+      );
+    }
 
-    const dayLabels = Object.keys(analyticsData.goals.weekly_progress_overview);
-    const dayValues = Object.values(
-      analyticsData.goals.weekly_progress_overview
-    );
-
-    return {
-      labels: dayLabels.map((day) => day.substring(0, 3)),
-      data: dayValues,
-    };
-  };
-
-  // category usage data for pie chart
-  const getUsedCategoryEntries = () => {
-    if (!analyticsData) return [];
-
-    return Object.entries(analyticsData.templates.category_usage).filter(
-      ([category, count]) => category.toLowerCase() !== "all" && count > 0
-    );
-  };
-
-  const prepareCategoryData = () => {
-    const categories = getUsedCategoryEntries();
-
-    // Color palette for categories
-    const categoryColors = {
-      fitness: "#FF6384",
-      health: "#36A2EB",
-      education: "#FFCE56",
-      work: "#4BC0C0",
-      travel: "#9966FF",
-      personal_development: "#FF9F40",
-      other: "#C9CBCF",
-    };
-
-    return categories.map(([category, count]) => ({
-      name:
-        category.charAt(0).toUpperCase() + category.slice(1).replace("_", " "),
-      count,
-      color:
-        categoryColors[category as keyof typeof categoryColors] || "#C9CBCF",
-      legendFontColor: "#7F7F7F",
-      legendFontSize: 12,
-    }));
-  };
-
-  // task distribution data for custom bar chart
-  const prepareTaskDistributionData = () => {
-    if (!analyticsData) return { labels: [], data: [] };
-
-    const dates = Object.keys(analyticsData.tasks.weekly_distribution);
-    const counts = Object.values(analyticsData.tasks.weekly_distribution);
-
-    const dayLabels = dates.map((date) => {
-      // API dates are calendar dates, not UTC timestamps. Constructing the
-      // date from local components avoids shifting the weekday in UTC-offset
-      // time zones.
-      const [year, month, dayOfMonth] = date.split("-").map(Number);
-      const day = new Date(year, month - 1, dayOfMonth).getDay();
-      return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day];
-    });
-
-    return {
-      labels: dayLabels,
-      data: counts,
-    };
-  };
-
-  // line chart data from processed weekly progress
-  const getLineChartData = () => {
-    const { labels, data } = prepareWeeklyProgressData();
-
-    return {
-      labels,
-      datasets: [
-        {
-          data,
-          color: (opacity = 1) => `rgba(78, 90, 148, ${opacity})`,
-          strokeWidth: 2,
-        },
-      ],
-      legend: ["Weekly Goals Progress"],
-    };
-  };
-
-  // ====================== Loading & Error States ======================
-  if (isLoading && !refreshing) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4E5A94" />
-        <Text style={styles.loadingText}>Loading your analytics...</Text>
-      </View>
-    );
-  }
-
-  if (error && !analyticsData) {
-    return (
-      <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle-outline" size={50} color="#FF5733" />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={fetchAnalyticsData}
+      <>
+        {/* Success rate */}
+        <Animated.View
+          entering={FadeInDown.duration(MOTION.base.duration)}
+          style={styles.card}
         >
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
+          <View style={styles.heroTop}>
+            <View style={styles.heroRate}>
+              <Text style={styles.cardLabel}>{t("analysis.successRate")}</Text>
+              <Text style={styles.heroValue}>{formatRate(summary!.success_rate)}</Text>
+            </View>
+            {analyticsData.streak > 0 ? (
+              <View style={styles.streakChip}>
+                <Ionicons name="flame" size={16} color="#FF8A00" />
+                <Text style={styles.streakText}>
+                  {t("analysis.streak", { count: analyticsData.streak })}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.rateTrack}>
+            <View
+              style={[
+                styles.rateFill,
+                { width: `${summary!.success_rate ?? 0}%` },
+              ]}
+            />
+          </View>
+          <Text style={styles.heroDetail}>
+            {finished > 0
+              ? t("analysis.rateDetail", { success: summary!.success, finished })
+              : t("analysis.noFinished")}
+          </Text>
+          {deltaText ? (
+            <Text style={[styles.deltaText, { color: deltaText.color }]}>
+              {deltaText.text}
+            </Text>
+          ) : null}
+        </Animated.View>
+
+        {/* Counts */}
+        <Animated.View
+          entering={FadeInDown.duration(MOTION.base.duration).delay(60)}
+          style={styles.statRow}
+        >
+          {[
+            { label: t("analysis.success"), value: summary!.success, icon: "checkmark" as const, color: COLORS.success },
+            { label: t("analysis.failed"), value: summary!.failed, icon: "close" as const, color: COLORS.failed },
+            { label: t("analysis.leftToday"), value: summary!.pending_today, icon: "time-outline" as const, color: COLORS.primary },
+          ].map((stat) => (
+            <View key={stat.label} style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: stat.color }]}>
+                <Ionicons name={stat.icon} size={14} color="#fff" />
+              </View>
+              <Text style={styles.statValue}>{stat.value}</Text>
+              <Text style={styles.statLabel} numberOfLines={1}>
+                {stat.label}
+              </Text>
+            </View>
+          ))}
+        </Animated.View>
+
+        {/* Daily results */}
+        <Animated.View
+          entering={FadeInDown.duration(MOTION.base.duration).delay(120)}
+          style={styles.card}
+        >
+          <Text style={styles.cardTitle}>{t("analysis.daily")}</Text>
+          {hasDailyTasks ? (
+            <>
+              <View style={styles.dailyChart}>
+                {analyticsData.daily.map((day, index) => {
+                  const scale = DAILY_CHART_HEIGHT / dailyMax;
+                  return (
+                    <View key={day.date} style={styles.dailyColumn}>
+                      <View style={styles.dailyBarArea}>
+                        {day.success + day.failed + day.pending > 0 ? (
+                          <View style={styles.dailyBar}>
+                            <View style={{ height: day.pending * scale, backgroundColor: COLORS.pending }} />
+                            <View style={{ height: day.failed * scale, backgroundColor: COLORS.failed }} />
+                            <View style={{ height: day.success * scale, backgroundColor: COLORS.success }} />
+                          </View>
+                        ) : (
+                          // Keeps empty days visible on the axis.
+                          <View style={[styles.dailyBar, styles.dailyBarEmpty]} />
+                        )}
+                      </View>
+                      <Text style={styles.dailyLabel} numberOfLines={1}>
+                        {dayLabel(day.date, index)}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+              <View style={styles.legend}>
+                {[
+                  { label: t("analysis.success"), color: COLORS.success },
+                  { label: t("analysis.failed"), color: COLORS.failed },
+                  { label: t("analysis.leftToday"), color: COLORS.pending },
+                ].map((item) => (
+                  <View key={item.label} style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                    <Text style={styles.legendText}>{item.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="calendar-outline" size={36} color="#CCC" />
+              <Text style={styles.emptyText}>{t("analysis.noTasks")}</Text>
+            </View>
+          )}
+        </Animated.View>
+
+        {/* Per-goal breakdown */}
+        <Animated.View
+          entering={FadeInDown.duration(MOTION.base.duration).delay(180)}
+          style={styles.card}
+        >
+          <Text style={styles.cardTitle}>{t("analysis.goals")}</Text>
+          {analyticsData.goals.length > 0 ? (
+            <View style={styles.goalList}>
+              {analyticsData.goals.map((goal) => {
+                const goalFinished = goal.success + goal.failed;
+                return (
+                  <View key={goal.id} style={styles.goalItem}>
+                    <View style={styles.goalHeader}>
+                      <Text style={styles.goalTitle} numberOfLines={1}>
+                        {goal.title}
+                      </Text>
+                      <Text style={styles.goalRate}>{formatRate(goal.success_rate)}</Text>
+                    </View>
+                    <View style={styles.rateTrack}>
+                      <View
+                        style={[
+                          styles.rateFill,
+                          { width: `${goal.success_rate ?? 0}%` },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.goalDetail}>
+                      {`${goal.success}/${goalFinished}`}
+                      {goal.pending > 0
+                        ? ` · ${t("analysis.left", { count: goal.pending })}`
+                        : ""}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="flag-outline" size={36} color="#CCC" />
+              <Text style={styles.emptyText}>{t("analysis.noGoals")}</Text>
+            </View>
+          )}
+        </Animated.View>
+      </>
     );
-  }
+  };
 
   // ====================== Render UI ======================
   return (
     <View style={styles.container}>
-      {/* Header */}
       <Header containerStyle={{ minHeight: 220, gap: 0 }}>
-        <Animated.View style={[headerAnimatedStyle, styles.titleContainer]}>
-          <Text style={styles.title}>Analysis</Text>
-          <Text style={styles.subtitle}>
-            Track your progress and achievement
-          </Text>
+        <Animated.View
+          entering={FadeIn.duration(MOTION.base.duration)}
+          style={styles.titleContainer}
+        >
+          <Text style={styles.title}>{t("analysis.title")}</Text>
+          <Text style={styles.subtitle}>{t("analysis.subtitle")}</Text>
         </Animated.View>
       </Header>
 
@@ -339,319 +369,34 @@ export default function Analysis() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Goals Section */}
-        <Animated.View entering={FadeInDown.delay(300).duration(500)}>
-          <Animated.View style={[styles.card, cardsAnimatedStyle1]}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="flag" size={24} color="#4E5A94" />
-              <Text style={styles.cardTitle}>Goals</Text>
-            </View>
-
-            <View style={styles.statRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {analyticsData?.goals.completed || 0}
-                </Text>
-                <Text style={styles.statLabel}>Completed</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {analyticsData?.goals.pending || 0}
-                </Text>
-                <Text style={styles.statLabel}>In Progress</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {analyticsData?.goals.total || 0}
-                </Text>
-                <Text style={styles.statLabel}>Total</Text>
-              </View>
-            </View>
-
-            <View style={styles.detailRow}>
-              <View style={styles.detailItem}>
-                <View style={[styles.badge, styles.successBadge]}>
-                  <Ionicons name="checkmark" size={16} color="#fff" />
-                </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Success</Text>
-                  <Text style={styles.detailValue}>
-                    {analyticsData?.goals.success.count || 0}
+        {/* Period switch */}
+        <View style={styles.periodRow}>
+          <View style={styles.periodSwitch}>
+            {PERIODS.map((option) => {
+              const selected = option.value === period;
+              return (
+                <Pressable
+                  key={option.value}
+                  style={[styles.periodOption, selected && styles.periodOptionSelected]}
+                  onPress={() => setPeriod(option.value)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                >
+                  <Text style={[styles.periodText, selected && styles.periodTextSelected]}>
+                    {t(option.labelKey)}
                   </Text>
-                </View>
-              </View>
-              <View style={styles.detailItem}>
-                <View style={[styles.badge, styles.failBadge]}>
-                  <Ionicons name="close" size={16} color="#fff" />
-                </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Failed</Text>
-                  <Text style={styles.detailValue}>
-                    {analyticsData?.goals.failed.count || 0}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.rateContainer}>
-              <Text style={styles.rateLabel}>Success Rate</Text>
-              <View style={styles.progressBarContainer}>
-                <View
-                  style={[
-                    styles.progressBar,
-                    { width: `${analyticsData?.goals.success_rate || 0}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.rateValue}>
-                {analyticsData?.goals.success_rate || 0}%
-              </Text>
-            </View>
-          </Animated.View>
-        </Animated.View>
-
-        {/* Tasks Section */}
-        <Animated.View entering={FadeInDown.delay(500).duration(500)}>
-          <Animated.View style={[styles.card, cardsAnimatedStyle2]}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="list" size={24} color="#4E5A94" />
-              <Text style={styles.cardTitle}>Tasks</Text>
-            </View>
-
-            <View style={styles.statRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {analyticsData?.tasks.completed || 0}
-                </Text>
-                <Text style={styles.statLabel}>Completed</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {analyticsData?.tasks.pending || 0}
-                </Text>
-                <Text style={styles.statLabel}>In Progress</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {analyticsData?.tasks.total || 0}
-                </Text>
-                <Text style={styles.statLabel}>Total</Text>
-              </View>
-            </View>
-
-            <View style={styles.detailRow}>
-              <View style={styles.detailItem}>
-                <View style={[styles.badge, styles.successBadge]}>
-                  <Ionicons name="checkmark" size={16} color="#fff" />
-                </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Success</Text>
-                  <Text style={styles.detailValue}>
-                    {analyticsData?.tasks.success.count || 0}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.detailItem}>
-                <View style={[styles.badge, styles.failBadge]}>
-                  <Ionicons name="close" size={16} color="#fff" />
-                </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Failed</Text>
-                  <Text style={styles.detailValue}>
-                    {analyticsData?.tasks.failed.count || 0}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.rateContainer}>
-              <Text style={styles.rateLabel}>Success Rate</Text>
-              <View style={styles.progressBarContainer}>
-                <View
-                  style={[
-                    styles.progressBar,
-                    { width: `${analyticsData?.tasks.success_rate || 0}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.rateValue}>
-                {analyticsData?.tasks.success_rate || 0}%
-              </Text>
-            </View>
-          </Animated.View>
-        </Animated.View>
-
-        {/* Templates Section */}
-        <Animated.View entering={FadeInDown.delay(700).duration(500)}>
-          <Animated.View style={[styles.card, cardsAnimatedStyle3]}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="document-text" size={24} color="#4E5A94" />
-              <Text style={styles.cardTitle}>Templates</Text>
-            </View>
-
-            <View style={styles.statRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {analyticsData?.templates.total || 0}
-                </Text>
-                <Text style={styles.statLabel}>Total Templates</Text>
-              </View>
-              {analyticsData && analyticsData.templates.total > 0 ? (
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>
-                    {getUsedCategoryEntries().length}
-                  </Text>
-                  <Text style={styles.statLabel}>Categories</Text>
-                </View>
-              ) : (
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>0</Text>
-                  <Text style={styles.statLabel}>Categories</Text>
-                </View>
-              )}
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {getUsedCategoryEntries().reduce(
-                    (mostUsed, [, count]) => Math.max(mostUsed, count),
-                    0
-                  )}
-                </Text>
-                <Text style={styles.statLabel}>Most Used</Text>
-              </View>
-            </View>
-
-            {/* Popular Categories Section */}
-            {getUsedCategoryEntries().length > 0 && (
-              <View style={styles.categoriesContainer}>
-                <Text style={styles.categoriesTitle}>Popular Categories</Text>
-                <View style={styles.categoriesList}>
-                  {getUsedCategoryEntries()
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 3)
-                    .map(([category, count], index) => (
-                      <View key={index} style={styles.categoryItem}>
-                        <Text style={styles.categoryName}>
-                          {category.charAt(0).toUpperCase() +
-                            category.slice(1).replace("_", " ")}
-                        </Text>
-                        <View style={styles.categoryBar}>
-                          <View
-                            style={[
-                              styles.categoryBarFill,
-                              {
-                                width: `${
-                                  (count / (analyticsData?.templates.total ?? 0)) *
-                                  100
-                                }%`,
-                              },
-                            ]}
-                          />
-                        </View>
-                        <Text style={styles.categoryCount}>{count}</Text>
-                      </View>
-                    ))}
-                </View>
-              </View>
-            )}
-          </Animated.View>
-        </Animated.View>
-
-        {/* Charts Section */}
-        <Animated.View style={[styles.chartsContainer, chartAnimatedStyle]}>
-          <Text style={styles.sectionTitle}>Detailed Analytics</Text>
-
-          {/* Weekly Goals Progress Chart */}
-          <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Weekly Goals Progress</Text>
-            {analyticsData && analyticsData.goals.total > 0 ? (
-              <LineChart
-                data={getLineChartData()}
-                width={350}
-                height={220}
-                chartConfig={chartConfig}
-                bezier
-                style={styles.chart}
-              />
-            ) : (
-              <View style={styles.emptyChartContainer}>
-                <Ionicons name="bar-chart-outline" size={50} color="#DDD" />
-                <Text style={styles.emptyChartText}>
-                  No goal data available
-                </Text>
-              </View>
-            )}
+                </Pressable>
+              );
+            })}
           </View>
-
-          {/* Tasks Weekly Distribution - Custom View */}
-          <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>
-              Tasks Distribution (Last 7 Days)
-            </Text>
-            {analyticsData && analyticsData.tasks.total > 0 ? (
-              <View style={styles.tasksDistributionContainer}>
-                {(() => {
-                  const { labels, data } = prepareTaskDistributionData();
-                  return labels.map((dayLabel, index) => {
-                    const count = data[index];
-                    const maxCount = Math.max(...data);
-                    const heightPercentage =
-                      maxCount > 0 ? (count / maxCount) * 100 : 0;
-
-                    return (
-                      <View key={index} style={styles.taskDistributionItem}>
-                        <View style={styles.taskBar}>
-                          <View
-                            style={[
-                              styles.taskBarFill,
-                              {
-                                height: `${heightPercentage}%`,
-                                backgroundColor:
-                                  index % 2 === 0 ? "#4E5A94" : "#8B98D5",
-                              },
-                            ]}
-                          />
-                        </View>
-                        <Text style={styles.taskBarLabel}>{dayLabel}</Text>
-                        <Text style={styles.taskBarValue}>{count}</Text>
-                      </View>
-                    );
-                  });
-                })()}
-              </View>
-            ) : (
-              <View style={styles.emptyChartContainer}>
-                <Ionicons name="calendar-outline" size={50} color="#DDD" />
-                <Text style={styles.emptyChartText}>
-                  No task data available
-                </Text>
-              </View>
-            )}
+          <View style={styles.periodSpinner}>
+            {isLoading && !!analyticsData && !refreshing ? (
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            ) : null}
           </View>
+        </View>
 
-          {/* Template Categories Chart */}
-          <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Template Categories</Text>
-            {getUsedCategoryEntries().length > 0 ? (
-              <PieChart
-                data={prepareCategoryData()}
-                width={350}
-                height={200}
-                chartConfig={chartConfig}
-                accessor="count"
-                backgroundColor="transparent"
-                paddingLeft="15"
-                absolute
-              />
-            ) : (
-              <View style={styles.emptyChartContainer}>
-                <Ionicons name="pie-chart-outline" size={50} color="#DDD" />
-                <Text style={styles.emptyChartText}>
-                  No template data available
-                </Text>
-              </View>
-            )}
-          </View>
-        </Animated.View>
+        {renderBody()}
       </ScrollView>
     </View>
   );
@@ -668,26 +413,75 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    paddingHorizontal: 16,
   },
 
-  // Loading & Error Styles
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
+  // Header Styles
+  titleContainer: {
+    alignItems: "flex-start",
+    marginTop: 20,
+  },
+  title: {
+    color: "#fff",
+    fontSize: 40,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  subtitle: {
+    color: "#CCCCCC",
+    fontSize: 16,
+  },
+
+  // Period Switch
+  periodRow: {
+    flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8F8F8",
+    marginTop: 16,
+  },
+  periodSwitch: {
+    flex: 1,
+    flexDirection: "row",
+    backgroundColor: "#ECEDF3",
+    borderRadius: 12,
+    padding: 4,
+  },
+  periodOption: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 9,
+    alignItems: "center",
+  },
+  periodOptionSelected: {
+    backgroundColor: "#FFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  periodText: {
+    fontSize: 14,
+    color: "#777",
+    fontWeight: "500",
+  },
+  periodTextSelected: {
+    color: "#16171F",
+    fontWeight: "700",
+  },
+  periodSpinner: {
+    width: 28,
+    alignItems: "flex-end",
+  },
+
+  // Loading & Error States
+  centerState: {
+    alignItems: "center",
+    paddingVertical: 60,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
     color: "#4E5A94",
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F8F8F8",
-    padding: 20,
   },
   errorText: {
     marginTop: 16,
@@ -708,27 +502,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Header Styles
-  titleContainer: {
-    alignItems: "flex-start",
-    marginTop: 20,
-  },
-  title: {
-    color: "#fff",
-    fontSize: 40,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  subtitle: {
-    color: "#CCCCCC",
-    fontSize: 16,
-  },
-
   // Card Styles
   card: {
     backgroundColor: "#FFF",
     borderRadius: 16,
-    marginHorizontal: 16,
     marginTop: 16,
     padding: 16,
     shadowColor: "#000",
@@ -737,235 +514,197 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 16,
   },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginLeft: 8,
-    color: "#333",
+  cardLabel: {
+    fontSize: 14,
+    color: "#777",
   },
 
-  // Stats Styles
-  statRow: {
+  // Success Rate Card
+  heroTop: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 16,
+    alignItems: "flex-start",
+    marginBottom: 12,
   },
-  statItem: {
+  heroRate: {
     flex: 1,
+  },
+  heroValue: {
+    fontSize: 44,
+    fontWeight: "bold",
+    color: "#16171F",
+    marginTop: 2,
+  },
+  heroDetail: {
+    fontSize: 14,
+    color: "#555",
+    marginTop: 10,
+  },
+  deltaText: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  streakChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFF3E0",
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  streakText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#B45F00",
+  },
+  rateTrack: {
+    height: 10,
+    backgroundColor: "#F0F0F0",
+    borderRadius: 5,
+    overflow: "hidden",
+  },
+  rateFill: {
+    height: "100%",
+    backgroundColor: "#4E5A94",
+    borderRadius: 5,
+  },
+
+  // Count Cards
+  statRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 16,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    padding: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
     alignItems: "center",
   },
   statValue: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#16171F",
-  },
-  statLabel: {
-    fontSize: 14,
-    color: "#777",
-    marginTop: 4,
-  },
-
-  // Detail Styles
-  detailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  detailItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  badge: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-  },
-  successBadge: {
-    backgroundColor: "#4CAF50",
-  },
-  failBadge: {
-    backgroundColor: "#F44336",
-  },
-  detailContent: {
-    flex: 1,
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: "#777",
-  },
-  detailValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-  },
-
-  // Progress Bar Styles
-  rateContainer: {
     marginTop: 8,
   },
-  rateLabel: {
-    fontSize: 14,
+  statLabel: {
+    fontSize: 13,
     color: "#777",
-    marginBottom: 6,
-  },
-  progressBarContainer: {
-    height: 10,
-    backgroundColor: "#F0F0F0",
-    borderRadius: 5,
-    marginBottom: 6,
-    overflow: "hidden",
-  },
-  progressBar: {
-    height: "100%",
-    backgroundColor: "#4E5A94",
-    borderRadius: 5,
-  },
-  rateValue: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#333",
-    textAlign: "right",
+    marginTop: 2,
   },
 
-  // Categories Styles
-  categoriesContainer: {
-    marginTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
-    paddingTop: 16,
+  // Daily Chart
+  dailyChart: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 3,
   },
-  categoriesTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#444",
-    marginBottom: 12,
+  dailyColumn: {
+    flex: 1,
+    alignItems: "center",
   },
-  categoriesList: {
-    gap: 8,
+  dailyBarArea: {
+    height: DAILY_CHART_HEIGHT,
+    width: "100%",
+    justifyContent: "flex-end",
+    alignItems: "center",
   },
-  categoryItem: {
+  dailyBar: {
+    width: "100%",
+    maxWidth: 28,
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  dailyBarEmpty: {
+    height: 3,
+    backgroundColor: "#ECEDF3",
+  },
+  dailyLabel: {
+    marginTop: 6,
+    fontSize: 11,
+    color: "#777",
+  },
+  legend: {
+    flexDirection: "row",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    gap: 16,
+    marginTop: 14,
+  },
+  legendItem: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 6,
   },
-  categoryName: {
-    fontSize: 14,
-    color: "#444",
-    width: 100,
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
-  categoryBar: {
-    flex: 1,
-    height: 8,
-    backgroundColor: "#F0F0F0",
-    borderRadius: 4,
-    marginHorizontal: 10,
-    overflow: "hidden",
-  },
-  categoryBarFill: {
-    height: "100%",
-    backgroundColor: "#4E5A94",
-    borderRadius: 4,
-  },
-  categoryCount: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#333",
-    width: 30,
-    textAlign: "right",
+  legendText: {
+    fontSize: 12,
+    color: "#555",
   },
 
-  // Charts Styles
-  chartsContainer: {
-    marginTop: 24,
-    marginHorizontal: 16,
+  // Goal Breakdown
+  goalList: {
+    gap: 16,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 16,
+  goalItem: {
+    gap: 6,
   },
-  chartCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+  goalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
+    gap: 12,
   },
-  chartTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
+  goalTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "600",
     color: "#333",
-    marginBottom: 16,
-    alignSelf: "flex-start",
   },
-  chart: {
-    borderRadius: 16,
-    marginVertical: 8,
+  goalRate: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#16171F",
   },
-  emptyChartContainer: {
-    height: 200,
-    width: "100%",
-    justifyContent: "center",
+  goalDetail: {
+    fontSize: 12,
+    color: "#777",
+  },
+
+  // Empty States
+  emptyState: {
     alignItems: "center",
+    paddingVertical: 24,
     backgroundColor: "#F8F8F8",
     borderRadius: 8,
   },
-  emptyChartText: {
-    marginTop: 10,
+  emptyText: {
+    marginTop: 8,
     fontSize: 14,
     color: "#888",
-  },
-
-  // Custom Task Distribution Chart Styles
-  tasksDistributionContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "flex-end",
-    width: "100%",
-    height: 200,
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  taskDistributionItem: {
-    alignItems: "center",
-    width: 40,
-  },
-  taskBar: {
-    width: 30,
-    height: 150,
-    backgroundColor: "#F0F0F0",
-    borderRadius: 8,
-    overflow: "hidden",
-    justifyContent: "flex-end",
-  },
-  taskBarFill: {
-    width: "100%",
-    borderRadius: 8,
-  },
-  taskBarLabel: {
-    marginTop: 8,
-    color: "#555",
-    fontSize: 12,
-  },
-  taskBarValue: {
-    color: "#333",
-    fontWeight: "bold",
-    fontSize: 12,
-    marginTop: 4,
   },
 });

@@ -15,6 +15,8 @@ import Animated, {
   FadeIn,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
+import { useTranslation } from "@/i18n";
+import { categoryLabel, formatDuration } from "@/i18n/format";
 
 // ====================== Type Definitions ======================
 type Task = {
@@ -57,25 +59,12 @@ type TemplateCardProps = {
   onToggleFavorite: () => void;
 };
 
-// ====================== Helper Functions ======================
-const formatDuration = (days: number): string => {
-  if (days >= 365) return "1 Year";
-  if (days >= 30) {
-    const months = Math.floor(days / 30);
-    if (months === 1) {
-      return "1 Month";
-    } else {
-      return `${months} Months`;
-    }
-  }
-  return `${days} Days`;
-};
-
 export default function TemplateCard({
   template,
   onSelect,
   onToggleFavorite,
 }: TemplateCardProps) {
+  const { t } = useTranslation();
   const scale = useSharedValue(1);
   const favoriteScale = useSharedValue(1);
 
@@ -134,7 +123,13 @@ export default function TemplateCard({
         <View style={styles.card}>
           {/* Image */}
           <View style={styles.imageContainer}>
-            <Image source={{ uri: template.image_url }} style={styles.image} />
+            {!!template.image_url ? (
+              <Image source={{ uri: template.image_url }} style={styles.image} />
+            ) : (
+              <View style={[styles.image, styles.imagePlaceholder]}>
+                <Ionicons name="image-outline" size={40} color="#8B98D5" />
+              </View>
+            )}
             <LinearGradient
               colors={["transparent", "rgba(0,0,0,0.7)"]}
               style={styles.gradient}
@@ -150,8 +145,7 @@ export default function TemplateCard({
                   style={styles.categoryIcon}
                 />
                 <Text style={styles.categoryText}>
-                  {template.category.charAt(0).toUpperCase() +
-                    template.category.slice(1).replace("_", " ")}
+                  {categoryLabel(template.category)}
                 </Text>
               </View>
 
@@ -160,8 +154,7 @@ export default function TemplateCard({
                 <View style={styles.goalsBadge}>
                   <Ionicons name="flag-outline" size={12} color="#fff" />
                   <Text style={styles.goalsText}>
-                    {template.goals.length}{" "}
-                    {template.goals.length === 1 ? "Goal" : "Goals"}
+                    {t("template.goals", { count: template.goals.length })}
                   </Text>
                 </View>
               )}
@@ -239,6 +232,11 @@ const styles = StyleSheet.create({
     height: "100%",
     position: "relative",
     width: "100%",
+  },
+  imagePlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E8ECF8",
   },
   image: {
     width: "100%",

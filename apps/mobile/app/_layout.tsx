@@ -7,6 +7,7 @@ import { useTaskReminderSync } from "@/hooks/useTaskReminderSync";
 import * as Font from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { View, Text, ActivityIndicator } from "react-native";
+import i18n, { loadLanguagePreference } from "@/i18n";
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -24,9 +25,13 @@ export default function RootLayout() {
   useEffect(() => {
     async function loadFonts() {
       try {
-        await Font.loadAsync({
-          InriaSerif_400Regular: require("../assets/fonts/InriaSerif-Regular.ttf"),
-        });
+        // The saved language is applied before the first screen renders.
+        await Promise.all([
+          Font.loadAsync({
+            InriaSerif_400Regular: require("../assets/fonts/InriaSerif-Regular.ttf"),
+          }),
+          loadLanguagePreference(),
+        ]);
         setFontsLoaded(true);
       } catch (e) {
         console.warn("Error loading fonts:", e);
@@ -60,7 +65,7 @@ export default function RootLayout() {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={{ marginTop: 10 }}>Loading fonts...</Text>
+        <Text style={{ marginTop: 10 }}>{i18n.t("common.loading")}</Text>
       </View>
     );
   }

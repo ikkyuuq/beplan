@@ -13,6 +13,7 @@ import {
   Platform,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useTranslation } from "@/i18n";
 
 // ====================== Constants ======================
 const POPULAR_OCCUPATIONS = [
@@ -55,6 +56,11 @@ export default function OccupationSelector({
   isSaving,
   onCancel,
 }: OccupationSelectorProps) {
+  const { t } = useTranslation();
+  // Presets are saved in English; only the label is translated.
+  const label = (occupation: string) =>
+    t(`occupation.options.${occupation}` as "occupation.options.None", { defaultValue: occupation });
+
   // ====================== State Management ======================
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedOccupation, setSelectedOccupation] = useState(value);
@@ -119,7 +125,7 @@ export default function OccupationSelector({
       ]}
       onPress={() => handleSelect(item)}
     >
-      <Text style={styles.occupationText}>{item}</Text>
+      <Text style={styles.occupationText}>{label(item)}</Text>
       {selectedOccupation === item && (
         <Feather name="check" size={18} color="#4E5A94" />
       )}
@@ -132,7 +138,7 @@ export default function OccupationSelector({
       {/* Current Selection Display */}
       <TouchableOpacity style={styles.selector} onPress={handleOpenSelector}>
         <Text style={styles.selectorText}>
-          {value || "Select your occupation"}
+          {value ? label(value) : t("occupation.placeholder")}
         </Text>
         <Feather name="chevron-down" size={18} color="#555" />
       </TouchableOpacity>
@@ -153,7 +159,7 @@ export default function OccupationSelector({
           >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Occupation</Text>
+              <Text style={styles.modalTitle}>{t("occupation.title")}</Text>
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => setModalVisible(false)}
@@ -172,12 +178,12 @@ export default function OccupationSelector({
 
             {showCustomInput && (
               <View style={styles.customInputContainer}>
-                <Text style={styles.customInputLabel}>Custom Occupation:</Text>
+                <Text style={styles.customInputLabel}>{t("occupation.customLabel")}</Text>
                 <TextInput
                   style={styles.customInput}
                   value={customOccupation}
                   onChangeText={setCustomOccupation}
-                  placeholder="Enter your occupation"
+                  placeholder={t("occupation.customPlaceholder")}
                   placeholderTextColor="#999"
                   maxLength={100}
                   autoFocus
@@ -192,7 +198,7 @@ export default function OccupationSelector({
                 style={styles.cancelButton}
                 onPress={() => setModalVisible(false)}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -200,7 +206,7 @@ export default function OccupationSelector({
                 onPress={handleConfirm}
                 disabled={showCustomInput && !customOccupation.trim()}
               >
-                <Text style={styles.confirmButtonText}>Confirm</Text>
+                <Text style={styles.confirmButtonText}>{t("common.confirm")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -218,7 +224,7 @@ export default function OccupationSelector({
           {isSaving ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>Save</Text>
+            <Text style={styles.saveButtonText}>{t("common.save")}</Text>
           )}
         </TouchableOpacity>
 
@@ -227,7 +233,7 @@ export default function OccupationSelector({
           onPress={onCancel}
           disabled={isSaving}
         >
-          <Text style={styles.cancelActionButtonText}>Cancel</Text>
+          <Text style={styles.cancelActionButtonText}>{t("common.cancel")}</Text>
         </TouchableOpacity>
       </View>
     </View>

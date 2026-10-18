@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { endOfMonth, format, parseISO } from "date-fns";
 import Modal from "react-native-modal";
+import { dateLocale, useTranslation } from "@/i18n";
 import Animated, {
   useSharedValue,
   withSpring,
@@ -44,6 +45,8 @@ export default function CalendarPicker({
   startDate,
   dueDate,
 }: CalendarPickerProps) {
+  const { t } = useTranslation();
+
   // ====================== Constants ======================
   // Local calendar date. (toISOString() would convert to UTC and give
   // yesterday's date in timezones ahead of UTC, e.g. Thailand.)
@@ -158,7 +161,7 @@ export default function CalendarPicker({
           <Pressable
             onPress={() => setPickerYear((y) => y - 1)}
             hitSlop={10}
-            accessibilityLabel="Previous year"
+            accessibilityLabel={t("calendar.previousYear")}
           >
             <Text style={styles.yearArrow}>‹</Text>
           </Pressable>
@@ -166,7 +169,7 @@ export default function CalendarPicker({
           <Pressable
             onPress={() => setPickerYear((y) => y + 1)}
             hitSlop={10}
-            accessibilityLabel="Next year"
+            accessibilityLabel={t("calendar.nextYear")}
           >
             <Text style={styles.yearArrow}>›</Text>
           </Pressable>
@@ -191,14 +194,14 @@ export default function CalendarPicker({
                     !selectable && styles.monthCellTextDisabled,
                   ]}
                 >
-                  {format(new Date(pickerYear, monthIndex, 1), "MMM")}
+                  {format(new Date(pickerYear, monthIndex, 1), "MMM", { locale: dateLocale() })}
                 </Text>
               </Pressable>
             );
           })}
         </View>
         <Pressable onPress={() => setShowMonthPicker(false)} style={styles.backToCalendar}>
-          <Text style={styles.backToCalendarText}>Back to calendar</Text>
+          <Text style={styles.backToCalendarText}>{t("calendar.backToCalendar")}</Text>
         </Pressable>
       </View>
     );
@@ -263,10 +266,10 @@ export default function CalendarPicker({
                   onPress={openMonthPicker}
                   hitSlop={8}
                   accessibilityRole="button"
-                  accessibilityLabel="Choose month and year"
+                  accessibilityLabel={t("calendar.chooseMonth")}
                 >
                   <Text style={styles.calendarHeader}>
-                    {format(new Date(+month), "EEE MMM d")} ▾
+                    {format(new Date(+month), "MMMM yyyy", { locale: dateLocale() })} ▾
                   </Text>
                 </Pressable>
               )}
@@ -277,14 +280,14 @@ export default function CalendarPicker({
           {/* Total Days Display */}
           {!singleSelect && (
             <Animated.Text style={styles.selectedDatesText}>
-              Total: {totalDays} days
+              {t("calendar.total", { count: totalDays })}
             </Animated.Text>
           )}
 
           {/* Action Buttons */}
           <View style={styles.buttonContainer}>
             <Pressable style={styles.cancelButton} onPress={onClose}>
-              <Text style={styles.buttonText}>Cancel</Text>
+              <Text style={styles.buttonText}>{t("common.cancel")}</Text>
             </Pressable>
             <Pressable
               style={styles.confirmButton}
@@ -293,7 +296,7 @@ export default function CalendarPicker({
                 onClose();
               }}
             >
-              <Text style={styles.buttonText}>Confirm</Text>
+              <Text style={styles.buttonText}>{t("common.confirm")}</Text>
             </Pressable>
           </View>
         </Animated.View>
