@@ -15,7 +15,7 @@ import { useTabBarSpace } from "@/constants/layout";
 import { useState, useEffect, useCallback } from "react";
 import TemplateCard from "@/components/TemplateCard";
 import TemplateModal from "@/components/TemplateModal";
-import Header from "@/components/Header";
+import Header, { HEADER_RADIUS } from "@/components/Header";
 import { useUser } from "@clerk/expo";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
@@ -280,12 +280,7 @@ export default function Community() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <Header>
-        {/* Title */}
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>{t("community.title")}</Text>
-        </View>
-
+      <Header title={t("community.title")}>
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <Ionicons
@@ -451,21 +446,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Title
-  titleContainer: {
-    alignItems: "flex-start",
-    borderRadius: 25,
-    marginLeft: 20,
-    padding: 5,
-  },
-  title: {
-    color: "#fff",
-    fontSize: 40,
-    fontWeight: "bold",
-    marginBottom: 10,
-    marginLeft: -20,
-  },
-
   // Search
   searchContainer: {
     flexDirection: "row",
@@ -485,10 +465,12 @@ const styles = StyleSheet.create({
   // Template/Card
   templateContainer: {
     flex: 1,
+    marginTop: -HEADER_RADIUS,
     backgroundColor: "#F8F8F8",
   },
   templateList: {
     padding: 16,
+    paddingTop: HEADER_RADIUS + 16,
     minHeight: "100%",
   },
   templateRow: {
@@ -498,13 +480,10 @@ const styles = StyleSheet.create({
   // Filter
   filterContainerWrapper: {
     width: "100%",
-    marginTop: 10,
-    marginBottom: 5,
   },
   filterContainer: {
     flexDirection: "row",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 2,
     gap: 8,
   },
   filterButton: {
@@ -534,6 +513,7 @@ const styles = StyleSheet.create({
   // Loading State
   loadingContainer: {
     flex: 1,
+    paddingTop: HEADER_RADIUS,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#F8F8F8",

@@ -22,7 +22,7 @@ import Animated, {
   withDelay,
   Easing,
 } from "react-native-reanimated";
-import Header from "@/components/Header";
+import Header, { HEADER_RADIUS } from "@/components/Header";
 import { useTabBarSpace } from "@/constants/layout";
 import Slider from "@/components/Slider";
 import { LinearGradient } from "expo-linear-gradient";
@@ -361,13 +361,17 @@ export default function CreateScreen() {
       style={styles.container}
     >
       {/* Header Section */}
-      <Header>
-        <Animated.View
-          style={[styles.headerTextContainer, headerAnimatedStyle]}
-        >
-          <Text style={styles.headerSubtitle}>{t("create.subtitle")}</Text>
-          <Text style={styles.headerTitle}>{t("create.title")}</Text>
-        </Animated.View>
+      <Header
+        title={
+          <Animated.Text
+            style={[styles.headerTitle, headerAnimatedStyle]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {t("create.title")}
+          </Animated.Text>
+        }
+      >
 
         {/* Search Bar */}
         <Animated.View
@@ -822,9 +826,10 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    marginTop: -HEADER_RADIUS,
   },
   scrollContent: {
-    paddingTop: 10,
+    paddingTop: HEADER_RADIUS + 10,
   },
   overlay: {
     position: "absolute",
@@ -839,19 +844,10 @@ const styles = StyleSheet.create({
   },
 
   // Header
-  headerTextContainer: {
-    alignItems: "flex-start",
-    marginBottom: 16,
-  },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: "bold",
     color: "white",
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: "#CCC",
-    marginBottom: 4,
   },
 
   // Search
@@ -958,12 +954,11 @@ const styles = StyleSheet.create({
     maxWidth: 360,
     alignItems: "center",
     borderRadius: 30,
-    marginTop: 6,
   },
   buttonGradient: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 14,
+    paddingVertical: 11,
     paddingHorizontal: 24,
     borderRadius: 30,
   },

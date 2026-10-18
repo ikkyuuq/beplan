@@ -11,7 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useFocusEffect } from "expo-router";
-import Header from "@/components/Header";
+import Header, { HEADER_RADIUS } from "@/components/Header";
 import { useTabBarSpace } from "@/constants/layout";
 import { MOTION } from "@/constants/motion";
 import { API_BASE_URL } from "@/constants/api";
@@ -351,12 +351,11 @@ export default function Analysis() {
   // ====================== Render UI ======================
   return (
     <View style={styles.container}>
-      <Header containerStyle={{ minHeight: 220, gap: 0 }}>
+      <Header title={t("analysis.title")}>
         <Animated.View
           entering={FadeIn.duration(MOTION.base.duration)}
           style={styles.titleContainer}
         >
-          <Text style={styles.title}>{t("analysis.title")}</Text>
           <Text style={styles.subtitle}>{t("analysis.subtitle")}</Text>
         </Animated.View>
       </Header>
@@ -411,21 +410,16 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    marginTop: -HEADER_RADIUS,
   },
   scrollContent: {
+    paddingTop: HEADER_RADIUS,
     paddingHorizontal: 16,
   },
 
   // Header Styles
   titleContainer: {
     alignItems: "flex-start",
-    marginTop: 20,
-  },
-  title: {
-    color: "#fff",
-    fontSize: 40,
-    fontWeight: "bold",
-    marginBottom: 10,
   },
   subtitle: {
     color: "#CCCCCC",

@@ -28,7 +28,7 @@ import Animated from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import CollapseItem from "@/components/CollapseItem";
 import Collapsable from "@/components/Collapsable";
-import Header from "@/components/Header";
+import Header, { HEADER_RADIUS } from "@/components/Header";
 import { useUser } from "@clerk/expo";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
@@ -365,21 +365,14 @@ export default function Schedule() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Header>
-        <View
-          style={{ gap: 10, justifyContent: "center", alignItems: "center" }}
-        >
-          <Text style={{ color: "#fff", fontSize: 20, fontStyle: "italic" }}>
-            {t("home.motto")}
-          </Text>
-          {/* Month of the visible week, with previous/next week buttons */}
+      <Header
+        title={
+          // Month of the visible week, with previous/next week buttons
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              alignSelf: "stretch",
-              marginBottom: 12,
             }}
           >
             <Pressable
@@ -396,7 +389,7 @@ export default function Schedule() {
               />
             </Pressable>
             <Text
-              style={{ color: "#fff", fontSize: 28, fontWeight: "bold", flexShrink: 1 }}
+              style={{ color: "#fff", fontSize: 22, fontWeight: "bold", flexShrink: 1 }}
               numberOfLines={1}
               adjustsFontSizeToFit
               maxFontSizeMultiplier={DENSE_TEXT_MAX_SCALE}
@@ -417,13 +410,13 @@ export default function Schedule() {
               />
             </Pressable>
           </View>
-        </View>
-
+        }
+      >
         {/* Week strip: weekday + date per cell. Selected = filled pill,
             today = bold with a dot, past days dimmed. */}
         <PagerView
           ref={pagerRef}
-          style={{ height: Math.round(76 * stripScale) }}
+          style={{ height: Math.round(62 * stripScale) }}
           initialPage={todayPage}
           onPageSelected={(e: any) => handleWeekChange(e.nativeEvent.position)}
         >
@@ -451,10 +444,10 @@ export default function Schedule() {
                       flex: 1,
                       maxWidth: 52,
                       marginHorizontal: 2,
-                      paddingVertical: 8,
+                      paddingVertical: 6,
                       borderRadius: 14,
                       alignItems: "center",
-                      gap: 4,
+                      gap: 3,
                       backgroundColor: isSelected ? "#4E5A94" : "transparent",
                     }}
                   >
@@ -508,7 +501,6 @@ export default function Schedule() {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            marginTop: 12,
             paddingHorizontal: 4,
             minHeight: 32,
           }}
@@ -560,7 +552,10 @@ export default function Schedule() {
         </View>
       </Header>
 
-      <ScrollView>
+      <ScrollView
+        style={{ marginTop: -HEADER_RADIUS }}
+        contentContainerStyle={{ paddingTop: HEADER_RADIUS }}
+      >
         <Animated.View style={{ marginTop: 20, marginBottom: tabBarSpace }}>
           {isLoading ? (
             <View
