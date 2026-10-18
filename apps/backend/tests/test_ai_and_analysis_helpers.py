@@ -17,19 +17,19 @@ from backend.routers.analysis import (
 
 
 def test_parse_ai_response_accepts_json_code_fences_and_normalizes_labels():
-    response = SimpleNamespace(content=[SimpleNamespace(text='```json\n{"ok": true}\n```')])
+    response = SimpleNamespace(content=[SimpleNamespace(type="text", text='```json\n{"ok": true}\n```')])
 
     assert parse_ai_response(response) == {"ok": True}
     assert normalize_label("time-bound") == "time_bound"
 
 
 def test_parse_ai_response_rejects_invalid_json():
-    response = SimpleNamespace(content=[SimpleNamespace(text="not-json")])
+    response = SimpleNamespace(content=[SimpleNamespace(type="text", text="not-json")])
 
     with pytest.raises(HTTPException) as error:
         parse_ai_response(response)
 
-    assert error.value.status_code == 500
+    assert error.value.status_code == 502
 
 
 def test_call_anthropic_api_reports_missing_configuration(monkeypatch):
