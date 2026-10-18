@@ -19,6 +19,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import DismissKeyboard from "@/components/DismissKeyboard";
+import { useTranslation } from "@/i18n";
 
 type Task = {
   title: string;
@@ -51,6 +52,9 @@ export default function TaskModal({
   onSave,
   restrictEditing,
 }: TaskModalProps) {
+  const { t } = useTranslation();
+  const weekdays = t("common.weekdaysShort").split(",");
+
   // ====================== State Management ======================
   const [taskTitle, setTaskTitle] = useState(initialTask?.title || "");
   const [taskDescription, setTaskDescription] = useState(
@@ -105,7 +109,7 @@ export default function TaskModal({
 
   const handleSave = () => {
     if (!taskTitle.trim()) {
-      Alert.alert("Missing Task Name", "Please enter a task name.");
+      Alert.alert(t("taskForm.missingNameTitle"), t("taskForm.missingNameMessage"));
       return;
     }
 
@@ -113,7 +117,7 @@ export default function TaskModal({
       (taskType === "normal" || taskType === "monthly") &&
       selectedDates.length === 0
     ) {
-      Alert.alert("Missing Dates", "Please select a date for the Task.");
+      Alert.alert(t("taskForm.missingDatesTitle"), t("taskForm.missingDatesMessage"));
       return;
     }
 
@@ -200,7 +204,7 @@ export default function TaskModal({
   // ====================== Render Helper Functions ======================
   const renderWeeklySelector = () => (
     <View style={styles.weeklyContainer}>
-      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => (
+      {weekdays.map((day, index) => (
         <Pressable
           key={index}
           onPress={() => toggleDayOfWeek(index)}
@@ -225,8 +229,13 @@ export default function TaskModal({
 
   const renderMonthlySelector = () => (
     <View style={styles.monthlyContainer}>
-      {["Start", "Mid", "End"].map((label) => {
-        const mode = label.toLowerCase() as "start" | "mid" | "end";
+      {(
+        [
+          ["start", t("taskForm.monthStart")],
+          ["mid", t("taskForm.monthMid")],
+          ["end", t("taskForm.monthEnd")],
+        ] as const
+      ).map(([mode, label]) => {
         const dates = calculateMonthlyDates(startDate, dueDate, mode);
         const isDisabled = dates.length === 0;
 
@@ -268,28 +277,27 @@ export default function TaskModal({
                 <View style={styles.restrictedBanner}>
                   <Ionicons name="warning-outline" size={20} color="#FF5733" />
                   <Text style={styles.restrictedText}>
-                    Limited editing mode. You can only edit the task title and
-                    description.
+                    {t("taskForm.limitedEditing")}
                   </Text>
                 </View>
               )}
 
               {/* Form Inputs */}
-              <Text style={styles.title}>Title of Task</Text>
+              <Text style={styles.title}>{t("taskForm.titleLabel")}</Text>
               <View style={styles.inputContainer}>
                 <TextInput
                   value={taskTitle}
                   onChangeText={setTaskTitle}
-                  placeholder="Enter task name"
+                  placeholder={t("taskForm.titlePlaceholder")}
                   placeholderTextColor="#AAA"
                   style={styles.input}
                   multiline={true}
                 />
-                <Text style={styles.title}>Description</Text>
+                <Text style={styles.title}>{t("taskForm.descriptionLabel")}</Text>
                 <TextInput
                   value={taskDescription}
                   onChangeText={setTaskDescription}
-                  placeholder="Enter task description"
+                  placeholder={t("taskForm.descriptionPlaceholder")}
                   placeholderTextColor="#AAA"
                   style={styles.description}
                   multiline={true}
@@ -303,7 +311,7 @@ export default function TaskModal({
                   restrictEditing && styles.disabledSection,
                 ]}
               >
-                <Text style={styles.title_repeat}>Repeat</Text>
+                <Text style={styles.title_repeat}>{t("taskForm.repeat")}</Text>
                 <Switch
                   value={isRepeat}
                   onValueChange={(value) => {
@@ -328,10 +336,10 @@ export default function TaskModal({
                     style={styles.datePickerButton}
                     onPress={() => setIsCalendarVisible(true)}
                   >
-                    <Text style={styles.datePickerButtonText}>Pick Dates</Text>
+                    <Text style={styles.datePickerButtonText}>{t("taskForm.pickDates")}</Text>
                   </Pressable>
                   <Text style={styles.selectedDatesText}>
-                    Selected: {selectedDates.length} days
+                    {t("taskForm.selectedDays", { count: selectedDates.length })}
                   </Text>
                 </View>
               )}
@@ -341,8 +349,7 @@ export default function TaskModal({
                 <View style={styles.datePickerContainer}>
                   <View style={styles.disabledDatePicker}>
                     <Text style={styles.disabledText}>
-                      {selectedDates.length} day
-                      {selectedDates.length !== 1 ? "s" : ""} selected
+                      {t("taskForm.daysSelected", { count: selectedDates.length })}
                     </Text>
                   </View>
                 </View>
@@ -354,7 +361,7 @@ export default function TaskModal({
                   visible={isCalendarVisible}
                   onClose={() => setIsCalendarVisible(false)}
                   onConfirm={handleDateConfirm}
-                  title="Select Task Dates"
+                  title={t("taskForm.selectTaskDates")}
                   initialDates={selectedDates}
                   highlightColor="#4F46E5"
                   singleSelect={false}
@@ -370,11 +377,8 @@ export default function TaskModal({
                   (!isRepeat || restrictEditing) && styles.disabled,
                 ]}
               >
-                {["Daily", "Weekly", "Monthly"].map((label) => {
-                  const type = label.toLowerCase() as
-                    | "daily"
-                    | "weekly"
-                    | "monthly";
+                {(["daily", "weekly", "monthly"] as const).map((type) => {
+                  const label = t(`goalForm.taskTypes.${type}`);
                   return (
                     <Pressable
                       key={type}
@@ -415,15 +419,9 @@ export default function TaskModal({
                 selectedDaysOfWeek.length > 0 && (
                   <View style={styles.restrictedInfoBox}>
                     <Text style={styles.restrictedInfoText}>
-                      Repeats weekly on:{" "}
-                      {selectedDaysOfWeek
-                        .map(
-                          (day) =>
-                            ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
-                              day
-                            ]
-                        )
-                        .join(", ")}
+                      {t("taskForm.repeatsWeekly", {
+                        days: selectedDaysOfWeek.map((day) => weekdays[day]).join(", "),
+                      })}
                     </Text>
                   </View>
                 )}
@@ -431,13 +429,11 @@ export default function TaskModal({
               {restrictEditing && taskType === "monthly" && (
                 <View style={styles.restrictedInfoBox}>
                   <Text style={styles.restrictedInfoText}>
-                    Repeats monthly:{" "}
                     {monthlyMode === "start"
-                      ? "Beginning"
+                      ? t("taskForm.repeatsMonthlyStart")
                       : monthlyMode === "mid"
-                      ? "Middle"
-                      : "End"}{" "}
-                    of each month
+                      ? t("taskForm.repeatsMonthlyMid")
+                      : t("taskForm.repeatsMonthlyEnd")}
                   </Text>
                 </View>
               )}
@@ -445,10 +441,10 @@ export default function TaskModal({
               {/* Action Buttons */}
               <View style={styles.buttonContainer}>
                 <Pressable style={styles.cancelButton} onPress={handleClose}>
-                  <Text style={styles.buttonText}>Cancel</Text>
+                  <Text style={styles.buttonText}>{t("common.cancel")}</Text>
                 </Pressable>
                 <Pressable style={styles.confirmButton} onPress={handleSave}>
-                  <Text style={styles.buttonText}>Confirm</Text>
+                  <Text style={styles.buttonText}>{t("common.confirm")}</Text>
                 </Pressable>
               </View>
             </Animated.View>

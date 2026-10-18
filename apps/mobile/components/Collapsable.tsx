@@ -11,6 +11,8 @@ import Animated, {
 import { Feather } from "@expo/vector-icons";
 import { GestureDetector } from "react-native-gesture-handler";
 import ContextMenu from "./ContextMenu";
+import { useTranslation } from "@/i18n";
+import { categoryLabel } from "@/i18n/format";
 import {
   useCollapsibleGesture,
   CollapseConfig,
@@ -42,6 +44,10 @@ export default function Collapsable({
   onCollapseFinish,
   markable = true,
 }: CollapsableProps) {
+  const { t } = useTranslation();
+  const typeLabel = type
+    ? t(`goalTypes.${type.toLowerCase()}` as "goalTypes.goal", { defaultValue: type })
+    : type;
   const INITIAL_CONTAINER_HEIGHT = 70;
   const [collapsed, setCollapsed] = useState(false);
 
@@ -280,7 +286,7 @@ export default function Collapsable({
                   { fontWeight: "300", fontSize: 10 },
                 ]}
               >
-                {type} {category && ` - ${category}`}
+                {typeLabel} {category && ` - ${categoryLabel(category)}`}
               </Animated.Text>
               <Animated.Text
                 numberOfLines={1}
@@ -294,7 +300,7 @@ export default function Collapsable({
         }
         items={[
           {
-            title: "Completed",
+            title: t("task.completed"),
             icon: <Feather name="check" size={16} color={"green"} />,
             type: "default",
             status: markable ? "enabled" : "disabled",
@@ -304,7 +310,7 @@ export default function Collapsable({
             },
           },
           {
-            title: "Failed",
+            title: t("task.failed"),
             icon: <Feather name="x" size={16} color={"red"} />,
             type: "default",
             status: markable ? "enabled" : "disabled",
@@ -314,7 +320,7 @@ export default function Collapsable({
             },
           },
           {
-            title: "Customize",
+            title: t("home.customize"),
             icon: (
               <Feather
                 name="edit"
@@ -329,7 +335,7 @@ export default function Collapsable({
             },
           },
           {
-            title: "Delete",
+            title: t("common.delete"),
             icon: <Feather name="trash" size={16} color={"red"} />,
             type: "destructive",
             status: "enabled",
@@ -377,7 +383,7 @@ export default function Collapsable({
                   { fontWeight: "300", fontSize: 10 },
                 ]}
               >
-                {type} {category && ` - ${category}`}
+                {typeLabel} {category && ` - ${categoryLabel(category)}`}
               </Animated.Text>
               <Animated.Text
                 numberOfLines={1}

@@ -30,6 +30,7 @@ import TemplateCard from "@/components/TemplateCard";
 import TemplateModal from "@/components/TemplateModal";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
+import { useTranslation } from "@/i18n";
 
 type Task = {
   title: string;
@@ -98,6 +99,9 @@ export default function CreateScreen() {
   // Room for the floating tab bar on any device (was a fixed guess).
   const tabBarSpace = useTabBarSpace();
   const apiFetch = useApiFetch();
+  const { t } = useTranslation();
+  const categoryLabel = (category: string) =>
+    t(`categories.${category?.toLowerCase()}` as "categories.all", { defaultValue: category });
   // ====================== Animation Values ======================
   const headerOpacity = useSharedValue(0);
   const searchInputOpacity = useSharedValue(0);
@@ -361,8 +365,8 @@ export default function CreateScreen() {
         <Animated.View
           style={[styles.headerTextContainer, headerAnimatedStyle]}
         >
-          <Text style={styles.headerSubtitle}>Let's help you</Text>
-          <Text style={styles.headerTitle}>Make your dreams come true</Text>
+          <Text style={styles.headerSubtitle}>{t("create.subtitle")}</Text>
+          <Text style={styles.headerTitle}>{t("create.title")}</Text>
         </Animated.View>
 
         {/* Search Bar */}
@@ -377,7 +381,7 @@ export default function CreateScreen() {
           />
           <TextInput
             style={styles.searchInput}
-            placeholder="Describe your goal..."
+            placeholder={t("create.searchPlaceholder")}
             placeholderTextColor="#999"
             value={query}
             onChangeText={setQuery}
@@ -390,7 +394,7 @@ export default function CreateScreen() {
               <TouchableOpacity
                 onPress={() => setQuery("")}
                 style={styles.clearButton}
-                accessibilityLabel="Clear search"
+                accessibilityLabel={t("create.clearSearch")}
               >
                 <Ionicons name="close-circle" size={18} color="#AAA" />
               </TouchableOpacity>
@@ -398,7 +402,7 @@ export default function CreateScreen() {
                 activeOpacity={0.8}
                 onPress={handlePlanWithAssistant}
                 style={styles.searchSubmitButton}
-                accessibilityLabel="Plan this goal with the AI assistant"
+                accessibilityLabel={t("create.planWithAi")}
               >
                 <Ionicons name="arrow-forward" size={18} color="#FFF" />
               </TouchableOpacity>
@@ -424,7 +428,7 @@ export default function CreateScreen() {
               color="#FFF"
               style={styles.buttonIcon}
             />
-            <Text style={styles.customGoalButtonText}>Start a new goal</Text>
+            <Text style={styles.customGoalButtonText}>{t("create.startNewGoal")}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </Header>
@@ -447,7 +451,7 @@ export default function CreateScreen() {
                 <Ionicons name="sparkles" size={20} color="#5B43D6" />
               </View>
               <View style={styles.optionContent}>
-                <Text style={styles.aiSuggestionLabel}>Plan it with AI</Text>
+                <Text style={styles.aiSuggestionLabel}>{t("create.planItWithAi")}</Text>
                 <Text style={styles.aiSuggestionQuery} numberOfLines={2}>
                   "{trimmedQuery}"
                 </Text>
@@ -457,13 +461,12 @@ export default function CreateScreen() {
 
             <Text style={styles.resultsHeading}>
               {searchResults.length > 0
-                ? `Templates (${searchResults.length})`
-                : "No templates match"}
+                ? t("create.templatesCount", { count: searchResults.length })
+                : t("create.noTemplatesMatch")}
             </Text>
             {searchResults.length === 0 ? (
               <Text style={styles.resultsEmpty}>
-                Try other words, or let the AI assistant build a plan from
-                your description.
+                {t("create.noTemplatesHint")}
               </Text>
             ) : (
               searchResults.map((template) => (
@@ -489,9 +492,9 @@ export default function CreateScreen() {
                     </Text>
                     <Text style={styles.resultMeta} numberOfLines={1}>
                       {[
-                        template.category,
-                        `${template.goals?.length ?? 0} goals`,
-                        template.type === "community" ? "Community" : null,
+                        template.category ? categoryLabel(template.category) : null,
+                        t("common.goals", { count: template.goals?.length ?? 0 }),
+                        template.type === "community" ? t("create.community") : null,
                       ]
                         .filter(Boolean)
                         .join(" · ")}
@@ -511,13 +514,13 @@ export default function CreateScreen() {
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionTitleContainer}>
                   <Ionicons name="document-text" size={22} color="#333" />
-                  <Text style={styles.sectionTitle}>Featured Templates</Text>
+                  <Text style={styles.sectionTitle}>{t("create.featuredTemplates")}</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.viewAllButton}
                   onPress={() => setIsViewAllTemplatesVisible(true)}
                 >
-                  <Text style={styles.viewAllText}>View All</Text>
+                  <Text style={styles.viewAllText}>{t("common.viewAll")}</Text>
                 </TouchableOpacity>
               </View>
               <Slider
@@ -535,13 +538,13 @@ export default function CreateScreen() {
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionTitleContainer}>
                   <Ionicons name="people" size={22} color="#333" />
-                  <Text style={styles.sectionTitle}>Community Favorites</Text>
+                  <Text style={styles.sectionTitle}>{t("create.communityFavorites")}</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.viewAllButton}
                   onPress={() => setIsViewAllCommunityVisible(true)}
                 >
-                  <Text style={styles.viewAllText}>View All</Text>
+                  <Text style={styles.viewAllText}>{t("common.viewAll")}</Text>
                 </TouchableOpacity>
               </View>
               <Slider
@@ -623,8 +626,8 @@ export default function CreateScreen() {
             >
               <View style={styles.modalHeader}>
                 <View>
-                  <Text style={styles.modalEyebrow}>NEW GOAL</Text>
-                  <Text style={styles.modalTitle}>How would you like to start?</Text>
+                  <Text style={styles.modalEyebrow}>{t("create.newGoal")}</Text>
+                  <Text style={styles.modalTitle}>{t("create.howToStart")}</Text>
                   </View>
                 <TouchableOpacity
                   style={styles.closeModalButton}
@@ -643,13 +646,13 @@ export default function CreateScreen() {
                 </View>
                 <View style={styles.optionContent}>
                   <View style={styles.optionTitleRow}>
-                    <Text style={styles.optionTitle}>Create it yourself</Text>
+                    <Text style={styles.optionTitle}>{t("create.createYourself")}</Text>
                     <View style={styles.optionBadge}>
-                      <Text style={styles.optionBadgeText}>FULL CONTROL</Text>
+                      <Text style={styles.optionBadgeText}>{t("create.fullControl")}</Text>
                     </View>
                   </View>
                   <Text style={styles.optionDescription}>
-                    Set the goal, tasks, dates, and routine exactly the way you want.
+                    {t("create.createYourselfDescription")}
                   </Text>
                 </View>
                 <Feather name="arrow-up-right" size={20} color="#168A4A" />
@@ -664,15 +667,15 @@ export default function CreateScreen() {
                 </View>
                 <View style={styles.optionContent}>
                   <View style={styles.optionTitleRow}>
-                    <Text style={styles.optionTitle}>Ask the AI assistant</Text>
+                    <Text style={styles.optionTitle}>{t("create.askAi")}</Text>
                     <View style={[styles.optionBadge, styles.aiBadge]}>
                       <Text style={[styles.optionBadgeText, styles.aiBadgeText]}>
-                        GUIDED
+                        {t("create.guided")}
                       </Text>
                     </View>
                   </View>
                   <Text style={styles.optionDescription}>
-                    Tell us what you want to achieve and get a practical plan in minutes.
+                    {t("create.askAiDescription")}
                   </Text>
                 </View>
                 <Feather name="arrow-up-right" size={20} color="#5B43D6" />
@@ -680,7 +683,7 @@ export default function CreateScreen() {
 
               <View style={styles.modalDivider}>
                 <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>OR</Text>
+                <Text style={styles.dividerText}>{t("create.or")}</Text>
                 <View style={styles.dividerLine} />
               </View>
 
@@ -692,9 +695,9 @@ export default function CreateScreen() {
                   <Ionicons name="copy-outline" size={21} color="#667085" />
                 </View>
                 <View style={styles.optionContent}>
-                  <Text style={styles.optionTitle}>Create a reusable template</Text>
+                  <Text style={styles.optionTitle}>{t("create.createTemplate")}</Text>
                   <Text style={styles.optionDescription}>
-                    Build a plan you can reuse or share with the community.
+                    {t("create.createTemplateDescription")}
                   </Text>
                 </View>
                 <Feather name="chevron-right" size={21} color="#98A2B3" />
@@ -730,8 +733,8 @@ export default function CreateScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {isViewAllTemplatesVisible
-                  ? "Featured Templates"
-                  : "Community Favorites"}
+                  ? t("create.featuredTemplates")
+                  : t("create.communityFavorites")}
               </Text>
               <TouchableOpacity
                 style={styles.closeModalButton}

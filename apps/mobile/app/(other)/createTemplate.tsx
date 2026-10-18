@@ -21,6 +21,8 @@ import { useApiFetch } from "@/hooks/useApiFetch";
 import CategoryPicker from "@/components/CategoryPicker";
 import CalendarPicker from "@/components/CalendarPicker";
 import { useScreenTopPadding } from "@/constants/layout";
+import { useTranslation } from "@/i18n";
+import { categoryLabel } from "@/i18n/format";
 import { useUser } from "@clerk/expo";
 import Animated, {
   useSharedValue,
@@ -49,6 +51,7 @@ export default function CreateTemplate() {
   const router = useRouter();
   const { user, isLoaded, isSignedIn } = useUser();
   const apiFetch = useApiFetch();
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [goalDates, setGoalDates] = useState<
     Map<
@@ -110,7 +113,7 @@ export default function CreateTemplate() {
 
       const userId = user.id;
       if (!userId) {
-        Alert.alert("Error", "Could not get user ID. Please try again later.");
+        Alert.alert(t("common.error"), t("goal.noUserId"));
         return;
       }
 
@@ -141,8 +144,8 @@ export default function CreateTemplate() {
       } catch (error) {
         console.error("Failed to fetch available goals:", error);
         Alert.alert(
-          "Error",
-          "Failed to fetch your goals. Please check network connection and server status.",
+          t("common.error"),
+          t("createTemplate.goalsLoadFailed"),
         );
 
         setAvailableGoals([]);
@@ -163,8 +166,8 @@ export default function CreateTemplate() {
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          "Permission Required",
-          "We need access to your photos to upload an image.",
+          t("settings.photoPermissionTitle"),
+          t("createTemplate.photoPermissionMessage"),
         );
         return;
       }
@@ -248,14 +251,14 @@ export default function CreateTemplate() {
             error.message === "Network request failed"
           ) {
             Alert.alert(
-              "Network Error",
-              "Failed to connect to the server. Please check your internet connection and try again.",
-              [{ text: "OK" }],
+              t("createTemplate.networkErrorTitle"),
+              t("createTemplate.networkErrorMessage"),
+              [{ text: t("common.ok") }],
             );
           } else {
             Alert.alert(
-              "Upload Failed",
-              "Failed to upload image. Please try again with a smaller image or check your connection.",
+              t("createTemplate.uploadFailedTitle"),
+              t("createTemplate.uploadFailedMessage"),
             );
           }
         } finally {
@@ -264,7 +267,7 @@ export default function CreateTemplate() {
       }
     } catch (error) {
       console.error("Error in image picker:", error);
-      Alert.alert("Error", "Failed to pick image");
+      Alert.alert(t("common.error"), t("createTemplate.pickImageFailed"));
       setIsLoading(false);
     }
   };
@@ -278,11 +281,11 @@ export default function CreateTemplate() {
       setGoalDates(updatedGoalDates);
     } else {
       Alert.alert(
-        "Goal Date Options",
-        "Would you like to set new start and due dates for this goal?",
+        t("createTemplate.goalDatesTitle"),
+        t("createTemplate.goalDatesMessage"),
         [
           {
-            text: "Yes",
+            text: t("common.yes"),
             onPress: () => {
               setSelectedGoalIds((prev) => [...prev, goalId]);
 
@@ -297,7 +300,7 @@ export default function CreateTemplate() {
             },
           },
           {
-            text: "No",
+            text: t("common.no"),
             onPress: () => {
               setSelectedGoalIds((prev) => [...prev, goalId]);
 
@@ -343,30 +346,30 @@ export default function CreateTemplate() {
   const handleCreateTemplate = async () => {
     if (!isFormValid) {
       Alert.alert(
-        "Missing Information",
-        "Please provide a title, cover image, and select at least one goal.",
+        t("createTemplate.missingInfoTitle"),
+        t("createTemplate.missingInfoMessage"),
       );
       return;
     }
 
     if (!isLoaded || !isSignedIn) {
       Alert.alert(
-        "Authentication Error",
-        "Please sign in to save your template.",
+        t("goal.authErrorTitle"),
+        t("createTemplate.signInToSave"),
       );
       return;
     }
 
     const userId = user?.id;
     if (!userId) {
-      Alert.alert("Error", "Could not get user ID. Please try again later.");
+      Alert.alert(t("common.error"), t("goal.noUserId"));
       return;
     }
 
     if (!image.startsWith("http")) {
       Alert.alert(
-        "Error",
-        "Image upload failed. Please select an image again.",
+        t("common.error"),
+        t("createTemplate.imageUploadFailed"),
       );
       return;
     }
@@ -414,16 +417,16 @@ export default function CreateTemplate() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.message || `Server error: ${response.status}`,
+          errorData.message || t("goal.serverError", { status: response.status }),
         );
       }
 
       const responseData = await response.json();
       console.log("📌 API Response:", JSON.stringify(responseData, null, 2));
 
-      Alert.alert("Success", "Template created successfully!", [
+      Alert.alert(t("common.success"), t("createTemplate.created"), [
         {
-          text: "OK",
+          text: t("common.ok"),
           onPress: () => {
             resetForm();
             router.back();
@@ -432,11 +435,11 @@ export default function CreateTemplate() {
       ]);
     } catch (error) {
       console.error("Failed to create template:", error);
-      let errorMessage = "Failed to create template. Please try again later.";
+      let errorMessage = t("createTemplate.createFailed");
       if (error instanceof Error) {
         errorMessage = error.message;
       }
-      Alert.alert("Error", errorMessage);
+      Alert.alert(t("common.error"), errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -458,14 +461,17 @@ export default function CreateTemplate() {
   const getGoalDateText = (goalId: string) => {
     const goalDateInfo = goalDates.get(goalId);
     if (!goalDateInfo || !goalDateInfo.showDatePicker) {
-      return "Using original dates";
+      return t("createTemplate.originalDates");
     }
 
     if (goalDateInfo.newStartDate && goalDateInfo.newDueDate) {
-      return `${goalDateInfo.newStartDate} to ${goalDateInfo.newDueDate}`;
+      return t("createTemplate.dateRange", {
+        start: goalDateInfo.newStartDate,
+        end: goalDateInfo.newDueDate,
+      });
     }
 
-    return "Dates not set";
+    return t("createTemplate.datesNotSet");
   };
 
   // ====================== Render UI ======================
@@ -478,7 +484,7 @@ export default function CreateTemplate() {
       <View style={[styles.header, { paddingTop: topPadding }]}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#fff" />
-          <Text style={styles.backText}>Back</Text>
+          <Text style={styles.backText}>{t("common.back")}</Text>
         </Pressable>
       </View>
       <ScrollView
@@ -497,18 +503,18 @@ export default function CreateTemplate() {
               />
               <View style={styles.heroContent}>
                 <Text style={styles.heroTitle}>
-                  {title ? title : "Template Title"}
+                  {title ? title : t("createTemplate.titlePreview")}
                 </Text>
                 <View style={styles.categoryChip}>
-                  <Text style={styles.categoryText}>{category}</Text>
+                  <Text style={styles.categoryText}>{categoryLabel(category)}</Text>
                 </View>
               </View>
             </View>
           ) : (
             <View style={styles.emptyPreview}>
-              <Text style={styles.headerTitle}>Create New Template</Text>
+              <Text style={styles.headerTitle}>{t("createTemplate.heading")}</Text>
               <Text style={styles.previewText}>
-                Add an image to see your template preview
+                {t("createTemplate.previewHint")}
               </Text>
             </View>
           )}
@@ -519,11 +525,11 @@ export default function CreateTemplate() {
           {/* Title Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>
-              Template Title <Text style={styles.required}>*</Text>
+              {t("createTemplate.titleLabel")} <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter a descriptive title"
+              placeholder={t("createTemplate.titlePlaceholder")}
               placeholderTextColor="#777"
               value={title}
               onChangeText={setTitle}
@@ -533,10 +539,10 @@ export default function CreateTemplate() {
 
           {/* Description Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description</Text>
+            <Text style={styles.label}>{t("createTemplate.descriptionLabel")}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Describe what this template does"
+              placeholder={t("createTemplate.descriptionPlaceholder")}
               placeholderTextColor="#777"
               value={description}
               onChangeText={setDescription}
@@ -548,7 +554,7 @@ export default function CreateTemplate() {
 
           {/* Category Picker */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Category</Text>
+            <Text style={styles.label}>{t("createTemplate.categoryLabel")}</Text>
             <CategoryPicker
               value={category}
               onChange={setCategory}
@@ -566,7 +572,7 @@ export default function CreateTemplate() {
           {/* Image Upload */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>
-              Cover Image <Text style={styles.required}>*</Text>
+              {t("createTemplate.coverImage")} <Text style={styles.required}>*</Text>
             </Text>
             <Pressable
               style={styles.imagePicker}
@@ -576,7 +582,7 @@ export default function CreateTemplate() {
               {image ? (
                 <>
                   <Image source={{ uri: image }} style={styles.imagePreview} />
-                  <Text style={styles.changeImageText}>Change Image</Text>
+                  <Text style={styles.changeImageText}>{t("createTemplate.changeImage")}</Text>
                 </>
               ) : (
                 <>
@@ -587,9 +593,9 @@ export default function CreateTemplate() {
                       color="#8B98D5"
                     />
                   </View>
-                  <Text style={styles.imageText}>Upload Cover Image</Text>
+                  <Text style={styles.imageText}>{t("createTemplate.uploadCover")}</Text>
                   <Text style={styles.imageSubText}>
-                    Recommended ratio: 16:9
+                    {t("createTemplate.recommendedRatio")}
                   </Text>
                 </>
               )}
@@ -599,16 +605,16 @@ export default function CreateTemplate() {
           {/* Goals Selection */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>
-              Template Goals <Text style={styles.required}>*</Text>
+              {t("createTemplate.goalsLabel")} <Text style={styles.required}>*</Text>
             </Text>
             <Text style={styles.helpText}>
-              Select goals that this template will help achieve
+              {t("createTemplate.goalsHelp")}
             </Text>
             <View style={styles.goalsScrollOuterContainer}>
               {isLoadingGoals ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color="#8B98D5" />
-                  <Text style={styles.loadingText}>Loading your goals...</Text>
+                  <Text style={styles.loadingText}>{t("createTemplate.loadingGoals")}</Text>
                 </View>
               ) : availableGoals.length > 0 ? (
                 <ScrollView
@@ -674,7 +680,7 @@ export default function CreateTemplate() {
                                 }}
                               >
                                 <Text style={styles.editDatesButtonText}>
-                                  Edit Dates
+                                  {t("createTemplate.editDates")}
                                 </Text>
                               </Pressable>
                             )}
@@ -691,23 +697,21 @@ export default function CreateTemplate() {
                     size={40}
                     color="#8B98D5"
                   />
-                  <Text style={styles.noGoalsText}>No goals available</Text>
+                  <Text style={styles.noGoalsText}>{t("createTemplate.noGoals")}</Text>
                   <Text style={styles.noGoalsSubText}>
-                    Create some goals first to use in templates
+                    {t("createTemplate.noGoalsHint")}
                   </Text>
                 </View>
               )}
             </View>
             <View style={styles.scrollIndicator}>
               <Ionicons name="chevron-down" size={16} color="#8B98D5" />
-              <Text style={styles.scrollText}>Scroll for more goals</Text>
+              <Text style={styles.scrollText}>{t("createTemplate.scrollForMore")}</Text>
             </View>
             <Text style={styles.goalsSelectionInfo}>
               {selectedGoalIds.length > 0
-                ? `${selectedGoalIds.length} goal${
-                    selectedGoalIds.length > 1 ? "s" : ""
-                  } selected`
-                : "No goals selected"}
+                ? t("createTemplate.goalsSelected", { count: selectedGoalIds.length })
+                : t("createTemplate.noGoalsSelected")}
             </Text>
           </View>
 
@@ -731,7 +735,7 @@ export default function CreateTemplate() {
               ) : (
                 <>
                   <Ionicons name="add-circle-outline" size={24} color="#fff" />
-                  <Text style={styles.createButtonText}>Create Template</Text>
+                  <Text style={styles.createButtonText}>{t("createTemplate.createButton")}</Text>
                 </>
               )}
             </Animated.View>
@@ -744,7 +748,7 @@ export default function CreateTemplate() {
         visible={isStartDatePickerVisible}
         onClose={() => setStartDatePickerVisible(false)}
         onConfirm={handleStartDateSelect}
-        title="Select Start Date"
+        title={t("createTemplate.selectStartDate")}
         initialDates={currentStartDate ? [currentStartDate] : []}
         highlightColor="#4F46E5"
         singleSelect
@@ -756,7 +760,7 @@ export default function CreateTemplate() {
         visible={isDueDatePickerVisible}
         onClose={() => setDueDatePickerVisible(false)}
         onConfirm={handleDueDateSelect}
-        title="Select Due Date"
+        title={t("createTemplate.selectDueDate")}
         initialDates={currentDueDate ? [currentDueDate] : []}
         highlightColor="#FF5733"
         singleSelect
@@ -769,7 +773,7 @@ export default function CreateTemplate() {
       {isLoading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#4F46E5" />
-          <Text style={styles.loadingOverlayText}>Creating template...</Text>
+          <Text style={styles.loadingOverlayText}>{t("createTemplate.creating")}</Text>
         </View>
       )}
     </KeyboardAvoidingView>
