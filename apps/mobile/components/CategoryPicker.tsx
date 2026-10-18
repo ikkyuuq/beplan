@@ -9,6 +9,8 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "@/i18n";
+import { categoryLabel } from "@/i18n/format";
 
 // ====================== Type Definitions ======================
 type CategoryPickerProps = {
@@ -25,6 +27,8 @@ export default function CategoryPicker({
   onChange,
   categories,
 }: CategoryPickerProps) {
+  const { t } = useTranslation();
+
   // ====================== State Management ======================
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -87,7 +91,7 @@ export default function CategoryPicker({
           >
             <Ionicons name={getCategoryIcon(value)} size={18} color="#fff" />
           </View>
-          <Text style={styles.selectedCategoryText}>{value}</Text>
+          <Text style={styles.selectedCategoryText}>{categoryLabel(value)}</Text>
         </View>
         <Ionicons
           name={"chevron-down" as IoniconsName}
@@ -107,7 +111,7 @@ export default function CategoryPicker({
           <View style={styles.modalContainer}>
             {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Category</Text>
+              <Text style={styles.modalTitle}>{t("template.selectCategory")}</Text>
               <TouchableOpacity onPress={handleCloseModal}>
                 <Ionicons
                   name={"close" as IoniconsName}
@@ -143,7 +147,7 @@ export default function CategoryPicker({
                         color="#fff"
                       />
                     </View>
-                    <Text style={styles.categoryText}>{item}</Text>
+                    <Text style={styles.categoryText}>{categoryLabel(item)}</Text>
                   </View>
                   {value === item && (
                     <Ionicons

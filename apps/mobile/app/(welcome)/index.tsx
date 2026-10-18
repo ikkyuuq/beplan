@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { routes } from "@/routesConfig";
+import { useTranslation } from "@/i18n";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -82,13 +83,14 @@ export default function WelcomeScreen() {
 
   // ====================== Hooks ======================
   const router = useRouter();
+  const { t } = useTranslation();
 
   // ====================== Render UI ======================
   return (
     <View style={styles.container}>
       {/* Title Animation */}
       <Animated.View style={[titleAnimatedStyle]}>
-        {["Planning", "Just Got", "Easier!"].map((text, index) => (
+        {[t("welcome.title1"), t("welcome.title2"), t("welcome.title3")].map((text, index) => (
           <Animated.Text
             key={index}
             entering={FadeIn.delay(200 * index).duration(600)}
@@ -107,8 +109,7 @@ export default function WelcomeScreen() {
         <Animated.Text
           style={[styles.subtitle, subtitleAnimatedStyle, { marginLeft: 67 }]}
         >
-          Streamline your goals anywhere, anytime with SMART task planning for
-          success.
+          {t("welcome.subtitle")}
         </Animated.Text>
       </View>
 
@@ -123,7 +124,7 @@ export default function WelcomeScreen() {
             style={styles.buttonOutline}
             onPress={() => router.push(routes.signIn)}
           >
-            <Text style={styles.buttonTextOutline}>LOG IN</Text>
+            <Text style={styles.buttonTextOutline}>{t("welcome.logIn")}</Text>
           </TouchableOpacity>
         </Animated.View>
 
@@ -133,7 +134,7 @@ export default function WelcomeScreen() {
             style={styles.buttonPrimary}
             onPress={() => router.push(routes.signUp)}
           >
-            <Text style={styles.buttonTextPrimary}>OPEN AN ACCOUNT</Text>
+            <Text style={styles.buttonTextPrimary}>{t("welcome.openAccount")}</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>

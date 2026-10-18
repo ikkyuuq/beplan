@@ -23,6 +23,8 @@ import Header from "@/components/Header";
 import { useTabBarSpace } from "@/constants/layout";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
+import { useTranslation } from "@/i18n";
+import { categoryLabel } from "@/i18n/format";
 
 // ====================== Type Definitions ======================
 type AnalyticsData = {
@@ -80,6 +82,9 @@ export default function Analysis() {
   // ====================== Hooks & State ======================
   const { user, isLoaded } = useUser();
   const apiFetch = useApiFetch();
+  const { t } = useTranslation();
+  const weekdays = t("common.weekdaysShort").split(",");
+  const ENGLISH_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(
     null
   );
@@ -107,7 +112,7 @@ export default function Analysis() {
       setAnalyticsData(data);
     } catch (err) {
       console.error("Failed to fetch analytics data:", err);
-      setError("Failed to load analytics data. Please try again later.");
+      setError(t("analysis.loadFailed"));
       setAnalyticsData(null);
     } finally {
       setIsLoading(false);
@@ -215,7 +220,11 @@ export default function Analysis() {
     );
 
     return {
-      labels: dayLabels.map((day) => day.substring(0, 3)),
+      // The API names days in English ("Monday").
+      labels: dayLabels.map((day) => {
+        const index = ENGLISH_DAYS.indexOf(day.toLowerCase());
+        return index >= 0 ? weekdays[index] : day.substring(0, 3);
+      }),
       data: dayValues,
     };
   };
@@ -234,6 +243,9 @@ export default function Analysis() {
 
     // Color palette for categories
     const categoryColors = {
+      workout: "#FF6384",
+      productivity: "#4BC0C0",
+      finance: "#9966FF",
       fitness: "#FF6384",
       health: "#36A2EB",
       education: "#FFCE56",
@@ -244,8 +256,7 @@ export default function Analysis() {
     };
 
     return categories.map(([category, count]) => ({
-      name:
-        category.charAt(0).toUpperCase() + category.slice(1).replace("_", " "),
+      name: categoryLabel(category),
       count,
       color:
         categoryColors[category as keyof typeof categoryColors] || "#C9CBCF",
@@ -267,7 +278,7 @@ export default function Analysis() {
       // time zones.
       const [year, month, dayOfMonth] = date.split("-").map(Number);
       const day = new Date(year, month - 1, dayOfMonth).getDay();
-      return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day];
+      return weekdays[day];
     });
 
     return {
@@ -289,7 +300,7 @@ export default function Analysis() {
           strokeWidth: 2,
         },
       ],
-      legend: ["Weekly Goals Progress"],
+      legend: [t("analysis.weeklyGoals")],
     };
   };
 
@@ -298,7 +309,7 @@ export default function Analysis() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4E5A94" />
-        <Text style={styles.loadingText}>Loading your analytics...</Text>
+        <Text style={styles.loadingText}>{t("analysis.loading")}</Text>
       </View>
     );
   }
@@ -312,7 +323,7 @@ export default function Analysis() {
           style={styles.retryButton}
           onPress={fetchAnalyticsData}
         >
-          <Text style={styles.retryButtonText}>Retry</Text>
+          <Text style={styles.retryButtonText}>{t("analysis.retry")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -324,9 +335,9 @@ export default function Analysis() {
       {/* Header */}
       <Header containerStyle={{ minHeight: 220, gap: 0 }}>
         <Animated.View style={[headerAnimatedStyle, styles.titleContainer]}>
-          <Text style={styles.title}>Analysis</Text>
+          <Text style={styles.title}>{t("analysis.title")}</Text>
           <Text style={styles.subtitle}>
-            Track your progress and achievement
+            {t("analysis.subtitle")}
           </Text>
         </Animated.View>
       </Header>
@@ -344,7 +355,7 @@ export default function Analysis() {
           <Animated.View style={[styles.card, cardsAnimatedStyle1]}>
             <View style={styles.cardHeader}>
               <Ionicons name="flag" size={24} color="#4E5A94" />
-              <Text style={styles.cardTitle}>Goals</Text>
+              <Text style={styles.cardTitle}>{t("analysis.goals")}</Text>
             </View>
 
             <View style={styles.statRow}>
@@ -352,19 +363,19 @@ export default function Analysis() {
                 <Text style={styles.statValue}>
                   {analyticsData?.goals.completed || 0}
                 </Text>
-                <Text style={styles.statLabel}>Completed</Text>
+                <Text style={styles.statLabel}>{t("analysis.completed")}</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>
                   {analyticsData?.goals.pending || 0}
                 </Text>
-                <Text style={styles.statLabel}>In Progress</Text>
+                <Text style={styles.statLabel}>{t("analysis.inProgress")}</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>
                   {analyticsData?.goals.total || 0}
                 </Text>
-                <Text style={styles.statLabel}>Total</Text>
+                <Text style={styles.statLabel}>{t("analysis.total")}</Text>
               </View>
             </View>
 
@@ -374,7 +385,7 @@ export default function Analysis() {
                   <Ionicons name="checkmark" size={16} color="#fff" />
                 </View>
                 <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Success</Text>
+                  <Text style={styles.detailLabel}>{t("analysis.success")}</Text>
                   <Text style={styles.detailValue}>
                     {analyticsData?.goals.success.count || 0}
                   </Text>
@@ -385,7 +396,7 @@ export default function Analysis() {
                   <Ionicons name="close" size={16} color="#fff" />
                 </View>
                 <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Failed</Text>
+                  <Text style={styles.detailLabel}>{t("analysis.failed")}</Text>
                   <Text style={styles.detailValue}>
                     {analyticsData?.goals.failed.count || 0}
                   </Text>
@@ -394,7 +405,7 @@ export default function Analysis() {
             </View>
 
             <View style={styles.rateContainer}>
-              <Text style={styles.rateLabel}>Success Rate</Text>
+              <Text style={styles.rateLabel}>{t("analysis.successRate")}</Text>
               <View style={styles.progressBarContainer}>
                 <View
                   style={[
@@ -415,7 +426,7 @@ export default function Analysis() {
           <Animated.View style={[styles.card, cardsAnimatedStyle2]}>
             <View style={styles.cardHeader}>
               <Ionicons name="list" size={24} color="#4E5A94" />
-              <Text style={styles.cardTitle}>Tasks</Text>
+              <Text style={styles.cardTitle}>{t("analysis.tasks")}</Text>
             </View>
 
             <View style={styles.statRow}>
@@ -423,19 +434,19 @@ export default function Analysis() {
                 <Text style={styles.statValue}>
                   {analyticsData?.tasks.completed || 0}
                 </Text>
-                <Text style={styles.statLabel}>Completed</Text>
+                <Text style={styles.statLabel}>{t("analysis.completed")}</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>
                   {analyticsData?.tasks.pending || 0}
                 </Text>
-                <Text style={styles.statLabel}>In Progress</Text>
+                <Text style={styles.statLabel}>{t("analysis.inProgress")}</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>
                   {analyticsData?.tasks.total || 0}
                 </Text>
-                <Text style={styles.statLabel}>Total</Text>
+                <Text style={styles.statLabel}>{t("analysis.total")}</Text>
               </View>
             </View>
 
@@ -445,7 +456,7 @@ export default function Analysis() {
                   <Ionicons name="checkmark" size={16} color="#fff" />
                 </View>
                 <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Success</Text>
+                  <Text style={styles.detailLabel}>{t("analysis.success")}</Text>
                   <Text style={styles.detailValue}>
                     {analyticsData?.tasks.success.count || 0}
                   </Text>
@@ -456,7 +467,7 @@ export default function Analysis() {
                   <Ionicons name="close" size={16} color="#fff" />
                 </View>
                 <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Failed</Text>
+                  <Text style={styles.detailLabel}>{t("analysis.failed")}</Text>
                   <Text style={styles.detailValue}>
                     {analyticsData?.tasks.failed.count || 0}
                   </Text>
@@ -465,7 +476,7 @@ export default function Analysis() {
             </View>
 
             <View style={styles.rateContainer}>
-              <Text style={styles.rateLabel}>Success Rate</Text>
+              <Text style={styles.rateLabel}>{t("analysis.successRate")}</Text>
               <View style={styles.progressBarContainer}>
                 <View
                   style={[
@@ -486,7 +497,7 @@ export default function Analysis() {
           <Animated.View style={[styles.card, cardsAnimatedStyle3]}>
             <View style={styles.cardHeader}>
               <Ionicons name="document-text" size={24} color="#4E5A94" />
-              <Text style={styles.cardTitle}>Templates</Text>
+              <Text style={styles.cardTitle}>{t("analysis.templates")}</Text>
             </View>
 
             <View style={styles.statRow}>
@@ -494,19 +505,19 @@ export default function Analysis() {
                 <Text style={styles.statValue}>
                   {analyticsData?.templates.total || 0}
                 </Text>
-                <Text style={styles.statLabel}>Total Templates</Text>
+                <Text style={styles.statLabel}>{t("analysis.totalTemplates")}</Text>
               </View>
               {analyticsData && analyticsData.templates.total > 0 ? (
                 <View style={styles.statItem}>
                   <Text style={styles.statValue}>
                     {getUsedCategoryEntries().length}
                   </Text>
-                  <Text style={styles.statLabel}>Categories</Text>
+                  <Text style={styles.statLabel}>{t("analysis.categories")}</Text>
                 </View>
               ) : (
                 <View style={styles.statItem}>
                   <Text style={styles.statValue}>0</Text>
-                  <Text style={styles.statLabel}>Categories</Text>
+                  <Text style={styles.statLabel}>{t("analysis.categories")}</Text>
                 </View>
               )}
               <View style={styles.statItem}>
@@ -516,14 +527,14 @@ export default function Analysis() {
                     0
                   )}
                 </Text>
-                <Text style={styles.statLabel}>Most Used</Text>
+                <Text style={styles.statLabel}>{t("analysis.mostUsed")}</Text>
               </View>
             </View>
 
             {/* Popular Categories Section */}
             {getUsedCategoryEntries().length > 0 && (
               <View style={styles.categoriesContainer}>
-                <Text style={styles.categoriesTitle}>Popular Categories</Text>
+                <Text style={styles.categoriesTitle}>{t("analysis.popularCategories")}</Text>
                 <View style={styles.categoriesList}>
                   {getUsedCategoryEntries()
                     .sort((a, b) => b[1] - a[1])
@@ -531,8 +542,7 @@ export default function Analysis() {
                     .map(([category, count], index) => (
                       <View key={index} style={styles.categoryItem}>
                         <Text style={styles.categoryName}>
-                          {category.charAt(0).toUpperCase() +
-                            category.slice(1).replace("_", " ")}
+                          {categoryLabel(category)}
                         </Text>
                         <View style={styles.categoryBar}>
                           <View
@@ -558,11 +568,11 @@ export default function Analysis() {
 
         {/* Charts Section */}
         <Animated.View style={[styles.chartsContainer, chartAnimatedStyle]}>
-          <Text style={styles.sectionTitle}>Detailed Analytics</Text>
+          <Text style={styles.sectionTitle}>{t("analysis.detailed")}</Text>
 
           {/* Weekly Goals Progress Chart */}
           <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Weekly Goals Progress</Text>
+            <Text style={styles.chartTitle}>{t("analysis.weeklyGoals")}</Text>
             {analyticsData && analyticsData.goals.total > 0 ? (
               <LineChart
                 data={getLineChartData()}
@@ -576,7 +586,7 @@ export default function Analysis() {
               <View style={styles.emptyChartContainer}>
                 <Ionicons name="bar-chart-outline" size={50} color="#DDD" />
                 <Text style={styles.emptyChartText}>
-                  No goal data available
+                  {t("analysis.noGoalData")}
                 </Text>
               </View>
             )}
@@ -585,7 +595,7 @@ export default function Analysis() {
           {/* Tasks Weekly Distribution - Custom View */}
           <View style={styles.chartCard}>
             <Text style={styles.chartTitle}>
-              Tasks Distribution (Last 7 Days)
+              {t("analysis.taskDistribution")}
             </Text>
             {analyticsData && analyticsData.tasks.total > 0 ? (
               <View style={styles.tasksDistributionContainer}>
@@ -622,7 +632,7 @@ export default function Analysis() {
               <View style={styles.emptyChartContainer}>
                 <Ionicons name="calendar-outline" size={50} color="#DDD" />
                 <Text style={styles.emptyChartText}>
-                  No task data available
+                  {t("analysis.noTaskData")}
                 </Text>
               </View>
             )}
@@ -630,7 +640,7 @@ export default function Analysis() {
 
           {/* Template Categories Chart */}
           <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Template Categories</Text>
+            <Text style={styles.chartTitle}>{t("analysis.templateCategories")}</Text>
             {getUsedCategoryEntries().length > 0 ? (
               <PieChart
                 data={prepareCategoryData()}
@@ -646,7 +656,7 @@ export default function Analysis() {
               <View style={styles.emptyChartContainer}>
                 <Ionicons name="pie-chart-outline" size={50} color="#DDD" />
                 <Text style={styles.emptyChartText}>
-                  No template data available
+                  {t("analysis.noTemplateData")}
                 </Text>
               </View>
             )}

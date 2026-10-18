@@ -16,6 +16,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Lets the web app read the code it translates AI errors from.
+    expose_headers=["X-Error-Code"],
 )
 
 # Every route in these routers requires a valid Clerk session token.

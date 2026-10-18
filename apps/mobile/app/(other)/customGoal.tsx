@@ -16,6 +16,7 @@ import CustomGoalUI from "@/components/CustomGoalUI";
 import { format } from "date-fns";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
+import { useTranslation } from "@/i18n";
 
 type Task = {
   /** Saved task id (editing an existing goal); absent for new tasks. */
@@ -210,6 +211,7 @@ export default function CustomGoal() {
   const router = useRouter();
   const { user, isLoaded, isSignedIn } = useUser();
   const apiFetch = useApiFetch();
+  const { t } = useTranslation();
 
   // ====================== Validation Effect ======================
   useEffect(() => {
@@ -229,12 +231,12 @@ export default function CustomGoal() {
 
     if (taskList.length > 0) {
       return Alert.alert(
-        "Clear Tasks",
-        "Changing the date will remove all existing tasks. Continue?",
+        t("goal.clearTasksTitle"),
+        t("goal.clearTasksMessage"),
         [
-          { text: "Cancel", style: "cancel" },
+          { text: t("common.cancel"), style: "cancel" },
           {
-            text: "Continue",
+            text: t("goal.continue"),
             style: "destructive",
             onPress: () => updateDate(newDate, type, true),
           },
@@ -277,9 +279,9 @@ export default function CustomGoal() {
 
     if (goalStarted) {
       Alert.alert(
-        "Limited Editing",
-        "This goal has already started. You can only edit the task title.",
-        [{ text: "OK", onPress: () => setTaskModalVisible(true) }]
+        t("goal.limitedEditingTitle"),
+        t("goal.limitedEditingMessage"),
+        [{ text: t("common.ok"), onPress: () => setTaskModalVisible(true) }]
       );
     } else {
       setTaskModalVisible(true);
@@ -334,7 +336,7 @@ export default function CustomGoal() {
 
   const readError = async (response: Response) => {
     const body = await response.json().catch(() => null);
-    return body?.detail || body?.message || `Server error: ${response.status}`;
+    return body?.detail || body?.message || t("goal.serverError", { status: response.status });
   };
 
   /** Create or update the draft; returns its id. */
@@ -358,10 +360,10 @@ export default function CustomGoal() {
     try {
       await saveDraftRequest();
       router.dismissTo("/(other)/AllGoalAllTask");
-      Alert.alert("Draft saved", "Find it under Drafts in All goals and start it when you're ready.");
+      Alert.alert(t("goal.draftSavedTitle"), t("goal.draftSavedMessage"));
     } catch (error: any) {
       console.error("Failed to save draft:", error);
-      Alert.alert("Couldn't save draft", error.message || "Please try again.");
+      Alert.alert(t("goal.draftSaveFailed"), error.message || t("ai.tryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -377,25 +379,23 @@ export default function CustomGoal() {
     const result = await response.json();
     router.dismissTo("/(tabs)/schedule");
     Alert.alert(
-      "Goal started",
-      result.shifted_days > 0
-        ? "Its planned start had passed, so it starts today and keeps the same length."
-        : "Your goal is on the schedule."
+      t("goal.startedTitle"),
+      result.shifted_days > 0 ? t("goal.startedShifted") : t("goal.startedOnSchedule")
     );
   };
 
   const handleSubmit = async () => {
     if (!isFormValid) {
       Alert.alert(
-        "Incomplete Goal",
-        "Please fill all required fields and add at least one task.",
-        [{ text: "OK" }]
+        t("goal.incompleteTitle"),
+        t("goal.incompleteMessage"),
+        [{ text: t("common.ok") }]
       );
       return;
     }
 
     if (!isLoaded || !isSignedIn) {
-      Alert.alert("Authentication Error", "Please sign in to save your goal.");
+      Alert.alert(t("goal.authErrorTitle"), t("goal.signInToSave"));
       return;
     }
 
@@ -410,7 +410,7 @@ export default function CustomGoal() {
       const userId = user?.id;
 
       if (!userId) {
-        Alert.alert("Error", "Could not get user ID. Please try again later.");
+        Alert.alert(t("common.error"), t("goal.noUserId"));
         setIsLoading(false);
         return;
       }
@@ -440,7 +440,7 @@ export default function CustomGoal() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.message || `Server error: ${response.status}`
+          errorData.message || t("goal.serverError", { status: response.status })
         );
       }
 
@@ -450,12 +450,12 @@ export default function CustomGoal() {
       // Go straight to the schedule (calendar). Don't wait for the alert's
       // OK button: Alert.alert is a no-op on web, so its onPress never ran there.
       router.dismissTo("/(tabs)/schedule");
-      Alert.alert("Success!", "Your custom goal has been created successfully.");
+      Alert.alert(t("goal.createdTitle"), t("goal.created"));
     } catch (error: any) {
       console.error("Failed to create goal:", error);
       Alert.alert(
-        "Error",
-        error.message || "Failed to create goal. Please try again later."
+        t("common.error"),
+        error.message || t("goal.createFailed")
       );
     } finally {
       setIsLoading(false);
@@ -466,8 +466,8 @@ export default function CustomGoal() {
   const handleUpdate = async () => {
     if (!isLoaded || !isSignedIn) {
       Alert.alert(
-        "Authentication Error",
-        "Please sign in to update your goal."
+        t("goal.authErrorTitle"),
+        t("goal.signInToUpdate")
       );
       return;
     }
@@ -478,7 +478,7 @@ export default function CustomGoal() {
       const userId = user?.id;
 
       if (!userId) {
-        Alert.alert("Error", "Could not get user ID. Please try again later.");
+        Alert.alert(t("common.error"), t("goal.noUserId"));
         setIsLoading(false);
         return;
       }
@@ -529,7 +529,7 @@ export default function CustomGoal() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.message || `Server error: ${response.status}`
+          errorData.message || t("goal.serverError", { status: response.status })
         );
       }
 
@@ -539,17 +539,17 @@ export default function CustomGoal() {
         JSON.stringify(responseData, null, 2)
       );
 
-      Alert.alert("Success!", "Your goal has been updated successfully.", [
+      Alert.alert(t("goal.createdTitle"), t("goal.updated"), [
         {
-          text: "OK",
+          text: t("common.ok"),
           onPress: () => router.back(),
         },
       ]);
     } catch (error: any) {
       console.error("Failed to update goal:", error);
       Alert.alert(
-        "Error",
-        error.message || "Failed to update goal. Please try again later."
+        t("common.error"),
+        error.message || t("goal.updateFailed")
       );
     } finally {
       setIsLoading(false);
@@ -565,12 +565,12 @@ export default function CustomGoal() {
       taskList.length > 0
     ) {
       Alert.alert(
-        "Discard Changes",
-        "Are you sure you want to discard your changes?",
+        t("goal.discardTitle"),
+        t("goal.discardMessage"),
         [
-          { text: "Cancel", style: "cancel" },
+          { text: t("common.cancel"), style: "cancel" },
           {
-            text: "Discard",
+            text: t("goal.discard"),
             style: "destructive",
             onPress: () => router.back(),
           },
@@ -691,7 +691,7 @@ export default function CustomGoal() {
           handleDateChange(dates[0], "start");
           setStartDatePickerVisible(false);
         }}
-        title="Select Start Date"
+        title={t("goal.selectStartDate")}
         initialDates={startDate ? [startDate] : []}
         highlightColor="#4F46E5"
         singleSelect
@@ -708,7 +708,7 @@ export default function CustomGoal() {
           handleDateChange(dates[0], "due");
           setDueDatePickerVisible(false);
         }}
-        title="Select End Date"
+        title={t("goal.selectEndDate")}
         initialDates={dueDate ? [dueDate] : []}
         highlightColor="#FF5733"
         singleSelect
