@@ -358,16 +358,7 @@ export default function Analysis() {
         >
           <Text style={styles.subtitle}>{t("analysis.subtitle")}</Text>
         </Animated.View>
-      </Header>
 
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarSpace }]}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
         {/* Period switch */}
         <View style={styles.periodRow}>
           <View style={styles.periodSwitch}>
@@ -390,11 +381,20 @@ export default function Analysis() {
           </View>
           <View style={styles.periodSpinner}>
             {isLoading && !!analyticsData && !refreshing ? (
-              <ActivityIndicator size="small" color={COLORS.primary} />
+              <ActivityIndicator size="small" color="#FFF" />
             ) : null}
           </View>
         </View>
+      </Header>
 
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarSpace }]}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {renderBody()}
       </ScrollView>
     </View>
@@ -413,29 +413,32 @@ const styles = StyleSheet.create({
     marginTop: -HEADER_RADIUS,
   },
   scrollContent: {
-    paddingTop: HEADER_RADIUS,
+    paddingTop: HEADER_RADIUS + 16,
     paddingHorizontal: 16,
   },
 
   // Header Styles
   titleContainer: {
-    alignItems: "flex-start",
+    alignItems: "center",
   },
   subtitle: {
     color: "#CCCCCC",
     fontSize: 16,
+    textAlign: "center",
   },
 
   // Period Switch
+  // Centered in the header; the spinner sits to its right without shifting it.
   periodRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 16,
+    justifyContent: "center",
   },
   periodSwitch: {
-    flex: 1,
+    width: "100%",
+    maxWidth: 300,
     flexDirection: "row",
-    backgroundColor: "#ECEDF3",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     borderRadius: 12,
     padding: 4,
   },
@@ -446,7 +449,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   periodOptionSelected: {
-    backgroundColor: "#FFF",
+    backgroundColor: "#4E5A94",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
@@ -455,16 +458,16 @@ const styles = StyleSheet.create({
   },
   periodText: {
     fontSize: 14,
-    color: "#777",
+    color: "#B7B7B7",
     fontWeight: "500",
   },
   periodTextSelected: {
-    color: "#16171F",
+    color: "#FFF",
     fontWeight: "700",
   },
   periodSpinner: {
-    width: 28,
-    alignItems: "flex-end",
+    position: "absolute",
+    right: 0,
   },
 
   // Loading & Error States

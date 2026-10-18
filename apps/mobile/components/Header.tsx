@@ -20,7 +20,7 @@ export const HEADER_RADIUS = 30;
 
 // The header fills at least this share of the screen height; extra space is
 // spread around the content below the top row.
-const HEADER_SCREEN_SHARE = 0.33;
+const HEADER_SCREEN_SHARE = 0.25;
 
 // ====================== Type Definitions ======================
 type HeaderProps = {
