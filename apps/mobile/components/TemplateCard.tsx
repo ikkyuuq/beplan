@@ -2,7 +2,6 @@ import React from "react";
 import {
   View,
   Text,
-  Image,
   Pressable,
   StyleSheet,
   TouchableOpacity,
@@ -19,6 +18,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "@/i18n";
 import { categoryLabel, formatDuration } from "@/i18n/format";
 import { MOTION } from "@/constants/motion";
+import { categoryStyle } from "@/constants/categories";
+import TemplateCover from "@/components/TemplateCover";
 
 // ====================== Type Definitions ======================
 type Task = {
@@ -96,24 +97,6 @@ export default function TemplateCard({
     onToggleFavorite();
   };
 
-  const getCategoryIcon = (): keyof typeof Ionicons.glyphMap => {
-    // Same icons as the community filter chips (the backend's five categories).
-    switch (template.category.toLowerCase()) {
-      case "workout":
-        return "barbell-outline";
-      case "health":
-        return "fitness-outline";
-      case "education":
-        return "book-outline";
-      case "productivity":
-        return "checkbox-outline";
-      case "finance":
-        return "cash-outline";
-      default:
-        return "pricetag-outline";
-    }
-  };
-
   return (
     <Animated.View
       style={[styles.cardContainer, animatedStyle]}
@@ -128,13 +111,13 @@ export default function TemplateCard({
         <View style={styles.card}>
           {/* Image */}
           <View style={styles.imageContainer}>
-            {!!template.image_url ? (
-              <Image source={{ uri: template.image_url }} style={styles.image} />
-            ) : (
-              <View style={[styles.image, styles.imagePlaceholder]}>
-                <Ionicons name="image-outline" size={40} color="#8B98D5" />
-              </View>
-            )}
+            <TemplateCover
+              imageUrl={template.image_url}
+              category={template.category}
+              style={styles.image}
+              iconSize={40}
+              iconStyle={styles.coverIcon}
+            />
             <LinearGradient
               colors={["transparent", "rgba(0,0,0,0.7)"]}
               style={styles.gradient}
@@ -144,7 +127,7 @@ export default function TemplateCard({
             <View style={styles.badgesContainer}>
               <View style={styles.categoryBadge}>
                 <Ionicons
-                  name={getCategoryIcon()}
+                  name={categoryStyle(template.category).icon}
                   size={12}
                   color="#fff"
                   style={styles.categoryIcon}
@@ -264,10 +247,9 @@ const styles = StyleSheet.create({
     position: "relative",
     width: "100%",
   },
-  imagePlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#E8ECF8",
+  // Keeps the default cover's icon above the title.
+  coverIcon: {
+    marginBottom: 50,
   },
   image: {
     width: "100%",

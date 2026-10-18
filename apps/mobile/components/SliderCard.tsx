@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  Image,
   Pressable,
   StyleSheet,
   TouchableOpacity,
@@ -18,6 +17,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { useTranslation } from "@/i18n";
 import { categoryLabel, formatDuration } from "@/i18n/format";
+import { categoryStyle } from "@/constants/categories";
+import TemplateCover from "@/components/TemplateCover";
 
 // ====================== Type Definitions ======================
 type Task = {
@@ -119,30 +120,6 @@ export default function SliderCard({
     transform: [{ scale: favoriteScale.value }],
   }));
 
-  // ====================== Helper Functions ======================
-  const getCategoryIcon = (
-    category: string
-  ): keyof typeof Ionicons.glyphMap => {
-    switch (category.toLowerCase()) {
-      case "fitness":
-      case "workout":
-        return "barbell-outline";
-      case "health":
-        return "fitness-outline";
-      case "education":
-        return "book-outline";
-      case "work":
-      case "finance":
-        return "briefcase-outline";
-      case "travel":
-        return "airplane-outline";
-      case "personal_development":
-      case "productivity":
-        return "person-outline";
-      default:
-        return "pricetag-outline";
-    }
-  };
 
   // ====================== Event Handlers ======================
   const handleDisplayPreviewModal = () => {
@@ -191,17 +168,12 @@ export default function SliderCard({
           <View style={styles.cardContainer}>
             {/* Image Container */}
             <View style={styles.imageContainer}>
-              {!!image ? (
-                <Image
-                  source={{ uri: image }}
-                  style={styles.image}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={[styles.image, styles.imagePlaceholder]}>
-                  <Ionicons name="image-outline" size={48} color="#8B98D5" />
-                </View>
-              )}
+              <TemplateCover
+                imageUrl={image}
+                category={category}
+                style={styles.image}
+                iconStyle={styles.coverIcon}
+              />
               <LinearGradient
                 colors={["transparent", "transparent", "black"]}
                 style={styles.gradient}
@@ -244,7 +216,7 @@ export default function SliderCard({
                   {/* Category Badge */}
                   <View style={styles.categoryBadge}>
                     <Ionicons
-                      name={getCategoryIcon(category)}
+                      name={categoryStyle(category).icon}
                       size={12}
                       color="#fff"
                       style={styles.categoryIcon}
@@ -316,10 +288,9 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  imagePlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#E8ECF8",
+  // Keeps the default cover's icon above the title.
+  coverIcon: {
+    marginBottom: 40,
   },
   gradient: {
     position: "absolute",

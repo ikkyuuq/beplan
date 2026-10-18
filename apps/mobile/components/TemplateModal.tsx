@@ -24,6 +24,8 @@ import { useApiFetch } from "@/hooks/useApiFetch";
 import DismissKeyboard from "@/components/DismissKeyboard";
 import { useTranslation } from "@/i18n";
 import { categoryLabel, formatDuration } from "@/i18n/format";
+import { categoryStyle } from "@/constants/categories";
+import TemplateCover from "@/components/TemplateCover";
 
 // ====================== Type Definitions ======================
 type Creator = {
@@ -53,30 +55,6 @@ type TemplateModalProps = {
     duration?: number;
     goals?: { id: string; title: string }[];
   };
-};
-
-// ====================== Helper Functions ======================
-// Get icon based on category to match TemplateCard
-const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
-  switch (category.toLowerCase()) {
-    case "fitness":
-    case "workout":
-      return "barbell-outline";
-    case "health":
-      return "fitness-outline";
-    case "education":
-      return "book-outline";
-    case "work":
-    case "finance":
-      return "briefcase-outline";
-    case "travel":
-      return "airplane-outline";
-    case "personal_development":
-    case "productivity":
-      return "person-outline";
-    default:
-      return "pricetag-outline";
-  }
 };
 
 // ====================== Main Component ======================
@@ -213,9 +191,11 @@ export default function TemplateModal({
               <View style={styles.modalContent}>
                 {/* Hero Image Section */}
                 <View style={styles.heroContainer}>
-                  <Image
-                    source={{ uri: data.image }}
+                  <TemplateCover
+                    imageUrl={data.image}
+                    category={data.category}
                     style={styles.heroImage}
+                    iconSize={64}
                   />
                   <LinearGradient
                     colors={["transparent", "rgba(0,0,0,0.9)"]}
@@ -277,7 +257,7 @@ export default function TemplateModal({
                       {/* Category Badge */}
                       <View style={styles.categoryBadge}>
                         <Ionicons
-                          name={getCategoryIcon(data.category)}
+                          name={categoryStyle(data.category).icon}
                           size={16}
                           color="#FFF"
                         />
