@@ -1,20 +1,24 @@
 import json
 import os
-from datetime import datetime
+import re
+from datetime import date
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, Optional
 
+import anthropic
 from anthropic import Anthropic
 from auth import get_current_user_id
 from const import types as T
 from database import get_db_pool
+from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, HTTPException
 from flair.data import Sentence
 from flair.models import SequenceTagger
 from huggingface_hub import hf_hub_download
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from starlette.concurrency import run_in_threadpool
 from utils import goal_creation
+from utils.client_date import get_client_today
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL") or "claude-sonnet-5-5"
@@ -59,18 +63,21 @@ class SubmitRequest(BaseModel):
     value: str
 
 
-def parse_ai_response(response) -> dict:
-    try:
-        # Handle both list and single content cases
-        if isinstance(response.content, list) and len(response.content) > 0:
-            raw_content = response.content[0].text
-        else:
-            raw_content = (
-                response.content[0].text
-                if hasattr(response, "content")
-                else str(response)
-            )
+def ai_error(status_code: int, code: str, message: str) -> HTTPException:
+    """An AI failure the app can translate: it reads the X-Error-Code header and
+    falls back to the English message for codes it doesn't know."""
+    return HTTPException(status_code=status_code, detail=message, headers={"X-Error-Code": code})
 
+
+def parse_ai_response(response) -> dict:
+    # The model thinks by default, so the reply can start with thinking blocks;
+    # the answer is in the text blocks.
+    raw_content = "".join(
+        block.text
+        for block in getattr(response, "content", None) or []
+        if getattr(block, "type", None) == "text" and isinstance(getattr(block, "text", None), str)
+    ).strip()
+    try:
         # Clean up the response if needed
         if raw_content.startswith("```json"):
             raw_content = raw_content[7:-3]  # Remove json code block markers
@@ -78,27 +85,203 @@ def parse_ai_response(response) -> dict:
             raw_content = raw_content[3:-3]  # Remove generic code block markers
 
         return json.loads(raw_content.strip())
-    except (json.JSONDecodeError, AttributeError) as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to parse AI response: {str(e)}. Raw content: {response.content[0].text}",
-        )
+    except json.JSONDecodeError as e:
+        print(f"Failed to parse AI response: {e}. Raw content: {raw_content[:500]!r}")
+        raise ai_error(502, "ai_unreadable", "The AI returned an unreadable answer. Please try again.")
 
 
-def call_anthropic_api(model: str, system: str, prompt: str) -> dict:
+def call_anthropic_api(model: str, system: str, prompt: str, max_tokens: int = 8000) -> dict:
     if not client:
-        raise HTTPException(status_code=503, detail="AI features are disabled due to missing ANTHROPIC_API_KEY")
-    response = client.messages.create(
-        model=model,
-        max_tokens=1000,
-        system=system,
-        messages=[{"role": "user", "content": prompt}],
-    )
+        raise ai_error(503, "ai_disabled", "AI features are disabled due to missing ANTHROPIC_API_KEY")
+    try:
+        response = client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except anthropic.APIError as error:
+        raise anthropic_http_error(error) from error
+    # A reply cut off at the token limit is half a JSON object.
+    stop_reason = getattr(response, "stop_reason", None)
+    if stop_reason == "max_tokens":
+        print(f"Anthropic reply hit max_tokens={max_tokens}")
+        raise ai_error(502, "ai_too_long", "The AI's answer was too long. Please try again.")
+    if stop_reason == "refusal":
+        print("Anthropic declined the request (stop_reason=refusal)")
+        raise ai_error(422, "ai_refused", "The AI couldn't help with this goal. Try rewording it.")
     return parse_ai_response(response)
+
+
+# Upstream failures are ours, not the client's: 502 when the AI service rejects
+# our setup (key, credit, model), 503 when it's busy or unreachable.
+def anthropic_http_error(error: anthropic.APIError) -> HTTPException:
+    request_id = getattr(error, "request_id", None)
+    print(f"Anthropic API error ({type(error).__name__}, request_id={request_id}): {error}")
+    if isinstance(error, (anthropic.AuthenticationError, anthropic.PermissionDeniedError)):
+        return ai_error(502, "ai_key_rejected", "AI service unavailable: the server's API key was rejected.")
+    if isinstance(error, anthropic.NotFoundError):
+        return ai_error(502, "ai_model_missing", f"AI service unavailable: model '{ANTHROPIC_MODEL}' was not found.")
+    if isinstance(error, anthropic.BadRequestError) and "credit balance" in str(error).lower():
+        return ai_error(502, "ai_no_credit", "AI service unavailable: the API account is out of credit.")
+    if isinstance(error, anthropic.RateLimitError) or getattr(error, "status_code", None) == 529:
+        return ai_error(503, "ai_busy", "AI service is busy. Please try again in a moment.")
+    if isinstance(error, anthropic.APIConnectionError):
+        return ai_error(503, "ai_unreachable", "Couldn't reach the AI service. Please try again.")
+    return ai_error(502, "ai_error", "AI service returned an error. Please try again.")
 
 
 def normalize_label(label: str) -> str:
     return label.replace("-", "_")
+
+
+_THAI_CHARS = re.compile(r"[\u0e00-\u0e7f]")
+
+
+def goal_language(text: str) -> str:
+    """Reply in the language the user wrote the goal in: "th" or "en"."""
+    return "th" if _THAI_CHARS.search(text or "") else "en"
+
+
+def language_rule(language: str, what: str) -> str:
+    if language == "th":
+        return f"- Write {what} in Thai (ภาษาไทย). Keep JSON keys and fixed values (label, type, repeat_type) in English."
+    return f"- Write {what} in English."
+
+
+# Asked when the AI skips a missing criterion, so every gap gets a question.
+FALLBACK_QUESTIONS = {
+    "en": {
+        "specific": ("What exactly do you want to achieve?", "open-ended"),
+        "measurable": ("How will you measure your progress?", "open-ended"),
+        "achievable": ("Do you have the time and resources to do this?", "yes-no"),
+        "relevant": ("Why does this goal matter to you?", "open-ended"),
+        "time_bound": ("When do you want to reach this goal?", "date"),
+    },
+    "th": {
+        "specific": ("คุณอยากทำอะไรให้สำเร็จแบบเจาะจง?", "open-ended"),
+        "measurable": ("คุณจะวัดความคืบหน้าอย่างไร?", "open-ended"),
+        "achievable": ("คุณมีเวลาและทรัพยากรพอที่จะทำสิ่งนี้ไหม?", "yes-no"),
+        "relevant": ("ทำไมเป้าหมายนี้ถึงสำคัญกับคุณ?", "open-ended"),
+        "time_bound": ("คุณอยากทำเป้าหมายนี้ให้สำเร็จภายในวันไหน?", "date"),
+    },
+}
+DEFAULT_GOAL_TITLE = {"en": "My SMART goal", "th": "เป้าหมาย SMART ของฉัน"}
+QUESTION_TYPES = {"open-ended", "yes-no", "date"}
+
+
+def complete_questions(ai_questions: list, missing_keys: List[str], language: str = "en") -> List[dict]:
+    """One usable question per missing key, in SMART order."""
+    by_label = {}
+    for q in ai_questions:
+        if not isinstance(q, dict):
+            continue
+        label = q.get("label")
+        text = q.get("question")
+        if label in missing_keys and label not in by_label and isinstance(text, str) and text.strip():
+            by_label[label] = {"label": label, "question": text.strip(), "type": q.get("type")}
+    questions = []
+    for key in missing_keys:
+        fallback_text, fallback_type = FALLBACK_QUESTIONS[language][key]
+        q = by_label.get(key) or {"label": key, "question": fallback_text, "type": fallback_type}
+        # The due date has to come back as a real date.
+        if key == "time_bound":
+            q["type"] = "date"
+        elif q["type"] not in QUESTION_TYPES:
+            q["type"] = fallback_type
+        questions.append(q)
+    return questions
+
+
+_NUMBER_WORDS = {
+    "a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+    "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
+}
+_RELATIVE_SPAN = re.compile(r"\b(\d+|" + "|".join(_NUMBER_WORDS) + r")\s*(day|week|month|year)s?\b", re.I)
+_THAI_NUMBER_WORDS = {
+    "หนึ่ง": 1, "สอง": 2, "สาม": 3, "สี่": 4, "ห้า": 5, "หก": 6,
+    "เจ็ด": 7, "แปด": 8, "เก้า": 9, "สิบ": 10, "สิบเอ็ด": 11, "สิบสอง": 12,
+}
+_THAI_UNITS = {"วัน": "day", "สัปดาห์": "week", "อาทิตย์": "week", "เดือน": "month", "ปี": "year"}
+# Longest words first so "สิบสอง" wins over "สิบ". Thai has no spaces between words.
+_THAI_SPAN = re.compile(
+    r"(\d+|" + "|".join(sorted(_THAI_NUMBER_WORDS, key=len, reverse=True)) + r")\s*("
+    + "|".join(_THAI_UNITS) + r")"
+)
+MAX_GOAL_LENGTH = relativedelta(years=3)
+
+
+def _relative_span(text: str):
+    """(amount, unit) from "2 months" or "2 เดือน", or None."""
+    match = _RELATIVE_SPAN.search(text)
+    if match:
+        amount, unit = match.groups()
+        return (int(amount) if amount.isdigit() else _NUMBER_WORDS[amount.lower()]), unit.lower()
+    match = _THAI_SPAN.search(text)
+    if match:
+        amount, unit = match.groups()
+        return (int(amount) if amount.isdigit() else _THAI_NUMBER_WORDS[amount]), _THAI_UNITS[unit]
+    return None
+
+
+def resolve_due_date(time_bound: str, start: date) -> Optional[date]:
+    """The due date for an ISO date ("2026-12-01") or a span ("in 2 months",
+    "ภายใน 2 เดือน"); None when the text is something else ("by summer")."""
+    text = (time_bound or "").strip()
+    try:
+        due = date.fromisoformat(text[:10])
+    except ValueError:
+        span = _relative_span(text)
+        if not span:
+            return None
+        n, unit = span
+        due = start + relativedelta(**{f"{unit}s": n}) - relativedelta(days=1)
+    return due if start < due <= start + MAX_GOAL_LENGTH else None
+
+
+def clean_generated_goal(ai_goal: dict, start: date, due: Optional[date], language: str = "en") -> dict:
+    """Check the AI's plan before the app shows it: fixed dates, valid tasks only."""
+    if not isinstance(ai_goal, dict):
+        raise ai_error(502, "ai_bad_plan", "The AI returned an unusable plan. Please try again.")
+    if due is None:
+        try:
+            due = date.fromisoformat(str(ai_goal.get("due_date"))[:10])
+        except ValueError:
+            due = None
+        if due is None or not (start < due <= start + MAX_GOAL_LENGTH):
+            raise ai_error(502, "ai_no_due_date", "The AI couldn't work out a due date. Please try again.")
+
+    tasks = []
+    for raw in ai_goal.get("tasks") or []:
+        try:
+            task = T.Task.model_validate(raw)
+        except ValidationError:
+            continue
+        if task.repeat_type == T.RepeatType.WEEKLY:
+            task.week_interval = sorted({d for d in task.week_interval or [] if 0 <= d <= 6})
+            task.date_interval = None
+            if not task.week_interval:
+                continue
+        elif task.repeat_type in (T.RepeatType.DATE, T.RepeatType.MONTHLY):
+            task.date_interval = sorted({d for d in task.date_interval or [] if start <= d <= due})
+            task.week_interval = None
+            if not task.date_interval:
+                continue
+        else:
+            task.week_interval = task.date_interval = None
+        tasks.append(task)
+    if not tasks:
+        raise ai_error(502, "ai_no_tasks", "The AI returned a plan without usable tasks. Please try again.")
+
+    title = ai_goal.get("title")
+    goal = T.Goal(
+        title=title.strip() if isinstance(title, str) and title.strip() else DEFAULT_GOAL_TITLE[language],
+        type=T.GoalType.SMART_GOAL,
+        start_date=start,
+        due_date=due,
+        tasks=tasks,
+    )
+    return goal.model_dump(mode="json")
 
 
 @router.post("/validate", tags=["ai"])
@@ -167,6 +350,7 @@ async def generate_questions(request: PredictionResult):
         if not missing_keys:
             # No criteria missing; no questions needed.
             return {"result": []}
+        language = goal_language(request.original_text)
 
         prompt = f"""
             Generate Questions for Missing SMART Criteria
@@ -203,6 +387,7 @@ async def generate_questions(request: PredictionResult):
             - Questions should be contextual to the original goal.
             - Avoid generic questions - reference specific details from original_text.
             - Use "date" type only for time_bound questions.
+            {language_rule(language, "every question")}
 
             Note: Return only valid JSON without comments or explanations.
         """
@@ -214,13 +399,7 @@ async def generate_questions(request: PredictionResult):
             prompt=prompt,
         )
 
-        # Filter out any questions that don't correspond to a missing key.
-        all_questions = ai_response.get("result", [])
-        filtered_questions = [
-            q for q in all_questions if q.get("label") in missing_keys
-        ]
-
-        return {"result": filtered_questions}
+        return {"result": complete_questions(ai_response.get("result") or [], missing_keys, language)}
     except HTTPException:
         raise
     except Exception as error:
@@ -266,14 +445,21 @@ async def submit_question(request: SubmitRequest):
 
 
 @router.post("/generate-goal", tags=["ai"])
-async def generate_goal(request: PredictionResult):
+async def generate_goal(
+    request: PredictionResult, client_today: date = Depends(get_client_today)
+):
     try:
-        today = datetime.today().date().strftime("%Y-%m-%d")
-        start_date = today
+        start = client_today
         time_bound = request.prediction.get("time_bound")
         if not time_bound or not time_bound[0].get("text"):
             raise HTTPException(status_code=400, detail="time_bound is required")
-        due_date = time_bound[0]["text"]
+        due = resolve_due_date(str(time_bound[0]["text"]), start)
+        language = goal_language(request.original_text)
+        start_date = start.isoformat()
+        # Unparsed spans ("by summer") are left to the AI and checked afterwards.
+        due_date = due.isoformat() if due else (
+            f"YYYY-MM-DD you work out from the time_bound \"{time_bound[0]['text']}\", counting from {start_date}"
+        )
 
         goal_input = {
             "original_text": request.original_text,
@@ -317,6 +503,7 @@ async def generate_goal(request: PredictionResult):
                - Create 7-14 distinct tasks that break down the goal.
                - Each task must be actionable and measurable.
                - Tasks should form a logical progression towards the goal.
+               {language_rule(language, "the goal title and every task title and description")}
 
             2. Timing Rules:
                - All task dates must be between {start_date} and {due_date}.
@@ -326,7 +513,7 @@ async def generate_goal(request: PredictionResult):
             3. Repeat Types:
                - "date": Task to be completed on specific days (insert into dates).
                - "daily": Daily task with no specific days.
-               - "weekly": Select specific days of the week to repeat (insert weekday numbers into interval).
+               - "weekly": Select specific days of the week to repeat (insert weekday numbers into week_interval, 0 = Sunday ... 6 = Saturday).
                - "monthly": Set specific days of the month to repeat (insert into dates).
 
             Example Input:
@@ -382,8 +569,9 @@ async def generate_goal(request: PredictionResult):
             model=ANTHROPIC_MODEL,
             system="You are a SMART goal task generation assistant. Break down SMART goals into actionable tasks with clear timelines and measurable outcomes.",
             prompt=prompt,
+            max_tokens=16000,
         )
-        return ai_response
+        return clean_generated_goal(ai_response, start, due, language)
 
     except HTTPException:
         raise

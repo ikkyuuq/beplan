@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { routes } from "@/routesConfig";
 import InputField from "@/components/InputField";
+import { useTranslation } from "@/i18n";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -80,6 +81,7 @@ export default function SetPasswordScreen() {
   const { signIn, isLoaded } = useSignIn();
   const { signOut } = useClerk();
   const router = useRouter();
+  const { t } = useTranslation();
 
   // ====================== State Management ======================
   const [password, setPassword] = useState("");
@@ -110,19 +112,17 @@ export default function SetPasswordScreen() {
       if (!isLoaded) return;
 
       if (!password.trim() || !confirmPassword.trim()) {
-        setErrorMessage("Both fields are required.");
+        setErrorMessage(t("auth.bothRequired"));
         return;
       }
 
       if (!isValidPassword(password)) {
-        setErrorMessage(
-          "Password must be at least 8 characters long and include uppercase, lowercase, and numbers."
-        );
+        setErrorMessage(t("auth.passwordRule"));
         return;
       }
 
       if (password !== confirmPassword) {
-        setErrorMessage("Passwords do not match.");
+        setErrorMessage(t("auth.passwordsDontMatch"));
         return;
       }
 
@@ -135,7 +135,7 @@ export default function SetPasswordScreen() {
       setIsSettingPassword(false);
     } catch (err: any) {
       setIsSettingPassword(false);
-      setErrorMessage("Failed to reset password. Please try again.");
+      setErrorMessage(t("auth.resetFailed"));
     }
   };
 
@@ -148,28 +148,20 @@ export default function SetPasswordScreen() {
       </TouchableOpacity>
       {/* Title & Subtitle */}
       <Animated.Text style={[styles.title, titleAnimatedStyle]}>
-        Reset Password
+        {t("auth.resetTitle")}
       </Animated.Text>
 
       <Animated.Text style={[styles.subtitle, subtitleAnimatedStyle]}>
-        Please enter your new password and confirm.
+        {t("auth.resetSubtitle")}
       </Animated.Text>
 
       {/* Password Requirements */}
       <Animated.View style={[styles.requirementsContainer, formAnimatedStyle]}>
-        <Text style={styles.requirementsTitle}>Your password must:</Text>
-        <Text style={styles.requirementText}>
-          • Be at least 8 characters long
-        </Text>
-        <Text style={styles.requirementText}>
-          • Include at least one uppercase letter
-        </Text>
-        <Text style={styles.requirementText}>
-          • Include at least one lowercase letter
-        </Text>
-        <Text style={styles.requirementText}>
-          • Include at least one number
-        </Text>
+        <Text style={styles.requirementsTitle}>{t("auth.passwordMust")}</Text>
+        <Text style={styles.requirementText}>{t("auth.ruleLength")}</Text>
+        <Text style={styles.requirementText}>{t("auth.ruleUpper")}</Text>
+        <Text style={styles.requirementText}>{t("auth.ruleLower")}</Text>
+        <Text style={styles.requirementText}>{t("auth.ruleNumber")}</Text>
       </Animated.View>
 
       {/* Input Fields */}
@@ -178,7 +170,7 @@ export default function SetPasswordScreen() {
       >
         <InputField
           iconName="lock-closed-outline"
-          placeholder="New password"
+          placeholder={t("auth.newPassword")}
           value={password}
           onChangeText={(text) => {
             setPassword(text);
@@ -188,7 +180,7 @@ export default function SetPasswordScreen() {
         />
         <InputField
           iconName="lock-closed-outline"
-          placeholder="Confirm new password"
+          placeholder={t("auth.confirmNewPassword")}
           value={confirmPassword}
           onChangeText={(text) => {
             setConfirmPassword(text);
@@ -209,7 +201,7 @@ export default function SetPasswordScreen() {
       {/* Continue Button */}
       <Animated.View style={buttonAnimatedStyle}>
         <TouchableOpacity style={styles.button} onPress={onSetPasswordPress}>
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={styles.buttonText}>{t("auth.continue")}</Text>
         </TouchableOpacity>
       </Animated.View>
 

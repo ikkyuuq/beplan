@@ -3,8 +3,10 @@ import os
 import sys
 import threading
 import types
+from datetime import date
 from unittest.mock import Mock, patch
 
+import anthropic
 import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
@@ -27,19 +29,12 @@ class _SequenceTagger:
         return Mock()
 
 
-class _Anthropic:
-    def __init__(self, api_key):
-        self.api_key = api_key
-
-
 _stubs = {
-    "anthropic": types.ModuleType("anthropic"),
     "flair": types.ModuleType("flair"),
     "flair.data": types.ModuleType("flair.data"),
     "flair.models": types.ModuleType("flair.models"),
     "huggingface_hub": types.ModuleType("huggingface_hub"),
 }
-_stubs["anthropic"].Anthropic = _Anthropic
 _stubs["flair.data"].Sentence = _Sentence
 _stubs["flair.models"].SequenceTagger = _SequenceTagger
 _stubs["huggingface_hub"].hf_hub_download = lambda **_kwargs: "unit-test-model"
@@ -98,6 +93,9 @@ G_PERFECT_PREDICTION_RESULT = PredictionResult(
         "time_bound": [{"text": "2 months", "from": "original_text"}],
     },
 )
+
+
+TODAY = date(2026, 10, 18)
 
 
 @pytest.fixture
@@ -304,10 +302,21 @@ def test_generate_goal_uses_prediction_deadline(monkeypatch):
     monkeypatch.setattr(ai_module, "call_anthropic_api", call)
     request = G_PERFECT_PREDICTION_RESULT
 
-    result = asyncio.run(generate_goal(request))
+    result = asyncio.run(generate_goal(request, client_today=TODAY))
 
-    assert result == generated_goal
+    assert result == {
+        "title": "Lose 10 pounds",
+        "type": "smart goal",
+        "start_date": "2026-10-18",
+        "due_date": "2026-12-17",
+        "tasks": [
+            {"title": "Walk", "description": None, "repeat_type": "daily",
+             "date_interval": None, "week_interval": None}
+        ],
+    }
+    assert call.call_args.kwargs["max_tokens"] == 16000
     prompt = call.call_args.kwargs["prompt"]
+    assert '"due_date": "2026-12-17"' in prompt
     assert "due_date" in prompt
     assert "2 months" in prompt
     assert "I want to lose 10 pounds in 2 months" in prompt
@@ -321,7 +330,7 @@ def test_generate_goal_returns_http_500_when_provider_fails(monkeypatch):
     )
 
     with pytest.raises(HTTPException) as error:
-        asyncio.run(generate_goal(G_PERFECT_PREDICTION_RESULT))
+        asyncio.run(generate_goal(G_PERFECT_PREDICTION_RESULT, client_today=TODAY))
 
     assert error.value.status_code == 500
 
@@ -335,7 +344,257 @@ def test_generate_goal_requires_time_bound(monkeypatch):
     )
 
     with pytest.raises(HTTPException) as error:
-        asyncio.run(generate_goal(request))
+        asyncio.run(generate_goal(request, client_today=TODAY))
 
     assert error.value.status_code == 400
     call.assert_not_called()
+
+
+def anthropic_status_error(error_class, status, message):
+    import httpx
+
+    request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    response = httpx.Response(status, request=request)
+    return error_class(message, response=response, body=None)
+
+
+@pytest.mark.parametrize(
+    "error, status, detail_part",
+    [
+        (lambda: anthropic_status_error(anthropic.AuthenticationError, 401, "invalid x-api-key"), 502, "API key"),
+        (lambda: anthropic_status_error(anthropic.BadRequestError, 400, "Your credit balance is too low"), 502, "credit"),
+        (lambda: anthropic_status_error(anthropic.NotFoundError, 404, "model not found"), 502, "model"),
+        (lambda: anthropic_status_error(anthropic.RateLimitError, 429, "rate limited"), 503, "busy"),
+        (lambda: anthropic_status_error(anthropic.InternalServerError, 529, "overloaded"), 503, "busy"),
+        (lambda: anthropic.APIConnectionError(request=__import__("httpx").Request("POST", "https://x")), 503, "reach"),
+    ],
+)
+def test_call_anthropic_api_maps_provider_errors(monkeypatch, error, status, detail_part):
+    client = Mock()
+    client.messages.create.side_effect = error()
+    monkeypatch.setattr(ai_module, "client", client)
+
+    with pytest.raises(HTTPException) as raised:
+        ai_module.call_anthropic_api(model="m", system="s", prompt="p")
+
+    assert raised.value.status_code == status
+    assert detail_part in raised.value.detail
+
+
+def test_generate_questions_passes_provider_error_through(monkeypatch):
+    client = Mock()
+    client.messages.create.side_effect = anthropic_status_error(
+        anthropic.AuthenticationError, 401, "invalid x-api-key"
+    )
+    monkeypatch.setattr(ai_module, "client", client)
+    request = PredictionResult(
+        original_text="I want to run",
+        prediction={"specific": [{"text": "run"}], "time_bound": []},
+    )
+
+    with pytest.raises(HTTPException) as raised:
+        asyncio.run(ai_module.generate_questions(request))
+
+    assert raised.value.status_code == 502
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("2026-12-01", date(2026, 12, 1)),
+        ("2 months", date(2026, 12, 17)),
+        ("in three weeks", date(2026, 11, 7)),
+        ("a year", date(2027, 10, 17)),
+        ("10 days", date(2026, 10, 27)),
+        ("by summer", None),
+        ("2026-10-18", None),  # not after today
+        ("2020-01-01", None),
+        ("50 years", None),
+    ],
+)
+def test_resolve_due_date(text, expected):
+    assert ai_module.resolve_due_date(text, TODAY) == expected
+
+
+def test_clean_generated_goal_keeps_only_valid_tasks_inside_the_goal():
+    due = date(2026, 11, 30)
+    goal = ai_module.clean_generated_goal(
+        {
+            "title": "  Run 5K  ",
+            "start_date": "2024-01-01",
+            "due_date": "2024-02-01",
+            "tasks": [
+                {"title": "Run", "repeat_type": "weekly", "week_interval": [0, 2, 9, 2]},
+                {"title": "Race", "repeat_type": "date", "date_interval": ["2026-11-29", "2027-01-01"]},
+                {"title": "Out of range", "repeat_type": "monthly", "date_interval": ["2027-01-01"]},
+                {"title": "No days", "repeat_type": "weekly", "week_interval": []},
+                {"title": "Bad type", "repeat_type": "hourly"},
+                {"repeat_type": "daily"},
+                {"title": "Stretch", "repeat_type": "daily", "week_interval": [1]},
+            ],
+        },
+        TODAY,
+        due,
+    )
+
+    assert goal["title"] == "Run 5K"
+    assert (goal["start_date"], goal["due_date"]) == ("2026-10-18", "2026-11-30")
+    assert [t["title"] for t in goal["tasks"]] == ["Run", "Race", "Stretch"]
+    assert goal["tasks"][0]["week_interval"] == [0, 2]
+    assert goal["tasks"][1]["date_interval"] == ["2026-11-29"]
+    assert goal["tasks"][2]["week_interval"] is None
+
+
+def test_clean_generated_goal_uses_ai_due_date_only_when_sensible():
+    tasks = [{"title": "Walk", "repeat_type": "daily"}]
+    goal = ai_module.clean_generated_goal({"due_date": "2027-06-01", "tasks": tasks}, TODAY, None)
+    assert goal["due_date"] == "2027-06-01"
+    for bad in ["summer", "2026-01-01", None]:
+        with pytest.raises(HTTPException) as raised:
+            ai_module.clean_generated_goal({"due_date": bad, "tasks": tasks}, TODAY, None)
+        assert raised.value.status_code == 502
+
+
+def test_clean_generated_goal_rejects_plan_without_tasks():
+    with pytest.raises(HTTPException) as raised:
+        ai_module.clean_generated_goal({"tasks": [{"title": "x", "repeat_type": "weekly"}]}, TODAY, date(2026, 12, 1))
+    assert raised.value.status_code == 502
+
+
+def test_complete_questions_fills_gaps_and_forces_date_for_deadline():
+    questions = ai_module.complete_questions(
+        [
+            {"label": "time_bound", "question": "When?", "type": "open-ended"},
+            {"label": "relevant", "question": "Why?", "type": "weird"},
+            {"label": "relevant", "question": "Duplicate", "type": "open-ended"},
+            {"label": "specific", "question": "Not missing", "type": "open-ended"},
+            "junk",
+        ],
+        ["measurable", "relevant", "time_bound"],
+    )
+
+    assert questions == [
+        {"label": "measurable", "question": "How will you measure your progress?", "type": "open-ended"},
+        {"label": "relevant", "question": "Why?", "type": "open-ended"},
+        {"label": "time_bound", "question": "When?", "type": "date"},
+    ]
+
+
+def test_call_anthropic_api_rejects_truncated_reply(monkeypatch):
+    client = Mock()
+    client.messages.create.return_value = Mock(stop_reason="max_tokens")
+    monkeypatch.setattr(ai_module, "client", client)
+
+    with pytest.raises(HTTPException) as raised:
+        ai_module.call_anthropic_api(model="m", system="s", prompt="p", max_tokens=10)
+
+    assert raised.value.status_code == 502
+    assert "too long" in raised.value.detail
+
+
+def test_parse_ai_response_skips_thinking_blocks():
+    response = types.SimpleNamespace(
+        content=[
+            types.SimpleNamespace(type="thinking", thinking="", text=None),
+            types.SimpleNamespace(type="text", text='```json\n{"title": "Run"}\n```'),
+        ]
+    )
+
+    assert ai_module.parse_ai_response(response) == {"title": "Run"}
+
+
+def test_parse_ai_response_without_text_is_a_502():
+    response = types.SimpleNamespace(content=[types.SimpleNamespace(type="thinking", thinking="")])
+
+    with pytest.raises(HTTPException) as raised:
+        ai_module.parse_ai_response(response)
+
+    assert raised.value.status_code == 502
+
+
+def test_call_anthropic_api_reports_refusal(monkeypatch):
+    client = Mock()
+    client.messages.create.return_value = Mock(stop_reason="refusal")
+    monkeypatch.setattr(ai_module, "client", client)
+
+    with pytest.raises(HTTPException) as raised:
+        ai_module.call_anthropic_api(model="m", system="s", prompt="p")
+
+    assert raised.value.status_code == 422
+
+
+def test_goal_language_detects_thai():
+    assert ai_module.goal_language("อยากวิ่ง 5 กม. ใน 2 เดือน") == "th"
+    assert ai_module.goal_language("Run 5K, เริ่มพรุ่งนี้") == "th"
+    assert ai_module.goal_language("Run 5K in 2 months") == "en"
+    assert ai_module.goal_language("") == "en"
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("ภายใน 2 เดือน", date(2026, 12, 17)),
+        ("3สัปดาห์", date(2026, 11, 7)),
+        ("สองอาทิตย์", date(2026, 10, 31)),
+        ("สิบสองเดือน", date(2027, 10, 17)),
+        ("หนึ่งปี", date(2027, 10, 17)),
+        ("10 วัน", date(2026, 10, 27)),
+        ("ช่วงหน้าร้อน", None),
+    ],
+)
+def test_resolve_due_date_thai(text, expected):
+    assert ai_module.resolve_due_date(text, TODAY) == expected
+
+
+def test_complete_questions_thai_fallbacks():
+    questions = ai_module.complete_questions([], ["relevant", "time_bound"], "th")
+    assert [q["question"] for q in questions] == [
+        "ทำไมเป้าหมายนี้ถึงสำคัญกับคุณ?",
+        "คุณอยากทำเป้าหมายนี้ให้สำเร็จภายในวันไหน?",
+    ]
+
+
+def test_thai_goal_asks_for_thai_questions_and_plan(monkeypatch):
+    call = Mock(return_value={"result": []})
+    monkeypatch.setattr(ai_module, "call_anthropic_api", call)
+    request = PredictionResult(
+        original_text="อยากวิ่ง 5 กม. ใน 2 เดือน",
+        prediction={"specific": [], "measurable": [], "achievable": [], "relevant": [], "time_bound": []},
+    )
+
+    result = asyncio.run(ai_module.generate_questions(request))
+
+    assert "in Thai" in call.call_args.kwargs["prompt"]
+    assert result["result"][0]["question"] == "คุณอยากทำอะไรให้สำเร็จแบบเจาะจง?"
+
+    call = Mock(return_value={"tasks": [{"title": "วิ่ง", "repeat_type": "daily"}]})
+    monkeypatch.setattr(ai_module, "call_anthropic_api", call)
+    request.prediction["time_bound"] = [{"text": "2 เดือน"}]
+
+    goal = asyncio.run(generate_goal(request, client_today=TODAY))
+
+    assert "in Thai" in call.call_args.kwargs["prompt"]
+    assert goal["title"] == "เป้าหมาย SMART ของฉัน"
+    assert goal["due_date"] == "2026-12-17"
+
+
+def test_english_goal_prompt_asks_for_english(monkeypatch):
+    call = Mock(return_value={"tasks": [{"title": "Walk", "repeat_type": "daily"}]})
+    monkeypatch.setattr(ai_module, "call_anthropic_api", call)
+
+    asyncio.run(generate_goal(G_PERFECT_PREDICTION_RESULT, client_today=TODAY))
+
+    assert "in English" in call.call_args.kwargs["prompt"]
+
+
+def test_ai_errors_carry_a_translatable_code(monkeypatch):
+    client = Mock()
+    client.messages.create.side_effect = anthropic_status_error(
+        anthropic.BadRequestError, 400, "Your credit balance is too low"
+    )
+    monkeypatch.setattr(ai_module, "client", client)
+
+    with pytest.raises(HTTPException) as raised:
+        ai_module.call_anthropic_api(model="m", system="s", prompt="p")
+
+    assert raised.value.headers == {"X-Error-Code": "ai_no_credit"}

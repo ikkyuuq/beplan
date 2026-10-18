@@ -7,6 +7,7 @@ import Animated, {
 import { MOTION } from "@/constants/motion";
 import { DENSE_TEXT_MAX_SCALE } from "@/constants/layout";
 import { useEffect } from "react";
+import { useTranslation } from "@/i18n";
 
 type TabBarButtonProps = {
   options: any;
@@ -31,11 +32,12 @@ export default function TabBarButton({
     create: (props: any) => <AnimatedFeather name="plus-circle" {...props} />,
     community: (props: any) => <AnimatedFeather name="users" {...props} />,
   };
+  const { t } = useTranslation();
   const labels = {
-    schedule: "Home",
-    analysis: "Analysis",
-    create: "Create",
-    community: "Community",
+    schedule: t("tabs.schedule"),
+    analysis: t("tabs.analysis"),
+    create: t("tabs.create"),
+    community: t("tabs.community"),
   };
 
   const scale = useSharedValue(0);

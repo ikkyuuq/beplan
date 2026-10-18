@@ -1,6 +1,6 @@
 import { useAuth } from "@clerk/expo";
 import { format } from "date-fns";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 export type ApiFetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -14,6 +14,11 @@ export type ApiFetch = (input: string, init?: RequestInit) => Promise<Response>;
  */
 export function useApiFetch(): ApiFetch {
   const { getToken } = useAuth();
+  // Clerk hands out a new getToken after each token refresh. Read it through a
+  // ref so apiFetch keeps one identity; effects that depend on it would
+  // otherwise re-run after every request (a fetch loop when they set state).
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
 
   return useCallback(
     async (input: string, init: RequestInit = {}) => {
@@ -22,7 +27,7 @@ export function useApiFetch(): ApiFetch {
       // (offline) or the backend answers 401, both handled by the caller.
       let token: string | null = null;
       try {
-        token = await getToken();
+        token = await getTokenRef.current();
       } catch (error) {
         console.warn("Couldn't get a session token:", error);
       }
@@ -33,6 +38,6 @@ export function useApiFetch(): ApiFetch {
       headers.set("X-Local-Date", format(new Date(), "yyyy-MM-dd"));
       return fetch(input, { ...init, headers });
     },
-    [getToken]
+    []
   );
 }

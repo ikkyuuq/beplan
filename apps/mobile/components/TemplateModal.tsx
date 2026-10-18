@@ -22,6 +22,10 @@ import Animated, {
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
 import DismissKeyboard from "@/components/DismissKeyboard";
+import { useTranslation } from "@/i18n";
+import { categoryLabel, formatDuration } from "@/i18n/format";
+import { categoryStyle } from "@/constants/categories";
+import TemplateCover from "@/components/TemplateCover";
 
 // ====================== Type Definitions ======================
 type Creator = {
@@ -53,44 +57,6 @@ type TemplateModalProps = {
   };
 };
 
-// ====================== Helper Functions ======================
-// Format duration
-const formatDuration = (days?: number): string => {
-  if (!days) return "";
-
-  if (days >= 365) {
-    return "1 Year";
-  } else if (days >= 30) {
-    const months = Math.floor(days / 30);
-    return `${months} ${months === 1 ? "Month" : "Months"}`;
-  } else {
-    return `${days} ${days === 1 ? "Day" : "Days"}`;
-  }
-};
-
-// Get icon based on category to match TemplateCard
-const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
-  switch (category.toLowerCase()) {
-    case "fitness":
-    case "workout":
-      return "barbell-outline";
-    case "health":
-      return "fitness-outline";
-    case "education":
-      return "book-outline";
-    case "work":
-    case "finance":
-      return "briefcase-outline";
-    case "travel":
-      return "airplane-outline";
-    case "personal_development":
-    case "productivity":
-      return "person-outline";
-    default:
-      return "pricetag-outline";
-  }
-};
-
 // ====================== Main Component ======================
 export default function TemplateModal({
   isVisible,
@@ -100,6 +66,7 @@ export default function TemplateModal({
   data,
 }: TemplateModalProps) {
   const apiFetch = useApiFetch();
+  const { t } = useTranslation();
   // ====================== State Management ======================
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [activeTab, setActiveTab] = useState<
@@ -144,15 +111,15 @@ export default function TemplateModal({
     });
 
     Alert.alert(
-      "Add to List",
-      `Are you sure you want to add "${data.title}" to your list?`,
+      t("template.addToListTitle"),
+      t("template.addToListConfirm", { title: data.title }),
       [
         {
-          text: "Cancel",
+          text: t("common.cancel"),
           style: "cancel",
         },
         {
-          text: "Add",
+          text: t("template.add"),
           onPress: async () => {
             try {
               // Get today's date in YYYY-MM-DD format
@@ -189,8 +156,8 @@ export default function TemplateModal({
               console.log("Template assigned successfully:", responseData);
 
               // Show success message and close modal
-              Alert.alert("Success", "Template added to your list!", [
-                { text: "OK", onPress: () => onClose() },
+              Alert.alert(t("common.success"), t("template.added"), [
+                { text: t("common.ok"), onPress: () => onClose() },
               ]);
 
               // Call the onAddToList callback to update UI if needed
@@ -198,8 +165,8 @@ export default function TemplateModal({
             } catch (error) {
               console.error("Error assigning template:", error);
               Alert.alert(
-                "Error",
-                "Failed to add template to your list. Please try again later."
+                t("common.error"),
+                t("template.addFailed")
               );
             }
           },
@@ -224,9 +191,11 @@ export default function TemplateModal({
               <View style={styles.modalContent}>
                 {/* Hero Image Section */}
                 <View style={styles.heroContainer}>
-                  <Image
-                    source={{ uri: data.image }}
+                  <TemplateCover
+                    imageUrl={data.image}
+                    category={data.category}
                     style={styles.heroImage}
+                    iconSize={64}
                   />
                   <LinearGradient
                     colors={["transparent", "rgba(0,0,0,0.9)"]}
@@ -288,13 +257,12 @@ export default function TemplateModal({
                       {/* Category Badge */}
                       <View style={styles.categoryBadge}>
                         <Ionicons
-                          name={getCategoryIcon(data.category)}
+                          name={categoryStyle(data.category).icon}
                           size={16}
                           color="#FFF"
                         />
                         <Text style={styles.categoryText}>
-                          {data.category.charAt(0).toUpperCase() +
-                            data.category.slice(1).replace("_", " ")}
+                          {categoryLabel(data.category)}
                         </Text>
                       </View>
 
@@ -336,7 +304,7 @@ export default function TemplateModal({
                         activeTab === "description" && styles.activeTabText,
                       ]}
                     >
-                      About
+                      {t("template.about")}
                     </Text>
                   </TouchableOpacity>
 
@@ -359,7 +327,7 @@ export default function TemplateModal({
                         activeTab === "goals" && styles.activeTabText,
                       ]}
                     >
-                      Goals ({data.goals?.length || 0})
+                      {t("template.goalsTab", { count: data.goals?.length || 0 })}
                     </Text>
                   </TouchableOpacity>
 
@@ -382,7 +350,7 @@ export default function TemplateModal({
                         activeTab === "creator" && styles.activeTabText,
                       ]}
                     >
-                      Creator
+                      {t("template.creator")}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -404,7 +372,7 @@ export default function TemplateModal({
                             style={styles.descriptionText}
                             numberOfLines={showFullDescription ? undefined : 6}
                           >
-                            {data.description || "No description available."}
+                            {data.description || t("template.noDescription")}
                           </Text>
 
                           {/* Show More/Less Button */}
@@ -420,8 +388,8 @@ export default function TemplateModal({
                               >
                                 <Text style={styles.showMoreText}>
                                   {showFullDescription
-                                    ? "Show Less"
-                                    : "Show More"}
+                                    ? t("template.showLess")
+                                    : t("template.showMore")}
                                 </Text>
                               </TouchableOpacity>
                             )}
@@ -470,7 +438,7 @@ export default function TemplateModal({
                               color="#CCC"
                             />
                             <Text style={styles.emptyGoalsText}>
-                              No goals associated with this template
+                              {t("template.noGoals")}
                             </Text>
                           </View>
                         )}
@@ -509,11 +477,13 @@ export default function TemplateModal({
                               <Text style={styles.creatorName}>
                                 {data.creator?.username ||
                                   data.owner ||
-                                  "BePlan User"}
+                                  t("template.defaultCreator")}
                               </Text>
                               {!!data.creator?.occupation && (
                                 <Text style={styles.creatorOccupation}>
-                                  {data.creator.occupation}
+                                  {t(`occupation.options.${data.creator.occupation}` as "occupation.options.None", {
+                                    defaultValue: data.creator.occupation,
+                                  })}
                                 </Text>
                               )}
                               <View style={styles.creatorIdContainer}>
@@ -532,7 +502,7 @@ export default function TemplateModal({
                           {/* Creator Bio */}
                           {!!data.creator?.about && (
                             <>
-                              <Text style={styles.aboutTitle}>About</Text>
+                              <Text style={styles.aboutTitle}>{t("template.about")}</Text>
                               <View style={styles.aboutContainer}>
                                 <Text style={styles.aboutText}>
                                   {data.creator.about}
@@ -552,12 +522,11 @@ export default function TemplateModal({
                                   color="#FFD700"
                                 />
                                 <Text style={styles.officialText}>
-                                  Official Template Creator
+                                  {t("template.officialCreator")}
                                 </Text>
                               </View>
                               <Text style={styles.officialDescription}>
-                                This template was created by the BePlan team to
-                                help you achieve your goals.
+                                {t("template.officialDescription")}
                               </Text>
                             </View>
                           )}
@@ -573,7 +542,7 @@ export default function TemplateModal({
                                   color="#CCC"
                                 />
                                 <Text style={styles.noCreatorInfoText}>
-                                  No additional creator information available
+                                  {t("template.noCreatorInfo")}
                                 </Text>
                               </View>
                             )}
@@ -604,7 +573,7 @@ export default function TemplateModal({
                         color="#fff"
                       />
                       <Text style={styles.actionButtonText}>
-                        Add to My List
+                        {t("template.addToMyList")}
                       </Text>
                     </LinearGradient>
                   </TouchableOpacity>

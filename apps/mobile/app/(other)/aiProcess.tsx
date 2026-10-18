@@ -10,7 +10,9 @@ import {
   Platform,
   ActivityIndicator,
   StyleSheet,
+  ScrollView,
 } from "react-native";
+import { addDays, format, parseISO } from "date-fns";
 import { useUser } from "@clerk/expo";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
@@ -24,6 +26,8 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import i18n, { currentLanguage, dateLocale, useTranslation } from "@/i18n";
+import type en from "@/i18n/locales/en";
 
 // Component: Date Picker for date-type questions
 const DatePickerComponent = ({
@@ -33,17 +37,19 @@ const DatePickerComponent = ({
 }: {
   answer: string;
   setAnswer: (text: string) => void;
-  onSubmit: () => void;
+  onSubmit: (answer?: string) => void;
 }) => {
+  const { t } = useTranslation();
+  const tomorrow = addDays(new Date(), 1);
   const [showPicker, setShowPicker] = useState(false);
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useState(tomorrow);
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowPicker(false);
     if (selectedDate) {
       setDate(selectedDate);
-      const formattedDate = selectedDate.toISOString().split("T")[0];
-      setAnswer(formattedDate);
+      // Local calendar day; toISOString() would shift it to UTC.
+      setAnswer(format(selectedDate, "yyyy-MM-dd"));
     }
   };
 
@@ -51,7 +57,7 @@ const DatePickerComponent = ({
     <View style={styles.inputContainer}>
       <TextInput
         value={answer}
-        placeholder="Select a date (YYYY-MM-DD)"
+        placeholder={t("ai.datePlaceholder")}
         placeholderTextColor="#aaa"
         style={styles.input}
         onFocus={() => setShowPicker(true)}
@@ -61,10 +67,11 @@ const DatePickerComponent = ({
           value={date}
           mode="date"
           display="default"
+          minimumDate={tomorrow}
           onChange={handleDateChange}
         />
       )}
-      <Button title="Submit Answer" onPress={onSubmit} />
+      <Button title={t("ai.submitAnswer")} onPress={() => onSubmit()} />
     </View>
   );
 };
@@ -79,21 +86,22 @@ const QuestionInput = ({
   question: Question;
   answer: string;
   setAnswer: (text: string) => void;
-  onSubmit: () => void;
+  onSubmit: (answer?: string) => void;
 }) => {
+  const { t } = useTranslation();
   if (question?.type === "open-ended") {
     return (
       <View style={styles.inputContainer}>
         <TextInput
           value={answer}
           onChangeText={setAnswer}
-          placeholder="Type your answer here..."
+          placeholder={t("ai.answerPlaceholder")}
           placeholderTextColor="#aaa"
           style={styles.multiLineInput}
           multiline
           numberOfLines={3}
         />
-        <Button title="Submit Answer" onPress={onSubmit} />
+        <Button title={t("ai.submitAnswer")} onPress={() => onSubmit()} />
       </View>
     );
   } else if (question?.type === "yes-no") {
@@ -101,21 +109,15 @@ const QuestionInput = ({
       <View style={styles.buttonRow}>
         <View style={styles.buttonWrapper}>
           <Button
-            title="Yes"
-            onPress={() => {
-              setAnswer("Yes");
-              onSubmit();
-            }}
+            title={t("common.yes")}
+            onPress={() => onSubmit(t("common.yes"))}
             color="#34d399"
           />
         </View>
         <View style={styles.buttonWrapper}>
           <Button
-            title="No"
-            onPress={() => {
-              setAnswer("No");
-              onSubmit();
-            }}
+            title={t("common.no")}
+            onPress={() => onSubmit(t("common.no"))}
             color="#f4335e"
           />
         </View>
@@ -142,6 +144,7 @@ enum ProcessStep {
   ANIMATING = "animating",
   ASKING_QUESTIONS = "asking_questions",
   GENERATING_GOAL = "generating_goal",
+  REVIEWING = "reviewing",
   CREATING_GOAL = "creating_goal",
   COMPLETED = "completed",
   FAILED = "failed",
@@ -219,7 +222,51 @@ interface Goal {
   tasks: Task[];
 }
 
+function formatDay(isoDate: string) {
+  return format(parseISO(String(isoDate)), "d MMM yyyy", { locale: dateLocale() });
+}
+
+function describeRepeat(task: Task) {
+  switch (task.repeat_type) {
+    case "daily":
+      return i18n.t("ai.everyDay");
+    case "weekly": {
+      const weekdays = i18n.t("common.weekdaysShort").split(",");
+      const days = (task.week_interval ?? []).map((d) => weekdays[d]).join(", ");
+      return i18n.t("ai.everyWeekdays", { days });
+    }
+    default: {
+      const dates = (task.date_interval ?? []).map((d) => formatDay(String(d)));
+      return dates.length > 3
+        ? i18n.t("ai.moreDates", { dates: dates.slice(0, 3).join(", "), count: dates.length - 3 })
+        : dates.join(", ");
+    }
+  }
+}
+
+// Prefer the server's own message (e.g. "AI service is busy...") over a bare
+// status. AI errors carry an X-Error-Code the app translates.
+async function requestError(response: Response): Promise<Error> {
+  const code = response.headers.get("X-Error-Code");
+  if (code && i18n.exists(`ai.errors.${code}`)) {
+    return new Error(i18n.t(`ai.errors.${code}` as "ai.errors.generic"));
+  }
+  try {
+    const body = await response.json();
+    if (typeof body?.detail === "string" && body.detail) {
+      // Untranslated server text: only shown as-is to English readers.
+      return new Error(currentLanguage() === "en" ? body.detail : i18n.t("ai.errors.generic"));
+    }
+  } catch {
+    // Not JSON; fall through to the status code.
+  }
+  return new Error(i18n.t("ai.requestFailed", { status: response.status }));
+}
+
+type FailedStep = keyof typeof en.ai.steps;
+
 export default function AiProcess() {
+  const { t } = useTranslation();
   const topPadding = useScreenTopPadding(16);
   const params = useLocalSearchParams();
   const initialText =
@@ -254,11 +301,10 @@ export default function AiProcess() {
 
   const [goal, setGoal] = useState<Goal | null>(null);
 
-  const markFailed = (action: string, error: unknown) => {
+  const markFailed = (action: FailedStep, error: unknown) => {
     console.error(`${action} failed:`, error);
-    const message =
-      error instanceof Error ? error.message : "Please try again.";
-    setErrorMessage(`${action} failed. ${message}`);
+    const message = error instanceof Error ? error.message : t("ai.tryAgain");
+    setErrorMessage(t("ai.stepFailed", { step: t(`ai.steps.${action}`), message }));
     setStep(ProcessStep.FAILED);
   };
 
@@ -273,7 +319,7 @@ export default function AiProcess() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: sentence }),
       });
-      if (!response.ok) throw new Error(`Request failed (HTTP ${response.status})`);
+      if (!response.ok) throw await requestError(response);
       const data = await response.json();
       setPredictionRes({
         originalText: textToProcess,
@@ -281,7 +327,7 @@ export default function AiProcess() {
       });
       return true;
     } catch (error) {
-      markFailed("Validation", error);
+      markFailed("validation", error);
       return false;
     } finally {
       setLoading(false);
@@ -306,8 +352,8 @@ export default function AiProcess() {
   // ---------------------------
   // Step 2: Generate questions for missing keys
   // ---------------------------
-  const fetchQuestionsForMissingKeys = async (): Promise<boolean> => {
-    if (!predictionRes) return false;
+  const fetchQuestionsForMissingKeys = async (): Promise<number | null> => {
+    if (!predictionRes) return null;
 
     try {
       setLoading(true);
@@ -332,13 +378,14 @@ export default function AiProcess() {
           }),
         },
       );
-      if (!response.ok) throw new Error(`Request failed (HTTP ${response.status})`);
+      if (!response.ok) throw await requestError(response);
       const data = await response.json();
-      setQuestions(data.result);
-      return true;
+      const result: Questions = Array.isArray(data.result) ? data.result : [];
+      setQuestions(result);
+      return result.length;
     } catch (error) {
-      markFailed("Question generation", error);
-      return false;
+      markFailed("questions", error);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -379,7 +426,7 @@ export default function AiProcess() {
           }),
         },
       );
-      if (!response.ok) throw new Error(`Request failed (HTTP ${response.status})`);
+      if (!response.ok) throw await requestError(response);
       const data = await response.json();
       const newFormattedPrediction = Object.entries(
         data.result.prediction,
@@ -396,7 +443,7 @@ export default function AiProcess() {
       });
       return true;
     } catch (error) {
-      markFailed("Answer submission", error);
+      markFailed("answer", error);
       return false;
     } finally {
       setLoading(false);
@@ -431,12 +478,12 @@ export default function AiProcess() {
           }),
         },
       );
-      if (!response.ok) throw new Error(`Request failed (HTTP ${response.status})`);
+      if (!response.ok) throw await requestError(response);
       const data = await response.json();
       setGoal(data);
       return true;
     } catch (error) {
-      markFailed("Goal generation", error);
+      markFailed("goal", error);
       return false;
     } finally {
       setLoading(false);
@@ -448,7 +495,7 @@ export default function AiProcess() {
   // ---------------------------
   const handleCreateGoal = async (): Promise<boolean> => {
     if (!goal || !user) {
-      markFailed("Goal creation", new Error("Goal or user is unavailable."));
+      markFailed("create", new Error(t("ai.goalOrUserMissing")));
       return false;
     }
     try {
@@ -458,7 +505,7 @@ export default function AiProcess() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, goal }),
       });
-      if (!response.ok) throw new Error(`Request failed (HTTP ${response.status})`);
+      if (!response.ok) throw await requestError(response);
       const data = await response.json();
       console.log("Response:", data);
       console.log("Goal created successfully");
@@ -466,7 +513,7 @@ export default function AiProcess() {
       router.dismissTo("/(tabs)/schedule");
       return true;
     } catch (error) {
-      markFailed("Goal creation", error);
+      markFailed("create", error);
       return false;
     } finally {
       setLoading(false);
@@ -499,8 +546,10 @@ export default function AiProcess() {
     if (animationCompleteCount === totalKeys && totalKeys > 0) {
       const missing = Object.values(predictionStatus).some((v) => v === false);
       if (missing) {
-        fetchQuestionsForMissingKeys().then((succeeded) => {
-          if (succeeded) setStep(ProcessStep.ASKING_QUESTIONS);
+        fetchQuestionsForMissingKeys().then((count) => {
+          if (count === null) return;
+          // Nothing to ask (shouldn't happen, the server fills gaps): don't stall here.
+          setStep(count > 0 ? ProcessStep.ASKING_QUESTIONS : ProcessStep.GENERATING_GOAL);
         });
       } else {
         setStep(ProcessStep.GENERATING_GOAL);
@@ -521,7 +570,7 @@ export default function AiProcess() {
   useEffect(() => {
     if (step === ProcessStep.GENERATING_GOAL) {
       generateGoal().then((succeeded) => {
-        if (succeeded) setStep(ProcessStep.CREATING_GOAL);
+        if (succeeded) setStep(ProcessStep.REVIEWING);
       });
     }
   }, [step]);
@@ -544,19 +593,13 @@ export default function AiProcess() {
   // ---------------------------
   // Handler for question answer submission
   // ---------------------------
-  const onSubmitAnswer = async () => {
+  const onSubmitAnswer = async (answerOverride?: string) => {
     const currentQuestion = questions[currentQuestionIndex];
-    if (!currentQuestion) return;
+    if (!currentQuestion || loading) return;
 
-    // For yes-no questions, use the predefined answer
-    const answerToSubmit =
-      currentQuestion.type === "yes-no"
-        ? currentAnswer
-        : currentAnswer.trim() === ""
-          ? null
-          : currentAnswer;
-
-    if (answerToSubmit === null) return;
+    // Yes/No buttons pass their answer directly.
+    const answerToSubmit = (answerOverride ?? currentAnswer).trim();
+    if (answerToSubmit === "") return;
 
     const succeeded = await handleSubmitQuestion(
       currentQuestion,
@@ -585,6 +628,7 @@ export default function AiProcess() {
           ProcessStep.ANIMATING,
           ProcessStep.ASKING_QUESTIONS,
           ProcessStep.GENERATING_GOAL,
+          ProcessStep.REVIEWING,
           ProcessStep.CREATING_GOAL,
           ProcessStep.COMPLETED,
         ].map((processStep, index) => (
@@ -601,24 +645,24 @@ export default function AiProcess() {
         {loading && <ActivityIndicator size="large" color="#fff" />}
         {step === ProcessStep.VALIDATING &&
           (textToProcess ? (
-            <Text style={styles.titleText}>Analyzing your input...</Text>
+            <Text style={styles.titleText}>{t("ai.analyzing")}</Text>
           ) : (
             <View style={styles.inputCard}>
-              <Text style={styles.titleText}>What would you like to achieve?</Text>
+              <Text style={styles.titleText}>{t("ai.whatToAchieve")}</Text>
               <Text style={styles.inputHint}>
-                Describe your goal and the assistant will turn it into a practical plan.
+                {t("ai.inputHint")}
               </Text>
               <TextInput
                 value={textInput}
                 onChangeText={setTextInput}
-                placeholder="e.g. Run my first 5K"
+                placeholder={t("ai.inputPlaceholder")}
                 placeholderTextColor="#98A2B3"
                 style={styles.goalInput}
                 multiline
                 maxLength={240}
               />
               <Button
-                title="Build my plan"
+                title={t("ai.buildPlan")}
                 onPress={() => {
                   const trimmedText = textInput.trim();
                   if (trimmedText) setTextToProcess(trimmedText);
@@ -667,14 +711,51 @@ export default function AiProcess() {
           <View style={styles.centerContainer}>
             <Text style={styles.titleText}>
               {step === ProcessStep.GENERATING_GOAL
-                ? "Crafting your personalized goal..."
-                : "Setting up your journey..."}
+                ? t("ai.crafting")
+                : t("ai.settingUp")}
             </Text>
+          </View>
+        )}
+        {step === ProcessStep.REVIEWING && !!goal && (
+          <View style={[styles.card, styles.reviewCard]}>
+            <Text style={styles.reviewTitle}>{goal.title}</Text>
+            <Text style={styles.reviewDates}>
+              {formatDay(goal.start_date)} – {formatDay(goal.due_date)}
+            </Text>
+            <ScrollView style={styles.reviewTasks}>
+              {goal.tasks.map((task, index) => (
+                <View key={`${task.title}-${index}`} style={styles.reviewTask}>
+                  <Text style={styles.reviewTaskTitle}>{task.title}</Text>
+                  {!!task.description && (
+                    <Text style={styles.reviewTaskDescription}>{task.description}</Text>
+                  )}
+                  <Text style={styles.reviewTaskRepeat}>{describeRepeat(task)}</Text>
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.reviewActions}>
+              <Button
+                title={t("ai.createGoal")}
+                color="#5B43D6"
+                onPress={() => setStep(ProcessStep.CREATING_GOAL)}
+              />
+              <View style={styles.buttonRow}>
+                <View style={styles.buttonWrapper}>
+                  <Button
+                    title={t("ai.tryAnotherPlan")}
+                    onPress={() => setStep(ProcessStep.GENERATING_GOAL)}
+                  />
+                </View>
+                <View style={styles.buttonWrapper}>
+                  <Button title={t("common.cancel")} color="#667085" onPress={() => router.back()} />
+                </View>
+              </View>
+            </View>
           </View>
         )}
         {step === ProcessStep.COMPLETED && (
           <View style={styles.centerContainer}>
-            <Text style={styles.successText}>Your goal is ready!</Text>
+            <Text style={styles.successText}>{t("ai.ready")}</Text>
           </View>
         )}
         {step === ProcessStep.FAILED && (
@@ -687,8 +768,11 @@ export default function AiProcess() {
                 textAlign: "center",
               }}
             >
-              {errorMessage || "The goal process failed. Please try again."}
+              {errorMessage || t("ai.processFailed")}
             </Text>
+            <View style={{ marginTop: 16 }}>
+              <Button title={t("ai.goBack")} onPress={() => router.back()} />
+            </View>
           </View>
         )}
       </View>
@@ -828,6 +912,50 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 20,
     textAlign: "center",
+  },
+  reviewCard: {
+    flex: 1,
+    maxHeight: "92%",
+    padding: 20,
+  },
+  reviewTitle: {
+    color: "#2C3E50",
+    fontSize: 22,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  reviewDates: {
+    color: "#667085",
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 6,
+    marginBottom: 14,
+  },
+  reviewTasks: {
+    flex: 1,
+  },
+  reviewTask: {
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#D0D5DD",
+  },
+  reviewTaskTitle: {
+    color: "#101828",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  reviewTaskDescription: {
+    color: "#475467",
+    fontSize: 14,
+    marginTop: 2,
+  },
+  reviewTaskRepeat: {
+    color: "#5B43D6",
+    fontSize: 13,
+    marginTop: 4,
+  },
+  reviewActions: {
+    marginTop: 14,
   },
   successText: {
     color: "#27AE60",

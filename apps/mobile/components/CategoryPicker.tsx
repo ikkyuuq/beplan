@@ -9,6 +9,9 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "@/i18n";
+import { categoryLabel } from "@/i18n/format";
+import { categoryStyle } from "@/constants/categories";
 
 // ====================== Type Definitions ======================
 type CategoryPickerProps = {
@@ -25,35 +28,11 @@ export default function CategoryPicker({
   onChange,
   categories,
 }: CategoryPickerProps) {
+  const { t } = useTranslation();
+
   // ====================== State Management ======================
   const [modalVisible, setModalVisible] = useState(false);
 
-  // ====================== Helper Functions ======================
-  const getCategoryIcon = (category: string): IoniconsName => {
-    const iconMap: Record<string, IoniconsName> = {
-      All: "book-outline",
-      Workout: "barbell-outline",
-      Finance: "cash-outline",
-      Productivity: "checkbox-outline",
-      Education: "book-outline",
-      Health: "fitness-outline",
-    };
-
-    return (iconMap[category] || "pricetag-outline") as IoniconsName;
-  };
-
-  const getCategoryColor = (category: string): string => {
-    const colorMap: Record<string, string> = {
-      All: "#8B98D5",
-      Workout: "#FF5733",
-      Finance: "#4CAF50",
-      Productivity: "#FFC107",
-      Education: "#3498DB",
-      Health: "#9B59B6",
-    };
-
-    return colorMap[category] || "#8B98D5";
-  };
 
   // ====================== Handlers ======================
   const handleOpenModal = () => {
@@ -82,12 +61,12 @@ export default function CategoryPicker({
           <View
             style={[
               styles.categoryIcon,
-              { backgroundColor: getCategoryColor(value) },
+              { backgroundColor: categoryStyle(value).color },
             ]}
           >
-            <Ionicons name={getCategoryIcon(value)} size={18} color="#fff" />
+            <Ionicons name={categoryStyle(value).icon} size={18} color="#fff" />
           </View>
-          <Text style={styles.selectedCategoryText}>{value}</Text>
+          <Text style={styles.selectedCategoryText}>{categoryLabel(value)}</Text>
         </View>
         <Ionicons
           name={"chevron-down" as IoniconsName}
@@ -107,7 +86,7 @@ export default function CategoryPicker({
           <View style={styles.modalContainer}>
             {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Category</Text>
+              <Text style={styles.modalTitle}>{t("template.selectCategory")}</Text>
               <TouchableOpacity onPress={handleCloseModal}>
                 <Ionicons
                   name={"close" as IoniconsName}
@@ -134,16 +113,16 @@ export default function CategoryPicker({
                     <View
                       style={[
                         styles.categoryIconLarge,
-                        { backgroundColor: getCategoryColor(item) },
+                        { backgroundColor: categoryStyle(item).color },
                       ]}
                     >
                       <Ionicons
-                        name={getCategoryIcon(item)}
+                        name={categoryStyle(item).icon}
                         size={22}
                         color="#fff"
                       />
                     </View>
-                    <Text style={styles.categoryText}>{item}</Text>
+                    <Text style={styles.categoryText}>{categoryLabel(item)}</Text>
                   </View>
                   {value === item && (
                     <Ionicons

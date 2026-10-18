@@ -16,6 +16,7 @@ import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
 import { Alert } from "@/utils/alert";
 import { useScreenTopPadding } from "@/constants/layout";
+import i18n, { dateLocale, useTranslation } from "@/i18n";
 
 // ====================== Types ======================
 // One row of GET /api/v1/goal/all
@@ -43,10 +44,13 @@ type Draft = {
   tasks: unknown[];
 };
 
-const STATUS_STYLE: Record<GoalSummary["status"], { label: string; color: string }> = {
-  pending: { label: "In progress", color: "#4E5A94" },
-  success: { label: "Completed", color: "#2E9E5B" },
-  failed: { label: "Failed", color: "#D64545" },
+const STATUS_STYLE: Record<
+  GoalSummary["status"],
+  { label: "allGoals.inProgress" | "allGoals.completed" | "allGoals.failed"; color: string }
+> = {
+  pending: { label: "allGoals.inProgress", color: "#4E5A94" },
+  success: { label: "allGoals.completed", color: "#2E9E5B" },
+  failed: { label: "allGoals.failed", color: "#D64545" },
 };
 
 // Group goals for display: what's running now first, then what's next,
@@ -59,31 +63,39 @@ const groupGoals = (goals: GoalSummary[], today: string): Section[] => {
   const completed = goals.filter((g) => g.status === "success");
   const failed = goals.filter((g) => g.status === "failed");
   return [
-    { key: "progress", title: "In progress", goals: inProgress },
-    { key: "upcoming", title: "Upcoming", goals: upcoming },
-    { key: "completed", title: "Completed", goals: completed },
-    { key: "failed", title: "Failed", goals: failed },
+    { key: "progress", title: i18n.t("allGoals.inProgress"), goals: inProgress },
+    { key: "upcoming", title: i18n.t("allGoals.upcoming"), goals: upcoming },
+    { key: "completed", title: i18n.t("allGoals.completed"), goals: completed },
+    { key: "failed", title: i18n.t("allGoals.failed"), goals: failed },
   ].filter((section) => section.goals.length > 0);
 };
 
 const formatRange = (start: string, due: string) => {
   const s = parseISO(start);
   const d = parseISO(due);
+  const locale = dateLocale();
   return s.getFullYear() === d.getFullYear()
-    ? `${format(s, "MMM d")} – ${format(d, "MMM d, yyyy")}`
-    : `${format(s, "MMM d, yyyy")} – ${format(d, "MMM d, yyyy")}`;
+    ? `${format(s, "MMM d", { locale })} – ${format(d, "MMM d, yyyy", { locale })}`
+    : `${format(s, "MMM d, yyyy", { locale })} – ${format(d, "MMM d, yyyy", { locale })}`;
 };
 
 // ====================== Goal card ======================
 function GoalCard({ goal, onPress }: { goal: GoalSummary; onPress: () => void }) {
+  const { t } = useTranslation();
   const status = STATUS_STYLE[goal.status] ?? STATUS_STYLE.pending;
+  const statusLabel = t(status.label);
   const progress = goal.total_tasks > 0 ? goal.completed_tasks / goal.total_tasks : 0;
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${goal.title}, ${status.label}, ${goal.completed_tasks} of ${goal.total_tasks} tasks done`}
+      accessibilityLabel={t("allGoals.goalLabel", {
+        title: goal.title,
+        status: statusLabel,
+        done: goal.completed_tasks,
+        total: goal.total_tasks,
+      })}
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
     >
       <View style={styles.cardHeader}>
@@ -91,12 +103,13 @@ function GoalCard({ goal, onPress }: { goal: GoalSummary; onPress: () => void })
           {goal.title}
         </Text>
         <View style={[styles.badge, { borderColor: status.color }]}>
-          <Text style={[styles.badgeText, { color: status.color }]}>{status.label}</Text>
+          <Text style={[styles.badgeText, { color: status.color }]}>{statusLabel}</Text>
         </View>
       </View>
 
       <Text style={styles.meta}>
-        {goal.type} · {formatRange(goal.start_date, goal.due_date)}
+        {t(`goalTypes.${goal.type?.toLowerCase()}` as "goalTypes.goal", { defaultValue: goal.type })} ·{" "}
+        {formatRange(goal.start_date, goal.due_date)}
       </Text>
 
       <View style={styles.progressTrack}>
@@ -109,8 +122,12 @@ function GoalCard({ goal, onPress }: { goal: GoalSummary; onPress: () => void })
       </View>
 
       <Text style={styles.counts}>
-        {goal.completed_tasks} of {goal.total_tasks} done · {goal.failed_tasks} missed ·{" "}
-        {goal.pending_tasks} left
+        {t("allGoals.counts", {
+          done: goal.completed_tasks,
+          total: goal.total_tasks,
+          missed: goal.failed_tasks,
+          left: goal.pending_tasks,
+        })}
       </Text>
     </Pressable>
   );
@@ -128,36 +145,41 @@ function DraftCard({
   onStart: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const planned =
     draft.start_date && draft.due_date
       ? formatRange(draft.start_date, draft.due_date)
-      : "No dates yet";
-  const taskCount = `${draft.tasks.length} task${draft.tasks.length === 1 ? "" : "s"}`;
+      : t("allGoals.noDates");
+  const taskCount = t("common.tasks", { count: draft.tasks.length });
 
   return (
     <Pressable
       onPress={onOpen}
       accessibilityRole="button"
-      accessibilityLabel={`Draft ${draft.title || "Untitled"}, ${planned}, ${taskCount}`}
+      accessibilityLabel={t("allGoals.draftLabel", {
+        title: draft.title || t("allGoals.untitled"),
+        range: planned,
+        tasks: taskCount,
+      })}
       style={({ pressed }) => [styles.card, styles.draftCard, pressed && styles.cardPressed]}
     >
       <View style={styles.cardHeader}>
         <Text style={styles.goalTitle} numberOfLines={2}>
-          {draft.title.trim() || "Untitled draft"}
+          {draft.title.trim() || t("allGoals.untitledDraft")}
         </Text>
         <View style={[styles.badge, { borderColor: "#8D8D99" }]}>
-          <Text style={[styles.badgeText, { color: "#8D8D99" }]}>Draft</Text>
+          <Text style={[styles.badgeText, { color: "#8D8D99" }]}>{t("allGoals.draft")}</Text>
         </View>
       </View>
       <Text style={styles.meta}>
-        Planned {planned} · {taskCount}
+        {t("allGoals.planned", { range: planned, tasks: taskCount })}
       </Text>
       <View style={styles.draftActions}>
         <Pressable onPress={onDelete} hitSlop={8} accessibilityRole="button" style={styles.draftDelete}>
-          <Text style={styles.draftDeleteText}>Delete</Text>
+          <Text style={styles.draftDeleteText}>{t("common.delete")}</Text>
         </Pressable>
         <Pressable onPress={onStart} hitSlop={8} accessibilityRole="button" style={styles.draftStart}>
-          <Text style={styles.draftStartText}>Start</Text>
+          <Text style={styles.draftStartText}>{t("allGoals.start")}</Text>
         </Pressable>
       </View>
     </Pressable>
@@ -170,6 +192,7 @@ export default function AllGoalAllTask() {
   const topPadding = useScreenTopPadding(8);
   const apiFetch = useApiFetch();
   const router = useRouter();
+  const { t } = useTranslation();
   const [goals, setGoals] = useState<GoalSummary[]>([]);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -195,7 +218,7 @@ export default function AllGoalAllTask() {
       }
     } catch (err) {
       console.error("Failed to load goals:", err);
-      setError("Couldn't load your goals. Pull down to try again.");
+      setError(t("allGoals.loadFailed"));
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -223,7 +246,7 @@ export default function AllGoalAllTask() {
       });
     } catch (err) {
       console.error("Failed to open goal:", err);
-      setError("Couldn't open that goal. Please try again.");
+      setError(t("allGoals.openFailed"));
     } finally {
       setIsOpening(false);
     }
@@ -238,12 +261,12 @@ export default function AllGoalAllTask() {
 
   const startDraft = (draft: Draft) => {
     Alert.alert(
-      "Start this goal?",
-      "It goes on your schedule and becomes limited to title and description edits. If its planned start has passed, it starts today and keeps the same length.",
+      t("allGoals.startTitle"),
+      t("allGoals.startMessage"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Start",
+          text: t("allGoals.start"),
           onPress: async () => {
             try {
               const response = await apiFetch(
@@ -257,7 +280,7 @@ export default function AllGoalAllTask() {
               void loadGoals();
             } catch (err: any) {
               // e.g. "Add at least one task before starting." -> open it to finish
-              Alert.alert("Can't start yet", err?.message || "Please try again.");
+              Alert.alert(t("allGoals.cantStart"), err?.message || t("ai.tryAgain"));
             }
           },
         },
@@ -266,16 +289,16 @@ export default function AllGoalAllTask() {
   };
 
   const deleteDraft = (draft: Draft) => {
-    Alert.alert("Delete this draft?", "This can't be undone.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("allGoals.deleteDraftTitle"), t("allGoals.deleteDraftMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           const response = await apiFetch(`${API_BASE_URL}/api/v1/drafts/${draft.id}`, {
             method: "DELETE",
           });
-          if (!response.ok) Alert.alert("Couldn't delete the draft", "Please try again.");
+          if (!response.ok) Alert.alert(t("allGoals.deleteDraftFailed"), t("ai.tryAgain"));
           void loadGoals();
         },
       },
@@ -288,10 +311,10 @@ export default function AllGoalAllTask() {
     <View style={[styles.container, { paddingTop: topPadding }]}>
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <Ionicons name="arrow-back" size={24} color="#4E5A94" />
-        <Text style={styles.backButtonText}>Back to Schedule</Text>
+        <Text style={styles.backButtonText}>{t("allGoals.backToSchedule")}</Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>All goals</Text>
+      <Text style={styles.title}>{t("allGoals.title")}</Text>
 
       {isLoading ? (
         <ActivityIndicator size="large" color="#4E5A94" style={styles.loader} />
@@ -312,7 +335,7 @@ export default function AllGoalAllTask() {
 
           {drafts.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Drafts ({drafts.length})</Text>
+              <Text style={styles.sectionTitle}>{t("allGoals.drafts", { count: drafts.length })}</Text>
               {drafts.map((draft) => (
                 <DraftCard
                   key={`draft-${draft.id}`}
@@ -327,14 +350,14 @@ export default function AllGoalAllTask() {
 
           {!error && sections.length === 0 && drafts.length === 0 && (
             <Text style={styles.emptyText}>
-              No goals yet. Create one from the Create tab.
+              {t("allGoals.empty")}
             </Text>
           )}
 
           {sections.map((section) => (
             <View key={section.key} style={styles.section}>
               <Text style={styles.sectionTitle}>
-                {section.title} ({section.goals.length})
+                {t("allGoals.sectionCount", { title: section.title, count: section.goals.length })}
               </Text>
               {section.goals.map((goal) => (
                 <GoalCard key={goal.id} goal={goal} onPress={() => openGoal(goal)} />

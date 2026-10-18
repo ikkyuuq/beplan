@@ -14,6 +14,7 @@ import { routes } from "@/routesConfig";
 import SignButton from "@/components/SignButton";
 import InputField from "@/components/InputField";
 import VerificationScreen from "@/components/VerificationScreen";
+import { useTranslation } from "@/i18n";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -82,6 +83,7 @@ export default function SignUpScreen() {
   const { signUp, isLoaded } = useSignUp();
   const { signOut } = useClerk();
   const router = useRouter();
+  const { t } = useTranslation();
 
   // ====================== State Management ======================
   const [username, setUsername] = React.useState("");
@@ -131,31 +133,27 @@ export default function SignUpScreen() {
       !password.trim() ||
       !confirmPassword.trim()
     ) {
-      setErrorMessage("All fields are required.");
+      setErrorMessage(t("auth.allRequired"));
       return false;
     }
 
     if (!isValidEmail(emailAddress)) {
-      setErrorMessage("Please enter a valid email address.");
+      setErrorMessage(t("auth.invalidEmail"));
       return false;
     }
 
     if (!isValidUsername(username)) {
-      setErrorMessage(
-        "Username must be 3-20 characters long and contain only letters, numbers, and underscores."
-      );
+      setErrorMessage(t("auth.usernameRule"));
       return false;
     }
 
     if (!isValidPassword(password)) {
-      setErrorMessage(
-        "Password must be at least 8 characters long and include uppercase, lowercase, and numbers."
-      );
+      setErrorMessage(t("auth.passwordRule"));
       return false;
     }
 
     if (password !== confirmPassword) {
-      setErrorMessage("Passwords do not match.");
+      setErrorMessage(t("auth.passwordsDontMatch"));
       return false;
     }
 
@@ -188,9 +186,9 @@ export default function SignUpScreen() {
       if (err.errors && err.errors.length > 0) {
         setErrorMessage(err.errors[0].message);
       } else if (err.code == "clerk_identifier_taken") {
-        setErrorMessage("An account with this email already exists.");
+        setErrorMessage(t("auth.emailTaken"));
       } else {
-        setErrorMessage("Sign-up failed. Please try again.");
+        setErrorMessage(t("auth.signUpFailed"));
       }
     } finally {
       setIsSigningUp(false);
@@ -203,12 +201,12 @@ export default function SignUpScreen() {
       if (!isLoaded) return;
 
       if (!code.trim()) {
-        setErrorMessage("Please enter the verification code.");
+        setErrorMessage(t("auth.enterCode"));
         return;
       }
 
       if (!/^\d{6}$/.test(code)) {
-        setErrorMessage("Please enter a valid 6-digit code.");
+        setErrorMessage(t("auth.invalidCode"));
         return;
       }
 
@@ -226,17 +224,17 @@ export default function SignUpScreen() {
         setIsSigningOut(false);
 
         Alert.alert(
-          "Account Created Successfully",
-          "Your account has been created. Please sign in to continue.",
+          t("auth.accountCreatedTitle"),
+          t("auth.accountCreatedMessage"),
           [
             {
-              text: "OK",
+              text: t("common.ok"),
               onPress: () => router.replace(routes.signIn),
             },
           ]
         );
       } else {
-        setErrorMessage("Verification incomplete. Please try again.");
+        setErrorMessage(t("auth.verificationIncomplete"));
       }
     } catch (err: any) {
       console.error("Verification error:", err);
@@ -244,7 +242,7 @@ export default function SignUpScreen() {
       if (err.errors && err.errors.length > 0) {
         setErrorMessage(err.errors[0].message);
       } else {
-        setErrorMessage("Verification failed. Please try again.");
+        setErrorMessage(t("auth.verificationFailed"));
       }
     }
   };
@@ -260,16 +258,16 @@ export default function SignUpScreen() {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
 
       Alert.alert(
-        "Verification Code Resent",
-        "We have sent a new verification code to your email.",
-        [{ text: "OK" }]
+        t("auth.codeResentTitle"),
+        t("auth.codeResentMessage"),
+        [{ text: t("common.ok") }]
       );
     } catch (err: any) {
       console.error("Failed to resend verification code:", err);
 
       Alert.alert(
-        "Error",
-        "Failed to resend verification code. Please try again later."
+        t("common.error"),
+        t("auth.resendFailed")
       );
     } finally {
       setIsResendingCode(false);
@@ -280,8 +278,8 @@ export default function SignUpScreen() {
   if (pendingVerification) {
     return (
       <VerificationScreen
-        title="Verification Code"
-        description="Please enter the 6-digit verification code sent to your email."
+        title={t("auth.verifyTitle")}
+        description={t("auth.verifyDescription")}
         code={code}
         setCode={setCode}
         onVerifyPress={onVerifyPress}
@@ -303,7 +301,7 @@ export default function SignUpScreen() {
 
       {/* Title and Divider */}
       <Animated.Text style={[styles.title, titleAnimatedStyle]}>
-        Register
+        {t("auth.register")}
       </Animated.Text>
       <Animated.View style={[styles.divider, dividerAnimatedStyle]} />
 
@@ -311,7 +309,7 @@ export default function SignUpScreen() {
       <Animated.View style={[formAnimatedStyle, { width: "100%" }]}>
         <InputField
           iconName="person-outline"
-          placeholder="Choose a username"
+          placeholder={t("auth.usernamePlaceholder")}
           value={username}
           onChangeText={(text) => {
             setUsername(text);
@@ -332,7 +330,7 @@ export default function SignUpScreen() {
         />
         <InputField
           iconName="lock-closed-outline"
-          placeholder="Enter your password"
+          placeholder={t("auth.passwordPlaceholder")}
           value={password}
           onChangeText={(text) => {
             setPassword(text);
@@ -342,7 +340,7 @@ export default function SignUpScreen() {
         />
         <InputField
           iconName="lock-closed-outline"
-          placeholder="Confirm your password"
+          placeholder={t("auth.confirmPasswordPlaceholder")}
           value={confirmPassword}
           onChangeText={(text) => {
             setConfirmPassword(text);
@@ -365,7 +363,7 @@ export default function SignUpScreen() {
       <Animated.View style={[{ width: "100%" }, buttonAnimatedStyle]}>
         <SignButton
           onPress={onSignUpPress}
-          buttonText="Sign Up"
+          buttonText={t("auth.signUp")}
           buttonStyle={isSigningUp ? styles.disabledButton : undefined}
         />
       </Animated.View>

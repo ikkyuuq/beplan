@@ -1,3 +1,4 @@
+import asyncio
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -20,10 +21,23 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 db_pool: asyncpg.Pool | None = None
 
 
-async def init_db():
-    """Initialize the connection pool"""
+async def init_db(attempts: int = 6, delay: float = 2.0):
+    """Initialize the connection pool.
+
+    Network errors are retried: right after a container is (re)created its DNS
+    can take a few seconds, and failing here kills the whole server.
+    """
     global db_pool
-    db_pool = await asyncpg.create_pool(DATABASE_URL, statement_cache_size=0)
+    for attempt in range(1, attempts + 1):
+        try:
+            db_pool = await asyncpg.create_pool(DATABASE_URL, statement_cache_size=0)
+            return
+        except OSError as error:  # includes socket.gaierror and refused connections
+            if attempt == attempts:
+                raise
+            print(f"Database not reachable ({error}); retry {attempt}/{attempts - 1} in {delay:.0f}s")
+            await asyncio.sleep(delay)
+            delay *= 2
 
 
 async def close_db():

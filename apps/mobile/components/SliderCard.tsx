@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  Dimensions,
-  Image,
   Pressable,
   StyleSheet,
   TouchableOpacity,
@@ -17,6 +15,10 @@ import Animated, {
   withSpring,
   useSharedValue,
 } from "react-native-reanimated";
+import { useTranslation } from "@/i18n";
+import { categoryLabel, formatDuration } from "@/i18n/format";
+import { categoryStyle } from "@/constants/categories";
+import TemplateCover from "@/components/TemplateCover";
 
 // ====================== Type Definitions ======================
 type Task = {
@@ -43,6 +45,8 @@ type SliderCardProps = {
   isFavorite: boolean;
   goals_id?: string[];
   scrollX: SharedValue<number>;
+  /** Width of one slider page (the list's width). */
+  pageWidth: number;
   onPress?: () => void;
   onToggleFavorite?: () => void;
 };
@@ -59,12 +63,11 @@ export default function SliderCard({
   isFavorite,
   goals_id = [],
   scrollX,
+  pageWidth,
   onPress,
   onToggleFavorite,
 }: SliderCardProps) {
-  // ====================== Constants ======================
-  const screen = Dimensions.get("screen");
-
+  const { t } = useTranslation();
   // ====================== State Management ======================
   const [isPressed, setIsPressed] = useState(false);
   const [displayPreviewModal, setDisplayPreviewModal] = useState(false);
@@ -80,11 +83,11 @@ export default function SliderCard({
         translateX: interpolate(
           scrollX.value,
           [
-            (index - 1) * screen.width,
-            index * screen.width,
-            (index + 1) * screen.width,
+            (index - 1) * pageWidth,
+            index * pageWidth,
+            (index + 1) * pageWidth,
           ],
-          [-screen.width * 0.25, 0, screen.width * 0.25],
+          [-pageWidth * 0.25, 0, pageWidth * 0.25],
           "clamp"
         ),
       },
@@ -92,9 +95,9 @@ export default function SliderCard({
         scale: interpolate(
           scrollX.value,
           [
-            (index - 1) * screen.width,
-            index * screen.width,
-            (index + 1) * screen.width,
+            (index - 1) * pageWidth,
+            index * pageWidth,
+            (index + 1) * pageWidth,
           ],
           [0.85, 1, 0.85],
           "clamp"
@@ -104,9 +107,9 @@ export default function SliderCard({
     opacity: interpolate(
       scrollX.value,
       [
-        (index - 1) * screen.width,
-        index * screen.width,
-        (index + 1) * screen.width,
+        (index - 1) * pageWidth,
+        index * pageWidth,
+        (index + 1) * pageWidth,
       ],
       [0.5, 1, 0.5],
       "clamp"
@@ -117,43 +120,6 @@ export default function SliderCard({
     transform: [{ scale: favoriteScale.value }],
   }));
 
-  // ====================== Helper Functions ======================
-  const formatDuration = (days?: number): string => {
-    if (!days) return "";
-
-    if (days >= 365) {
-      return "1 Year";
-    } else if (days >= 30) {
-      const months = Math.floor(days / 30);
-      return `${months} ${months === 1 ? "Month" : "Months"}`;
-    } else {
-      return `${days} ${days === 1 ? "Day" : "Days"}`;
-    }
-  };
-
-  const getCategoryIcon = (
-    category: string
-  ): keyof typeof Ionicons.glyphMap => {
-    switch (category.toLowerCase()) {
-      case "fitness":
-      case "workout":
-        return "barbell-outline";
-      case "health":
-        return "fitness-outline";
-      case "education":
-        return "book-outline";
-      case "work":
-      case "finance":
-        return "briefcase-outline";
-      case "travel":
-        return "airplane-outline";
-      case "personal_development":
-      case "productivity":
-        return "person-outline";
-      default:
-        return "pricetag-outline";
-    }
-  };
 
   // ====================== Event Handlers ======================
   const handleDisplayPreviewModal = () => {
@@ -189,7 +155,7 @@ export default function SliderCard({
           {
             justifyContent: "center",
             alignItems: "center",
-            width: screen.width,
+            width: pageWidth,
           },
         ]}
       >
@@ -202,10 +168,11 @@ export default function SliderCard({
           <View style={styles.cardContainer}>
             {/* Image Container */}
             <View style={styles.imageContainer}>
-              <Image
-                source={{ uri: image }}
+              <TemplateCover
+                imageUrl={image}
+                category={category}
                 style={styles.image}
-                resizeMode="cover"
+                iconStyle={styles.coverIcon}
               />
               <LinearGradient
                 colors={["transparent", "transparent", "black"]}
@@ -249,14 +216,13 @@ export default function SliderCard({
                   {/* Category Badge */}
                   <View style={styles.categoryBadge}>
                     <Ionicons
-                      name={getCategoryIcon(category)}
+                      name={categoryStyle(category).icon}
                       size={12}
                       color="#fff"
                       style={styles.categoryIcon}
                     />
                     <Text style={styles.categoryText}>
-                      {category.charAt(0).toUpperCase() +
-                        category.slice(1).replace("_", " ")}
+                      {categoryLabel(category)}
                     </Text>
                   </View>
 
@@ -275,8 +241,7 @@ export default function SliderCard({
                     <View style={styles.goalsBadge}>
                       <Ionicons name="flag-outline" size={12} color="#fff" />
                       <Text style={styles.goalsText}>
-                        {goals_id.length}{" "}
-                        {goals_id.length === 1 ? "Goal" : "Goals"}
+                        {t("template.goals", { count: goals_id.length })}
                       </Text>
                     </View>
                   )}
@@ -322,6 +287,10 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
+  },
+  // Keeps the default cover's icon above the title.
+  coverIcon: {
+    marginBottom: 40,
   },
   gradient: {
     position: "absolute",

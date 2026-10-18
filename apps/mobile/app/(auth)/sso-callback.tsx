@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { routes } from "@/routesConfig";
+import { useTranslation } from "@/i18n";
 
 // Web only. Google/GitHub sign-in on web sends the whole page to the provider
 // and back here (sign-in.tsx: signIn.authenticateWithRedirect). A popup can't
@@ -12,6 +13,7 @@ import { routes } from "@/routesConfig";
 export default function SSOCallback() {
   const { handleRedirectCallback } = useClerk();
   const router = useRouter();
+  const { t } = useTranslation();
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -21,7 +23,7 @@ export default function SSOCallback() {
     }).catch((err: any) => {
       console.error("Social sign-in callback failed", err);
       setError(
-        err?.errors?.[0]?.longMessage || err?.message || "Sign-in couldn't be completed."
+        err?.errors?.[0]?.longMessage || err?.message || t("auth.ssoFailed")
       );
     });
   }, [handleRedirectCallback]);
@@ -32,13 +34,13 @@ export default function SSOCallback() {
         <>
           <Text style={styles.error}>{error}</Text>
           <Pressable onPress={() => router.replace(routes.signIn)}>
-            <Text style={styles.link}>Back to sign in</Text>
+            <Text style={styles.link}>{t("auth.backToSignIn")}</Text>
           </Pressable>
         </>
       ) : (
         <>
           <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.text}>Signing you in…</Text>
+          <Text style={styles.text}>{t("auth.signingIn")}</Text>
         </>
       )}
     </View>

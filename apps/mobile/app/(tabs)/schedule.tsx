@@ -28,7 +28,7 @@ import Animated from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import CollapseItem from "@/components/CollapseItem";
 import Collapsable from "@/components/Collapsable";
-import Header from "@/components/Header";
+import Header, { HEADER_RADIUS } from "@/components/Header";
 import { useUser } from "@clerk/expo";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
@@ -36,6 +36,7 @@ import React from "react";
 import { API_BASE_URL } from "@/constants/api";
 import { useApiFetch } from "@/hooks/useApiFetch";
 import { syncTaskReminders } from "@/utils/taskReminder";
+import { dateLocale, useTranslation } from "@/i18n";
 
 type Task = {
   id: number;
@@ -63,6 +64,8 @@ export default function Schedule() {
   const { user } = useUser();
   const apiFetch = useApiFetch();
   const router = useRouter();
+  const { t } = useTranslation();
+  const locale = dateLocale();
 
   const today = new Date();
   const startDate = startOfWeek(subDays(today, 60), { weekStartsOn: 0 });
@@ -101,15 +104,15 @@ export default function Schedule() {
 
   // Month/year of the visible week, taken from its middle day so a week that
   // spans two months shows the month most of it belongs to.
-  const visibleMonth = format(dates[pageIndex]?.[3] ?? today, "MMMM yyyy");
+  const visibleMonth = format(dates[pageIndex]?.[3] ?? today, "MMMM yyyy", { locale });
 
   const isTodaySelected = isSameDay(selectedDate, today);
   const selectedLabel = isTodaySelected
-    ? "Today"
+    ? t("home.today")
     : isTomorrow(selectedDate)
-      ? "Tomorrow"
+      ? t("home.tomorrow")
       : isYesterday(selectedDate)
-        ? "Yesterday"
+        ? t("home.yesterday")
         : null;
   const showTodayButton = !isTodaySelected || pageIndex !== todayPage;
   // Tasks can only be marked on their day; future days are a read-only preview.
@@ -162,10 +165,10 @@ export default function Schedule() {
         console.error("Failed to fetch goals:", error);
         setError(
           error instanceof TypeError
-            ? `Cannot reach the backend at ${API_BASE_URL}. Check that the API is running and that this device can access the configured address.`
+            ? t("home.cannotReach", { url: API_BASE_URL })
             : error instanceof Error
               ? error.message
-              : "Failed to load your goals. Please try again."
+              : t("home.loadFailed")
         );
         setData([]);
       } finally {
@@ -194,7 +197,7 @@ export default function Schedule() {
     if (!response.ok) {
       // Prefer the server's reason (e.g. "This task is scheduled for Oct 20...").
       const body = await response.json().catch(() => null);
-      throw new Error(body?.detail || `Status update failed (HTTP ${response.status})`);
+      throw new Error(body?.detail || t("home.statusUpdateFailed", { status: response.status }));
     }
     // Today's count changed, so the evening reminder may need updating.
     void syncTaskReminders(apiFetch);
@@ -205,10 +208,10 @@ export default function Schedule() {
   const handleStatusUpdateError = (error: unknown) => {
     console.error("Failed to update task status:", error);
     Alert.alert(
-      "Couldn't update",
+      t("home.couldntUpdate"),
       error instanceof Error && error.message
         ? error.message
-        : "Your change wasn't saved. Please try again.",
+        : t("home.changeNotSaved"),
     );
     setRefreshKey((key) => key + 1);
   };
@@ -274,7 +277,7 @@ export default function Schedule() {
             : goal,
         ),
       );
-      Alert.alert("Success", "Task has been rescheduled");
+      Alert.alert(t("common.success"), t("home.rescheduled"));
     } catch (error) {
       console.error("Failed to reschedule task:", error);
     }
@@ -313,7 +316,7 @@ export default function Schedule() {
       }, 500);
     } catch (error) {
       console.error("Failed to fetch goal for customization:", error);
-      setError("Failed to load goal data. Please try again.");
+      setError(t("home.goalLoadFailed"));
       setIsLoading(false);
     }
   };
@@ -337,10 +340,10 @@ export default function Schedule() {
       // Remove the deleted goal from the state
       setData((prev) => prev.filter((goal) => goal.id !== goalId));
       void syncTaskReminders(apiFetch);
-      Alert.alert("Success", "Goal has been deleted successfully.");
+      Alert.alert(t("common.success"), t("home.goalDeleted"));
     } catch (error) {
       console.error("Failed to delete goal:", error);
-      Alert.alert("Error", "Failed to delete the goal. Please try again.");
+      Alert.alert(t("common.error"), t("home.goalDeleteFailed"));
     }
   };
 
@@ -362,21 +365,14 @@ export default function Schedule() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Header>
-        <View
-          style={{ gap: 10, justifyContent: "center", alignItems: "center" }}
-        >
-          <Text style={{ color: "#fff", fontSize: 20, fontStyle: "italic" }}>
-            Start today, conquer tomorrow
-          </Text>
-          {/* Month of the visible week, with previous/next week buttons */}
+      <Header
+        title={
+          // Month of the visible week, with previous/next week buttons
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              alignSelf: "stretch",
-              marginBottom: 12,
             }}
           >
             <Pressable
@@ -384,7 +380,7 @@ export default function Schedule() {
               disabled={pageIndex === 0}
               hitSlop={12}
               accessibilityRole="button"
-              accessibilityLabel="Previous week"
+              accessibilityLabel={t("home.previousWeek")}
             >
               <Feather
                 name="chevron-left"
@@ -393,7 +389,7 @@ export default function Schedule() {
               />
             </Pressable>
             <Text
-              style={{ color: "#fff", fontSize: 28, fontWeight: "bold", flexShrink: 1 }}
+              style={{ color: "#fff", fontSize: 22, fontWeight: "bold", flexShrink: 1 }}
               numberOfLines={1}
               adjustsFontSizeToFit
               maxFontSizeMultiplier={DENSE_TEXT_MAX_SCALE}
@@ -405,7 +401,7 @@ export default function Schedule() {
               disabled={pageIndex === dates.length - 1}
               hitSlop={12}
               accessibilityRole="button"
-              accessibilityLabel="Next week"
+              accessibilityLabel={t("home.nextWeek")}
             >
               <Feather
                 name="chevron-right"
@@ -414,13 +410,13 @@ export default function Schedule() {
               />
             </Pressable>
           </View>
-        </View>
-
+        }
+      >
         {/* Week strip: weekday + date per cell. Selected = filled pill,
             today = bold with a dot, past days dimmed. */}
         <PagerView
           ref={pagerRef}
-          style={{ height: Math.round(76 * stripScale) }}
+          style={{ height: Math.round(62 * stripScale) }}
           initialPage={todayPage}
           onPageSelected={(e: any) => handleWeekChange(e.nativeEvent.position)}
         >
@@ -443,15 +439,15 @@ export default function Schedule() {
                     onPress={() => setSelectedDate(day)}
                     accessibilityRole="button"
                     accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={`${isTodayCell ? "Today, " : ""}${format(day, "EEEE, MMMM d")}`}
+                    accessibilityLabel={`${isTodayCell ? t("home.todayPrefix") : ""}${format(day, "EEEE, MMMM d", { locale })}`}
                     style={{
                       flex: 1,
                       maxWidth: 52,
                       marginHorizontal: 2,
-                      paddingVertical: 8,
+                      paddingVertical: 6,
                       borderRadius: 14,
                       alignItems: "center",
-                      gap: 4,
+                      gap: 3,
                       backgroundColor: isSelected ? "#4E5A94" : "transparent",
                     }}
                   >
@@ -462,7 +458,7 @@ export default function Schedule() {
                         color: isSelected ? "#fff" : isPast ? "#6F6F7A" : "#B7B7B7",
                       }}
                     >
-                      {format(day, "EEEEE")}
+                      {format(day, "EEEEE", { locale })}
                     </Text>
                     <Text
                       maxFontSizeMultiplier={DENSE_TEXT_MAX_SCALE}
@@ -505,7 +501,6 @@ export default function Schedule() {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            marginTop: 12,
             paddingHorizontal: 4,
             minHeight: 32,
           }}
@@ -517,7 +512,7 @@ export default function Schedule() {
               maxFontSizeMultiplier={DENSE_TEXT_MAX_SCALE}
             >
               {selectedLabel ? `${selectedLabel} · ` : ""}
-              {format(selectedDate, "EEEE, MMM d")}
+              {format(selectedDate, "EEEE, MMM d", { locale })}
             </Text>
             {/* Future days are a read-only preview: tasks are marked on their day. */}
             {isFutureDay && (
@@ -530,7 +525,7 @@ export default function Schedule() {
                 }}
               >
                 <Text style={{ color: "#B7B7B7", fontSize: 11, fontWeight: "600" }}>
-                  Upcoming
+                  {t("home.upcoming")}
                 </Text>
               </View>
             )}
@@ -540,7 +535,7 @@ export default function Schedule() {
               onPress={goToToday}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Go to today"
+              accessibilityLabel={t("home.goToToday")}
               style={{
                 paddingHorizontal: 12,
                 paddingVertical: 6,
@@ -550,14 +545,17 @@ export default function Schedule() {
               }}
             >
               <Text style={{ color: "#8B98D5", fontSize: 13, fontWeight: "600" }}>
-                Today
+                {t("home.today")}
               </Text>
             </Pressable>
           )}
         </View>
       </Header>
 
-      <ScrollView>
+      <ScrollView
+        style={{ marginTop: -HEADER_RADIUS }}
+        contentContainerStyle={{ paddingTop: HEADER_RADIUS }}
+      >
         <Animated.View style={{ marginTop: 20, marginBottom: tabBarSpace }}>
           {isLoading ? (
             <View
@@ -569,7 +567,7 @@ export default function Schedule() {
             >
               <ActivityIndicator size="large" color="#4E5A94" />
               <Text style={{ marginTop: 10, color: "#666" }}>
-                Loading your goals...
+                {t("home.loading")}
               </Text>
             </View>
           ) : error ? (
@@ -590,7 +588,7 @@ export default function Schedule() {
                 }}
                 onPress={() => setRefreshKey((key) => key + 1)}
               >
-                <Text style={{ color: "white" }}>Try Again</Text>
+                <Text style={{ color: "white" }}>{t("common.retry")}</Text>
               </Pressable>
             </View>
           ) : data.length === 0 ? (
@@ -602,7 +600,7 @@ export default function Schedule() {
               }}
             >
               <Text style={{ color: "#666" }}>
-                No goals scheduled for today
+                {t("home.noGoals")}
               </Text>
             </View>
           ) : (
@@ -629,15 +627,15 @@ export default function Schedule() {
                 onCustomize={() => handleCustomizeGoal(goal)}
                 onDelete={() => {
                   Alert.alert(
-                    "Delete Goal",
-                    "Are you sure you want to delete this goal?",
+                    t("home.deleteGoalTitle"),
+                    t("home.deleteGoalConfirm"),
                     [
                       {
-                        text: "Cancel",
+                        text: t("common.cancel"),
                         style: "cancel",
                       },
                       {
-                        text: "Delete",
+                        text: t("common.delete"),
                         onPress: () => handleDeleteGoal(goal.id),
                       },
                     ],

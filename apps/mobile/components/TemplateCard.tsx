@@ -2,7 +2,6 @@ import React from "react";
 import {
   View,
   Text,
-  Image,
   Pressable,
   StyleSheet,
   TouchableOpacity,
@@ -10,11 +9,17 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
-  withSpring,
+  withSequence,
+  withTiming,
   useAnimatedStyle,
   FadeIn,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
+import { useTranslation } from "@/i18n";
+import { categoryLabel, formatDuration } from "@/i18n/format";
+import { MOTION } from "@/constants/motion";
+import { categoryStyle } from "@/constants/categories";
+import TemplateCover from "@/components/TemplateCover";
 
 // ====================== Type Definitions ======================
 type Task = {
@@ -57,25 +62,12 @@ type TemplateCardProps = {
   onToggleFavorite: () => void;
 };
 
-// ====================== Helper Functions ======================
-const formatDuration = (days: number): string => {
-  if (days >= 365) return "1 Year";
-  if (days >= 30) {
-    const months = Math.floor(days / 30);
-    if (months === 1) {
-      return "1 Month";
-    } else {
-      return `${months} Months`;
-    }
-  }
-  return `${days} Days`;
-};
-
 export default function TemplateCard({
   template,
   onSelect,
   onToggleFavorite,
 }: TemplateCardProps) {
+  const { t } = useTranslation();
   const scale = useSharedValue(1);
   const favoriteScale = useSharedValue(1);
 
@@ -88,37 +80,21 @@ export default function TemplateCard({
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.97);
+    scale.value = withTiming(0.97, MOTION.fast);
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1);
+    scale.value = withTiming(1, MOTION.fast);
   };
 
   const handleToggleFavorite = () => {
-    favoriteScale.value = withSpring(0.8, {}, () => {
-      favoriteScale.value = withSpring(1);
-    });
+    // The heart flips at once (the parent updates before the request); this
+    // is just a short pop on top.
+    favoriteScale.value = withSequence(
+      withTiming(1.25, { ...MOTION.fast, duration: 90 }),
+      withTiming(1, MOTION.fast)
+    );
     onToggleFavorite();
-  };
-
-  const getCategoryIcon = (): keyof typeof Ionicons.glyphMap => {
-    switch (template.category.toLowerCase()) {
-      case "fitness":
-        return "barbell-outline";
-      case "health":
-        return "fitness-outline";
-      case "education":
-        return "book-outline";
-      case "work":
-        return "briefcase-outline";
-      case "travel":
-        return "airplane-outline";
-      case "personal_development":
-        return "person-outline";
-      default:
-        return "pricetag-outline";
-    }
   };
 
   return (
@@ -130,11 +106,18 @@ export default function TemplateCard({
         onPress={onSelect}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        style={styles.pressable}
       >
         <View style={styles.card}>
           {/* Image */}
           <View style={styles.imageContainer}>
-            <Image source={{ uri: template.image_url }} style={styles.image} />
+            <TemplateCover
+              imageUrl={template.image_url}
+              category={template.category}
+              style={styles.image}
+              iconSize={40}
+              iconStyle={styles.coverIcon}
+            />
             <LinearGradient
               colors={["transparent", "rgba(0,0,0,0.7)"]}
               style={styles.gradient}
@@ -144,14 +127,17 @@ export default function TemplateCard({
             <View style={styles.badgesContainer}>
               <View style={styles.categoryBadge}>
                 <Ionicons
-                  name={getCategoryIcon()}
+                  name={categoryStyle(template.category).icon}
                   size={12}
                   color="#fff"
                   style={styles.categoryIcon}
                 />
-                <Text style={styles.categoryText}>
-                  {template.category.charAt(0).toUpperCase() +
-                    template.category.slice(1).replace("_", " ")}
+                <Text
+                  style={styles.categoryText}
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={BADGE_MAX_FONT_SCALE}
+                >
+                  {categoryLabel(template.category)}
                 </Text>
               </View>
 
@@ -159,9 +145,12 @@ export default function TemplateCard({
               {template.goals.length > 0 && (
                 <View style={styles.goalsBadge}>
                   <Ionicons name="flag-outline" size={12} color="#fff" />
-                  <Text style={styles.goalsText}>
-                    {template.goals.length}{" "}
-                    {template.goals.length === 1 ? "Goal" : "Goals"}
+                  <Text
+                    style={styles.goalsText}
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={BADGE_MAX_FONT_SCALE}
+                  >
+                    {t("template.goals", { count: template.goals.length })}
                   </Text>
                 </View>
               )}
@@ -171,7 +160,11 @@ export default function TemplateCard({
             {!!template.duration && (
               <View style={styles.durationBadge}>
                 <Ionicons name="time-outline" size={12} color="#fff" />
-                <Text style={styles.durationText}>
+                <Text
+                  style={styles.durationText}
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={BADGE_MAX_FONT_SCALE}
+                >
                   {formatDuration(template.duration)}
                 </Text>
               </View>
@@ -200,7 +193,12 @@ export default function TemplateCard({
 
             {/* Title */}
             <View style={styles.contentContainer}>
-              <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">
+              <Text
+                style={styles.title}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+                maxFontSizeMultiplier={TITLE_MAX_FONT_SCALE}
+              >
                 {template.title}
               </Text>
             </View>
@@ -210,6 +208,11 @@ export default function TemplateCard({
     </Animated.View>
   );
 }
+
+// Cards are ~half the screen wide; let the phone's font-size setting grow the
+// text a little, but not past the card.
+const BADGE_MAX_FONT_SCALE = 1.2;
+const TITLE_MAX_FONT_SCALE = 1.3;
 
 // ====================== Styles ======================
 const styles = StyleSheet.create({
@@ -227,6 +230,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     height: 180,
   },
+  // The card's "100%" heights resolve against this, so it must fill the container.
+  pressable: {
+    height: "100%",
+  },
   card: {
     overflow: "hidden",
     borderRadius: 16,
@@ -239,6 +246,10 @@ const styles = StyleSheet.create({
     height: "100%",
     position: "relative",
     width: "100%",
+  },
+  // Keeps the default cover's icon above the title.
+  coverIcon: {
+    marginBottom: 50,
   },
   image: {
     width: "100%",
@@ -258,9 +269,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 10,
     left: 10,
+    right: 10,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
 
   // Category Badge
@@ -271,6 +283,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
+    flexShrink: 1,
   },
   categoryIcon: {
     marginRight: 4,
@@ -279,6 +292,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 10,
     fontWeight: "500",
+    flexShrink: 1,
   },
 
   // Goals Badge
@@ -290,11 +304,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     gap: 4,
+    flexShrink: 1,
   },
   goalsText: {
     color: "#fff",
     fontSize: 10,
     fontWeight: "500",
+    flexShrink: 1,
   },
 
   // Duration Badge
@@ -302,12 +318,14 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 10,
     left: 10,
+    maxWidth: "70%",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
+    gap: 4,
   },
   durationIcon: {
     marginRight: 4,
@@ -316,6 +334,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 10,
     fontWeight: "500",
+    flexShrink: 1,
   },
 
   // Favorite Button

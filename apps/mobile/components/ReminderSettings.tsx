@@ -8,10 +8,12 @@ import {
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { Alert } from "@/utils/alert";
+import { useTranslation } from "@/i18n";
 import { useApiFetch } from "@/hooks/useApiFetch";
 import {
   DEFAULT_REMINDER_SETTINGS,
@@ -29,6 +31,14 @@ function formatTime(hour: number, minute: number) {
 
 /** Settings section: turn the evening task reminder on/off and pick its time. */
 export default function ReminderSettings() {
+  const { t } = useTranslation();
+  // Expo Go for Android ships without expo-notifications' native modules.
+  const unavailableText =
+    Platform.OS === "web"
+      ? t("reminders.webOnly")
+      : Constants.executionEnvironment === ExecutionEnvironment.StoreClient
+        ? t("reminders.expoGo")
+        : t("reminders.unavailable");
   const apiFetch = useApiFetch();
   const [settings, setSettings] = useState<Settings>(DEFAULT_REMINDER_SETTINGS);
   // Android shows the picker as a dialog, opened from the time button.
@@ -50,10 +60,7 @@ export default function ReminderSettings() {
 
   const toggle = async (enabled: boolean) => {
     if (enabled && !(await requestReminderPermission())) {
-      Alert.alert(
-        "Notifications are off",
-        "Allow notifications for this app in your phone's Settings to get task reminders."
-      );
+      Alert.alert(t("reminders.permissionTitle"), t("reminders.permissionMessage"));
       return;
     }
     await apply({ ...settings, enabled });
@@ -75,13 +82,13 @@ export default function ReminderSettings() {
     <View style={styles.section}>
       <View style={styles.titleRow}>
         <Feather name="bell" size={20} color="#4E5A94" />
-        <Text style={styles.title}>Reminders</Text>
+        <Text style={styles.title}>{t("reminders.title")}</Text>
       </View>
 
       {remindersSupported() ? (
         <>
           <View style={styles.row}>
-            <Text style={styles.label}>Remind me about unmarked tasks</Text>
+            <Text style={styles.label}>{t("reminders.toggle")}</Text>
             <Switch
               value={settings.enabled}
               onValueChange={(value) => void toggle(value)}
@@ -91,7 +98,7 @@ export default function ReminderSettings() {
 
           {settings.enabled && (
             <View style={styles.row}>
-              <Text style={styles.label}>Time</Text>
+              <Text style={styles.label}>{t("reminders.time")}</Text>
               {Platform.OS === "ios" ? (
                 <DateTimePicker
                   value={pickerValue}
@@ -103,7 +110,7 @@ export default function ReminderSettings() {
                 <TouchableOpacity
                   style={styles.timeButton}
                   onPress={() => setShowAndroidPicker(true)}
-                  accessibilityLabel="Change reminder time"
+                  accessibilityLabel={t("reminders.changeTime")}
                 >
                   <Text style={styles.time}>
                     {formatTime(settings.hour, settings.minute)}
@@ -121,15 +128,11 @@ export default function ReminderSettings() {
             </View>
           )}
 
-          <Text style={styles.note}>
-            Only sent on days when some of that day's tasks are still unmarked.
-          </Text>
+          <Text style={styles.note}>{t("reminders.note")}</Text>
         </>
       ) : (
         <Text style={styles.note}>
-          {Platform.OS === "web"
-            ? "Task reminders are available in the iOS and Android app."
-            : "Notifications aren't available in this version of the app."}
+          {unavailableText}
         </Text>
       )}
     </View>
