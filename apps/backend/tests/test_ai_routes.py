@@ -521,3 +521,80 @@ def test_call_anthropic_api_reports_refusal(monkeypatch):
         ai_module.call_anthropic_api(model="m", system="s", prompt="p")
 
     assert raised.value.status_code == 422
+
+
+def test_goal_language_detects_thai():
+    assert ai_module.goal_language("อยากวิ่ง 5 กม. ใน 2 เดือน") == "th"
+    assert ai_module.goal_language("Run 5K, เริ่มพรุ่งนี้") == "th"
+    assert ai_module.goal_language("Run 5K in 2 months") == "en"
+    assert ai_module.goal_language("") == "en"
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("ภายใน 2 เดือน", date(2026, 12, 17)),
+        ("3สัปดาห์", date(2026, 11, 7)),
+        ("สองอาทิตย์", date(2026, 10, 31)),
+        ("สิบสองเดือน", date(2027, 10, 17)),
+        ("หนึ่งปี", date(2027, 10, 17)),
+        ("10 วัน", date(2026, 10, 27)),
+        ("ช่วงหน้าร้อน", None),
+    ],
+)
+def test_resolve_due_date_thai(text, expected):
+    assert ai_module.resolve_due_date(text, TODAY) == expected
+
+
+def test_complete_questions_thai_fallbacks():
+    questions = ai_module.complete_questions([], ["relevant", "time_bound"], "th")
+    assert [q["question"] for q in questions] == [
+        "ทำไมเป้าหมายนี้ถึงสำคัญกับคุณ?",
+        "คุณอยากทำเป้าหมายนี้ให้สำเร็จภายในวันไหน?",
+    ]
+
+
+def test_thai_goal_asks_for_thai_questions_and_plan(monkeypatch):
+    call = Mock(return_value={"result": []})
+    monkeypatch.setattr(ai_module, "call_anthropic_api", call)
+    request = PredictionResult(
+        original_text="อยากวิ่ง 5 กม. ใน 2 เดือน",
+        prediction={"specific": [], "measurable": [], "achievable": [], "relevant": [], "time_bound": []},
+    )
+
+    result = asyncio.run(ai_module.generate_questions(request))
+
+    assert "in Thai" in call.call_args.kwargs["prompt"]
+    assert result["result"][0]["question"] == "คุณอยากทำอะไรให้สำเร็จแบบเจาะจง?"
+
+    call = Mock(return_value={"tasks": [{"title": "วิ่ง", "repeat_type": "daily"}]})
+    monkeypatch.setattr(ai_module, "call_anthropic_api", call)
+    request.prediction["time_bound"] = [{"text": "2 เดือน"}]
+
+    goal = asyncio.run(generate_goal(request, client_today=TODAY))
+
+    assert "in Thai" in call.call_args.kwargs["prompt"]
+    assert goal["title"] == "เป้าหมาย SMART ของฉัน"
+    assert goal["due_date"] == "2026-12-17"
+
+
+def test_english_goal_prompt_asks_for_english(monkeypatch):
+    call = Mock(return_value={"tasks": [{"title": "Walk", "repeat_type": "daily"}]})
+    monkeypatch.setattr(ai_module, "call_anthropic_api", call)
+
+    asyncio.run(generate_goal(G_PERFECT_PREDICTION_RESULT, client_today=TODAY))
+
+    assert "in English" in call.call_args.kwargs["prompt"]
+
+
+def test_ai_errors_carry_a_translatable_code(monkeypatch):
+    client = Mock()
+    client.messages.create.side_effect = anthropic_status_error(
+        anthropic.BadRequestError, 400, "Your credit balance is too low"
+    )
+    monkeypatch.setattr(ai_module, "client", client)
+
+    with pytest.raises(HTTPException) as raised:
+        ai_module.call_anthropic_api(model="m", system="s", prompt="p")
+
+    assert raised.value.headers == {"X-Error-Code": "ai_no_credit"}
