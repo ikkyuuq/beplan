@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  Dimensions,
   Image,
   Pressable,
   StyleSheet,
@@ -45,6 +44,8 @@ type SliderCardProps = {
   isFavorite: boolean;
   goals_id?: string[];
   scrollX: SharedValue<number>;
+  /** Width of one slider page (the list's width). */
+  pageWidth: number;
   onPress?: () => void;
   onToggleFavorite?: () => void;
 };
@@ -61,13 +62,11 @@ export default function SliderCard({
   isFavorite,
   goals_id = [],
   scrollX,
+  pageWidth,
   onPress,
   onToggleFavorite,
 }: SliderCardProps) {
   const { t } = useTranslation();
-  // ====================== Constants ======================
-  const screen = Dimensions.get("screen");
-
   // ====================== State Management ======================
   const [isPressed, setIsPressed] = useState(false);
   const [displayPreviewModal, setDisplayPreviewModal] = useState(false);
@@ -83,11 +82,11 @@ export default function SliderCard({
         translateX: interpolate(
           scrollX.value,
           [
-            (index - 1) * screen.width,
-            index * screen.width,
-            (index + 1) * screen.width,
+            (index - 1) * pageWidth,
+            index * pageWidth,
+            (index + 1) * pageWidth,
           ],
-          [-screen.width * 0.25, 0, screen.width * 0.25],
+          [-pageWidth * 0.25, 0, pageWidth * 0.25],
           "clamp"
         ),
       },
@@ -95,9 +94,9 @@ export default function SliderCard({
         scale: interpolate(
           scrollX.value,
           [
-            (index - 1) * screen.width,
-            index * screen.width,
-            (index + 1) * screen.width,
+            (index - 1) * pageWidth,
+            index * pageWidth,
+            (index + 1) * pageWidth,
           ],
           [0.85, 1, 0.85],
           "clamp"
@@ -107,9 +106,9 @@ export default function SliderCard({
     opacity: interpolate(
       scrollX.value,
       [
-        (index - 1) * screen.width,
-        index * screen.width,
-        (index + 1) * screen.width,
+        (index - 1) * pageWidth,
+        index * pageWidth,
+        (index + 1) * pageWidth,
       ],
       [0.5, 1, 0.5],
       "clamp"
@@ -179,7 +178,7 @@ export default function SliderCard({
           {
             justifyContent: "center",
             alignItems: "center",
-            width: screen.width,
+            width: pageWidth,
           },
         ]}
       >
