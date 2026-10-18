@@ -42,6 +42,7 @@ const en = {
     note: "Only sent on days when some of that day's tasks are still unmarked.",
     webOnly: "Task reminders are available in the iOS and Android app.",
     unavailable: "Notifications aren't available in this version of the app.",
+    expoGo: "Reminders don't work in Expo Go. Install the BePlan app to use them.",
     permissionTitle: "Notifications are off",
     permissionMessage:
       "Allow notifications for this app in your phone's Settings to get task reminders.",

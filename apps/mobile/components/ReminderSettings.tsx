@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
@@ -31,6 +32,13 @@ function formatTime(hour: number, minute: number) {
 /** Settings section: turn the evening task reminder on/off and pick its time. */
 export default function ReminderSettings() {
   const { t } = useTranslation();
+  // Expo Go for Android ships without expo-notifications' native modules.
+  const unavailableText =
+    Platform.OS === "web"
+      ? t("reminders.webOnly")
+      : Constants.executionEnvironment === ExecutionEnvironment.StoreClient
+        ? t("reminders.expoGo")
+        : t("reminders.unavailable");
   const apiFetch = useApiFetch();
   const [settings, setSettings] = useState<Settings>(DEFAULT_REMINDER_SETTINGS);
   // Android shows the picker as a dialog, opened from the time button.
@@ -124,7 +132,7 @@ export default function ReminderSettings() {
         </>
       ) : (
         <Text style={styles.note}>
-          {Platform.OS === "web" ? t("reminders.webOnly") : t("reminders.unavailable")}
+          {unavailableText}
         </Text>
       )}
     </View>
