@@ -275,3 +275,75 @@ def test_update_profile_rejects_invalid_input(monkeypatch):
         assert error.value.status_code == 422
     connection.execute.assert_not_awaited()
     merge.assert_not_awaited()
+
+
+def update_request(**overrides):
+    body = {
+        "template_id": 7,
+        "title": "Run plan",
+        "description": "Run more",
+        "image_url": "",
+        "category": "Personal Budgeting",
+        "goals": [
+            {
+                "title": "Run",
+                "type": "template",
+                "start_date": "2026-01-01",
+                "due_date": "2026-01-14",
+                "tasks": [
+                    {"title": "Jog", "repeat_type": "weekly", "week_interval": [1, 3]}
+                ],
+            }
+        ],
+    }
+    body.update(overrides)
+    return template.UpdateTemplateRequest(**body)
+
+
+def test_update_template_rebuilds_goals_and_keeps_goals_users_have(monkeypatch):
+    connection = FakeConnection()
+    connection.fetchval = AsyncMock(return_value=7)
+    connection.fetch.return_value = [{"goal_id": 30}, {"goal_id": 31}]
+    connection.fetchrow.side_effect = [{"id": 40}, {"id": 41}, {"id": 42}, {"id": 43}]
+    patch_pool(monkeypatch, template, connection)
+
+    result = asyncio.run(template.update_template(update_request(), _admin_id="admin"))
+
+    assert result == {"message": "Template updated"}
+    update_args = connection.fetchval.await_args.args
+    assert "UPDATE public.template" in update_args[0]
+    assert update_args[1:] == (
+        7, "Run plan", "Run more", "", "finance", date(2026, 1, 1), date(2026, 1, 14)
+    )
+    assert "DELETE FROM public.tmpl_goal" in connection.fetch.await_args.args[0]
+    goal_delete = connection.execute.await_args_list[0].args
+    assert "DELETE FROM public.goal" in goal_delete[0]
+    assert "assigned_goal" in goal_delete[0]
+    assert goal_delete[1] == [30, 31]
+    # New goal, tmpl_goal, task and tmpl_goal_task rows, then the task's days.
+    assert "INSERT INTO public.goal" in connection.fetchrow.await_args_list[0].args[0]
+    assert connection.fetchrow.await_args_list[2].args[-1] == [1, 3]
+    assert "tmpl_goal_task_interval" in connection.execute.await_args_list[1].args[0]
+
+
+def test_update_template_404_when_template_missing(monkeypatch):
+    connection = FakeConnection()
+    connection.fetchval = AsyncMock(return_value=None)
+    patch_pool(monkeypatch, template, connection)
+
+    try:
+        asyncio.run(template.update_template(update_request(), _admin_id="admin"))
+    except template.HTTPException as error:
+        assert error.status_code == 404
+    else:
+        raise AssertionError("expected 404")
+    connection.fetch.assert_not_awaited()
+
+
+def test_update_template_rejects_no_goals():
+    try:
+        asyncio.run(template.update_template(update_request(goals=[]), _admin_id="admin"))
+    except template.HTTPException as error:
+        assert error.status_code == 400
+    else:
+        raise AssertionError("expected 400")
