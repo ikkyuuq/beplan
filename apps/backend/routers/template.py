@@ -131,11 +131,14 @@ class TaskTemplate(BaseModel):
     title: str
     description: Optional[str] = None
     repeat_type: Optional[T.RepeatType] = None
+    date_interval: Optional[List[date]] = None
     week_interval: Optional[List[int]] = None
 
 
 class GoalTemplate(BaseModel):
     title: str
+    start_date: Optional[date] = None
+    due_date: Optional[date] = None
     tasks: List[TaskTemplate]
 
 
@@ -243,6 +246,30 @@ async def fetch_template(
             )
             tasks_dict = {row["id"]: row for row in tasks_data}
 
+            # Monthly and one-off tasks keep their days only as interval rows;
+            # return them so the admin editor can save the template unchanged.
+            dated_tgt_ids = [
+                tgt["id"]
+                for tgt in tmpl_goal_tasks
+                if tgt["task_id"] in tasks_dict
+                and tasks_dict[tgt["task_id"]]["type"] in ("monthly", "date")
+            ]
+            dates_by_tgt = {}
+            if dated_tgt_ids:
+                interval_rows = await conn.fetch(
+                    """
+                    SELECT tmpl_goal_task_id, interval_date
+                    FROM public.tmpl_goal_task_interval
+                    WHERE tmpl_goal_task_id = ANY($1)
+                    ORDER BY interval_date
+                    """,
+                    dated_tgt_ids,
+                )
+                for row in interval_rows:
+                    dates_by_tgt.setdefault(row["tmpl_goal_task_id"], []).append(
+                        row["interval_date"]
+                    )
+
             favorite_template_ids = set()
             if user_id:
                 favorites = await conn.fetch(
@@ -294,12 +321,15 @@ async def fetch_template(
                                     title=task_rec["title"],
                                     description=task_rec.get("description"),
                                     repeat_type=task_rec["type"],
+                                    date_interval=dates_by_tgt.get(tmpl_goal_task["id"]),
                                     week_interval=task_rec.get("interval"),
                                 )
                             )
                     goal_templates.append(
                         GoalTemplate(
                             title=goal_rec["title"],
+                            start_date=tmpl_goal.get("start_date"),
+                            due_date=tmpl_goal.get("due_date"),
                             tasks=task_templates,
                         )
                     )
@@ -373,6 +403,86 @@ async def upload_image(
     return await upload_public_file(file, key)
 
 
+async def insert_template_goals(conn, template_id: int, goals: List[T.Goal]):
+    """Insert a template's goals and tasks, with each task's dates."""
+    for goal in goals:
+        new_goal = await conn.fetchrow(
+            "INSERT INTO public.goal (title, type) VALUES ($1, $2) RETURNING id",
+            goal.title,
+            goal.type,
+        )
+
+        new_tmpl_goal = await conn.fetchrow(
+            """
+            INSERT INTO public.tmpl_goal 
+                (template_id, goal_id, start_date, due_date)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id
+            """,
+            template_id,
+            new_goal["id"],
+            goal.start_date,
+            goal.due_date,
+        )
+
+        for task in goal.tasks:
+            if task.repeat_type == T.RepeatType.DAILY:
+                interval_dates = date_calculation.get_daily_range(
+                    goal.start_date, goal.due_date
+                )
+            elif task.repeat_type == T.RepeatType.WEEKLY:
+                if not task.week_interval:
+                    raise HTTPException(
+                        400, detail="Week interval is required"
+                    )
+                interval_dates = date_calculation.get_weekly_range(
+                    goal.start_date, goal.due_date, task.week_interval
+                )
+            elif (
+                task.repeat_type == T.RepeatType.MONTHLY
+                or task.repeat_type == T.RepeatType.DATE
+            ):
+                if not task.date_interval:
+                    raise HTTPException(
+                        400, detail="Monthly interval is required"
+                    )
+                interval_dates = task.date_interval
+            else:
+                raise HTTPException(
+                    400,
+                    detail="Invalid task type; must be daily, weekly, or monthly",
+                )
+
+            new_task = await conn.fetchrow(
+                """
+                INSERT INTO public.task 
+                    (title, description, goal_id, type, interval)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id
+                """,
+                task.title,
+                task.description,
+                new_goal["id"],
+                task.repeat_type,
+                task.week_interval if task.week_interval else None,
+            )
+
+            new_tmpl_goal_task = await conn.fetchrow(
+                """
+                INSERT INTO public.tmpl_goal_task 
+                    (tmpl_goal_id, task_id)
+                VALUES ($1, $2)
+                RETURNING id
+                """,
+                new_tmpl_goal["id"],
+                new_task["id"],
+            )
+
+            await insert_tmpl_task_dates(
+                conn, new_tmpl_goal_task["id"], interval_dates
+            )
+
+
 @router.post("/create")
 async def create_template(
     req: CreateTemplateRequest, _admin_id: str = Depends(require_admin)
@@ -403,82 +513,7 @@ async def create_template(
                     global_due_date,
                 )
 
-                for goal in req.goals:
-                    new_goal = await conn.fetchrow(
-                        "INSERT INTO public.goal (title, type) VALUES ($1, $2) RETURNING id",
-                        goal.title,
-                        goal.type,
-                    )
-
-                    new_tmpl_goal = await conn.fetchrow(
-                        """
-                        INSERT INTO public.tmpl_goal 
-                            (template_id, goal_id, start_date, due_date)
-                        VALUES ($1, $2, $3, $4)
-                        RETURNING id
-                        """,
-                        new_template["id"],
-                        new_goal["id"],
-                        goal.start_date,
-                        goal.due_date,
-                    )
-
-                    for task in goal.tasks:
-                        if task.repeat_type == T.RepeatType.DAILY:
-                            interval_dates = date_calculation.get_daily_range(
-                                goal.start_date, goal.due_date
-                            )
-                        elif task.repeat_type == T.RepeatType.WEEKLY:
-                            if not task.week_interval:
-                                raise HTTPException(
-                                    400, detail="Week interval is required"
-                                )
-                            interval_dates = date_calculation.get_weekly_range(
-                                goal.start_date, goal.due_date, task.week_interval
-                            )
-                        elif (
-                            task.repeat_type == T.RepeatType.MONTHLY
-                            or task.repeat_type == T.RepeatType.DATE
-                        ):
-                            if not task.date_interval:
-                                raise HTTPException(
-                                    400, detail="Monthly interval is required"
-                                )
-                            interval_dates = task.date_interval
-                        else:
-                            raise HTTPException(
-                                400,
-                                detail="Invalid task type; must be daily, weekly, or monthly",
-                            )
-
-                        new_task = await conn.fetchrow(
-                            """
-                            INSERT INTO public.task 
-                                (title, description, goal_id, type, interval)
-                            VALUES ($1, $2, $3, $4, $5)
-                            RETURNING id
-                            """,
-                            task.title,
-                            task.description,
-                            new_goal["id"],
-                            task.repeat_type,
-                            task.week_interval if task.week_interval else None,
-                        )
-
-                        new_tmpl_goal_task = await conn.fetchrow(
-                            """
-                            INSERT INTO public.tmpl_goal_task 
-                                (tmpl_goal_id, task_id)
-                            VALUES ($1, $2)
-                            RETURNING id
-                            """,
-                            new_tmpl_goal["id"],
-                            new_task["id"],
-                        )
-
-                        await insert_tmpl_task_dates(
-                            conn, new_tmpl_goal_task["id"], interval_dates
-                        )
+                await insert_template_goals(conn, new_template["id"], req.goals)
             return {"message": "Template created"}
 
         except HTTPException:
@@ -1016,11 +1051,50 @@ async def get_favorite_templates(
 async def update_template(
     req: UpdateTemplateRequest, _admin_id: str = Depends(require_admin)
 ):
+    if not req.goals:
+        raise HTTPException(400, detail="A template needs at least one goal")
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         try:
             async with conn.transaction():
-                pass
+                updated = await conn.fetchval(
+                    """
+                    UPDATE public.template
+                    SET title = $2, description = $3, image_url = $4, category = $5,
+                        start_date = $6, due_date = $7
+                    WHERE id = $1
+                    RETURNING id
+                    """,
+                    req.template_id,
+                    req.title,
+                    req.description,
+                    req.image_url,
+                    normalize_category(req.category),
+                    min(goal.start_date for goal in req.goals),
+                    max(goal.due_date for goal in req.goals),
+                )
+                if updated is None:
+                    raise HTTPException(status_code=404, detail="Template not found")
+
+                # Rebuild the goals. Users who already used this template keep
+                # their plans: assigned_goal points at the same goal rows, and
+                # deleting a goal cascades to assigned_goal, so old goal rows are
+                # only deleted when nobody has them.
+                old_goal_ids = await conn.fetch(
+                    "DELETE FROM public.tmpl_goal WHERE template_id = $1 RETURNING goal_id",
+                    req.template_id,
+                )
+                await conn.execute(
+                    """
+                    DELETE FROM public.goal g
+                    WHERE g.id = ANY($1::int[])
+                      AND NOT EXISTS (SELECT 1 FROM public.assigned_goal ag WHERE ag.goal_id = g.id)
+                      AND NOT EXISTS (SELECT 1 FROM public.tmpl_goal tg WHERE tg.goal_id = g.id)
+                    """,
+                    [row["goal_id"] for row in old_goal_ids],
+                )
+                await insert_template_goals(conn, req.template_id, req.goals)
+            return {"message": "Template updated"}
 
         except HTTPException:
             raise
