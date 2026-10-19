@@ -7,18 +7,19 @@ import "./AdminDashboard.css";
 const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
+// week_interval stores day numbers (0 = Sunday), as the backend expects.
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+// Same keys as the mobile app (apps/mobile/constants/categories.ts), so admin
+// templates get the right cover and show up under the Community filters.
+const CATEGORIES = ["workout", "health", "education", "productivity", "finance"];
+
 const AdminDashboard = () => {
     const { getToken } = useAuth();
     const { signOut } = useClerk();
     const { user } = useUser();
     const [templates, setTemplates] = useState([]);
-    const [editingTemplate, setEditingTemplate] = useState({
-        title: "",
-        description: "",
-        image_url: null,
-        category: "",
-        goals: [],
-    });
+    const [editingTemplate, setEditingTemplate] = useState(null);
     const [newName, setNewName] = useState("");
     const [newDescription, setNewDescription] = useState("");
     const [newImage, setNewImage] = useState(null);
@@ -27,7 +28,10 @@ const AdminDashboard = () => {
     const [newTask, setNewTask] = useState("");
     const [newGoalStartDate, setNewGoalStartDate] = useState("");
     const [newGoalDueDate, setNewGoalDueDate] = useState("");
-    const categories = ["Workout Routine", "Personal Budgeting", "Healthy Eating"];
+    // Keep an older template's category selectable instead of silently showing another one.
+    const categories = !newCategory || CATEGORIES.includes(newCategory)
+        ? CATEGORIES
+        : [...CATEGORIES, newCategory];
     const userAccount = {
         name: user?.fullName || user?.primaryEmailAddress?.emailAddress || "Admin",
         profilePic: user?.imageUrl || "https://cdn-icons-png.flaticon.com/512/847/847969.png",
@@ -58,7 +62,7 @@ const AdminDashboard = () => {
 
     const fetchTemplates = useCallback(async () => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/api/v1/template`, await authConfig());
+            const response = await axios.get(`${API_BASE_URL}/api/v1/template/`, await authConfig());
             setTemplates(response.data);
             return true;
         } catch (error) {
@@ -78,7 +82,7 @@ const AdminDashboard = () => {
             title: "",
             description: "Edit this template.",
             image_url: null,
-            category: "Workout Routine",
+            category: CATEGORIES[0],
             goals: [],
         };
         setEditingTemplate(newTemplate);
@@ -87,7 +91,7 @@ const AdminDashboard = () => {
         setNewName("");
         setNewDescription("Edit this template.");
         setNewImage(null);
-        setNewCategory("Workout Routine");
+        setNewCategory(CATEGORIES[0]);
         setErrorMessage("");
     };
 
@@ -106,7 +110,7 @@ const AdminDashboard = () => {
                     text: task.title ?? task.text,
                     type: task.repeat_type ?? task.type,
                     selectedDays: task.selectedDays ?? task.week_interval?.map((day) =>
-                        ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][day]
+                        DAYS[day]
                     ),
                 })),
             })),
@@ -180,9 +184,10 @@ const AdminDashboard = () => {
         const templateData = {
             title: newName || "New Template",
             description: newDescription || "Edit this template.",
-            image_url: newImage || "https://example.com/default-image.jpg",
+            // Empty, not a placeholder URL: the mobile app shows its category cover for "".
+            image_url: newImage || "",
             created_by: userAccount.name,
-            category: newCategory || "Workout Routine",
+            category: newCategory || CATEGORIES[0],
             goals: (editingTemplate.goals || []).map((goal) => ({
                 title: goal.text || goal.title || "New Goal",
                 type: "template",
@@ -194,7 +199,7 @@ const AdminDashboard = () => {
                     repeat_type: task.type || task.repeat_type || "daily",
                     date_interval: task.date_interval || [],
                     week_interval: task.selectedDays
-                        ? task.selectedDays.map((day) => ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(day)).filter((day) => day >= 0)
+                        ? task.selectedDays.map((day) => DAYS.indexOf(day)).filter((day) => day >= 0)
                         : task.week_interval || [],
                 })),
             })),
@@ -302,7 +307,10 @@ const AdminDashboard = () => {
                                     id: Date.now(),
                                     title: newTask,
                                     type: newTaskType,
-                                    week_interval: newTaskType === "weekly" ? selectedDays : [],
+                                    selectedDays: newTaskType === "weekly" ? selectedDays : [],
+                                    week_interval: newTaskType === "weekly"
+                                        ? selectedDays.map((day) => DAYS.indexOf(day))
+                                        : [],
                                 }
                             ]
                         }
@@ -405,7 +413,7 @@ const AdminDashboard = () => {
                                                         <li key={task.id ?? taskIndex}>
                                                             <strong>Task: {task.title}</strong>
                                                             {(task.repeat_type ?? task.type) === "weekly" && task.week_interval && (
-                                                                <p>Selected Days: {task.week_interval.map((day) => ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][day]).join(", ")}</p>
+                                                                <p>Selected Days: {task.week_interval.map((day) => DAYS[day]).join(", ")}</p>
                                                             )}
                                                         </li>
                                                     ))}
@@ -469,7 +477,9 @@ const AdminDashboard = () => {
                                         onChange={(e) => setNewCategory(e.target.value)}
                                     >
                                         {categories.map((category, index) => (
-                                            <option key={index} value={category}>{category}</option>
+                                            <option key={index} value={category}>
+                                                {category.charAt(0).toUpperCase() + category.slice(1)}
+                                            </option>
                                         ))}
                                     </select>
                                     <label>Upload Image:</label>
@@ -543,7 +553,7 @@ const AdminDashboard = () => {
                                                                         {task.title}
                                                                         {task.type === "weekly" && task.week_interval && task.week_interval.length > 0 && (
                                                                             <span className="selected-days">
-                                                                                ({task.week_interval.join(", ")})
+                                                                                ({task.week_interval.map((day) => DAYS[day]).join(", ")})
                                                                             </span>
                                                                         )}
                                                                     </span>
@@ -591,7 +601,7 @@ const AdminDashboard = () => {
                                                                 <div className="weekly-days-container">
                                                                     <label>Select Days of the Week:</label>
                                                                     <div className="days-checkbox-container">
-                                                                        {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => (
+                                                                        {DAYS.map((day) => (
                                                                             <label key={day} className="day-checkbox">
                                                                                 <input
                                                                                     type="checkbox"
